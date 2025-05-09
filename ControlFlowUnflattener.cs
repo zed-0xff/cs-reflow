@@ -5,10 +5,12 @@ using System.IO;
 using System.Linq;
 using System;
 
+using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
+
 class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 {
-    VariableProcessor _varProcessor = new VariableProcessor();
-    Dictionary<int, bool> _flowHints;
+    VariableProcessor _varProcessor = new();
+    HintsDictionary _flowHints = new();
 
     private SyntaxTree _tree;
 
@@ -56,7 +58,11 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     class UndeterministicIfException : Exception
     {
-        public UndeterministicIfException(string condition, int lineno) : base($"undeterministic if({condition}) at line {lineno}") { }
+        public int lineno;
+        public UndeterministicIfException(string condition, int lineno) : base($"undeterministic if({condition}) at line {lineno}")
+        {
+            this.lineno = lineno;
+        }
     }
 
     public void TraceMethod(string methodName)
@@ -74,11 +80,10 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    public ControlFlowUnflattener(string code, Dictionary<int, bool> flowHints = null)
+    public ControlFlowUnflattener(string code, HintsDictionary flowHints = null)
     {
-        if( flowHints == null )
-            flowHints = new Dictionary<int, bool>();
-        _flowHints = flowHints;
+        if( flowHints != null )
+            _flowHints = new(flowHints);
         _tree = CSharpSyntaxTree.ParseText(code);
     }
 
@@ -87,22 +92,43 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     
     public object Clone(){
         var clone = new ControlFlowUnflattener();
-        clone._tree = _tree;
+        clone._tree = _tree; // shared
         clone._flowHints = new(_flowHints);
         clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
         return clone;
     }
 
+    public ControlFlowUnflattener CloneWithHints(HintsDictionary flowHints)
+    {
+        var clone = (ControlFlowUnflattener)Clone();
+        foreach (var hint in flowHints)
+        {
+            clone._flowHints[hint.Key] = hint.Value;
+        }
+        return clone;
+    }
+
     public void ReflowMethod(string methodName)
     {
-        while( true )
+        Queue<HintsDictionary> queue = new();
+        queue.Enqueue(_flowHints);
+
+        while( queue.Count > 0 )
         {
+            HintsDictionary hints = queue.Dequeue();
+            Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
+
+            ControlFlowUnflattener clone = CloneWithHints(hints);
             try {
-                TraceMethod(methodName);
-                break;
+                clone.TraceMethod(methodName);
             } catch ( UndeterministicIfException e ) {
-                Console.WriteLine($"[d] {e.Message}");
-                break;
+                HintsDictionary hints0 = new(hints);
+                hints0[e.lineno] = false;
+                queue.Enqueue(hints0);
+
+                HintsDictionary hints1 = new(hints);
+                hints1[e.lineno] = true;
+                queue.Enqueue(hints1);
             }
         }
     }
