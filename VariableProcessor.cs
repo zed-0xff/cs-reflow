@@ -12,7 +12,7 @@ public class VariableProcessor : ICloneable
         public VarNotFoundException(string varName) : base($"Variable '{varName}' not found.") { }
     }
 
-    private VarDict variableValues = new();
+    public VarDict VariableValues { get; } = new();
 
     public object Clone()
     {
@@ -20,16 +20,16 @@ public class VariableProcessor : ICloneable
         var clonedProcessor = new VariableProcessor();
 
         // Deep copy the dictionary
-        foreach (var entry in this.variableValues)
+        foreach (var entry in this.VariableValues)
         {
             if (entry.Value is ICloneable cloneableValue)
             {
-                clonedProcessor.variableValues[entry.Key] = cloneableValue.Clone();
+                clonedProcessor.VariableValues[entry.Key] = cloneableValue.Clone();
             }
             else
             {
                 // If the object is not ICloneable, you might need to handle how to copy it
-                clonedProcessor.variableValues[entry.Key] = entry.Value; // Just copy reference as is
+                clonedProcessor.VariableValues[entry.Key] = entry.Value; // Just copy reference as is
             }
         }
 
@@ -54,7 +54,7 @@ public class VariableProcessor : ICloneable
             var value = EvaluateExpression(initializerExpression);
 
             // Store the value of the variable
-            variableValues[variableName] = value;
+            VariableValues[variableName] = value;
         }
     }
 
@@ -75,12 +75,12 @@ public class VariableProcessor : ICloneable
                 try
                 {
                     var rightValue = EvaluateExpression(right);
-                    variableValues[varName] = rightValue;
+                    VariableValues[varName] = rightValue;
                     return rightValue;
                 }
                 catch (Exception e)
                 {
-                    variableValues.Remove(varName);
+                    VariableValues.Remove(varName);
                     throw;
                 }
 
@@ -108,8 +108,8 @@ public class VariableProcessor : ICloneable
             case IdentifierNameSyntax identifierName:
                 // If the expression is an identifier, fetch its value from the dictionary
                 string varName2 = identifierName.Identifier.Text;
-                if (variableValues.ContainsKey(varName2))
-                    return variableValues[varName2];
+                if (VariableValues.ContainsKey(varName2))
+                    return VariableValues[varName2];
                 else
                     throw new VarNotFoundException(varName2);
 
@@ -186,10 +186,5 @@ public class VariableProcessor : ICloneable
             default:
                 throw new NotSupportedException($"Literal type '{literal.Kind()}' is not supported.");
         }
-    }
-
-    public VarDict GetVariableValues()
-    {
-        return variableValues;
     }
 }

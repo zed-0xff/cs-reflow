@@ -23,4 +23,28 @@ public class VarDict : Dictionary<string, object>, ICloneable
 
         return clonedDict;
     }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is not VarDict other || Count != other.Count)
+            return false;
+
+        foreach (var kvp in this)
+        {
+            if (!other.TryGetValue(kvp.Key, out var value) || !Equals(kvp.Value, value))
+                return false;
+        }
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        int hash = 17;
+        foreach (var kvp in this.OrderBy(kvp => kvp.Key)) // Ensure order doesn't affect hash
+        {
+            hash = hash * 31 + kvp.Key.GetHashCode();
+            hash = hash * 31 + (kvp.Value?.GetHashCode() ?? 0);
+        }
+        return hash;
+    }
 }

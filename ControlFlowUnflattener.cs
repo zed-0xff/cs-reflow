@@ -13,6 +13,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
     TraceLog _trace = new();
+    Dictionary <State, int> _states = new();
 
     public class State
     {
@@ -23,6 +24,17 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             this.lineno = lineno;
             this.vars = (VarDict)vars.Clone();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is not State other) return false;
+            return lineno == other.lineno && vars.Equals(other.vars);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(lineno, vars);
         }
     };
 
@@ -89,6 +101,11 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             this.lineno = lineno;
         }
+    }
+
+    class LoopException : Exception
+    {
+        public LoopException(string message) : base(message) { }
     }
 
     public TraceLog TraceMethod(string methodName)
@@ -441,7 +458,12 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 line = line.PadRight(120) + " // " + comment;
             }
             //            Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
+            State state = new(get_lineno(stmt), _varProcessor.VariableValues);
             _trace.Add(new TraceEntry(stmt, value));
+            if (_states.TryGetValue(state, out int x))
+            {
+                throw new LoopException($"Loop: {x} -> {get_lineno(stmt)}");
+            }
 
             try
             {
