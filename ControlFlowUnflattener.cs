@@ -116,6 +116,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         while( queue.Count > 0 )
         {
             HintsDictionary hints = queue.Dequeue();
+            Console.WriteLine();
             Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
 
             ControlFlowUnflattener clone = CloneWithHints(hints);
