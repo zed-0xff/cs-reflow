@@ -14,6 +14,18 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     HintsDictionary _flowHints = new();
     TraceLog _trace = new();
 
+    public class State
+    {
+        readonly int lineno;
+        readonly VarDict vars;
+
+        public State(int lineno, VarDict vars)
+        {
+            this.lineno = lineno;
+            this.vars = (VarDict)vars.Clone();
+        }
+    };
+
     public class TraceEntry
     {
         public StatementSyntax stmt;
@@ -88,9 +100,12 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         if (method == null || method.Body == null)
             throw new ArgumentException($"Method '{methodName}' not found or has no body.");
 
-        try {
+        try
+        {
             TraceBlock(method.Body);
-        } catch(ReturnException e) {
+        }
+        catch (ReturnException e)
+        {
         }
 
         return _trace;
@@ -98,15 +113,16 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public ControlFlowUnflattener(string code, HintsDictionary flowHints = null)
     {
-        if( flowHints != null )
+        if (flowHints != null)
             _flowHints = new(flowHints);
         _tree = CSharpSyntaxTree.ParseText(code);
     }
 
     // private empty constructor for cloning exclusively
-    private ControlFlowUnflattener() {}
-    
-    public object Clone(){
+    private ControlFlowUnflattener() { }
+
+    public object Clone()
+    {
         var clone = new ControlFlowUnflattener();
         clone._tree = _tree; // shared
         clone._flowHints = new(_flowHints);
@@ -129,15 +145,18 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
 
-        while( queue.Count > 0 )
+        while (queue.Count > 0)
         {
             HintsDictionary hints = queue.Dequeue();
             Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
 
             ControlFlowUnflattener clone = CloneWithHints(hints);
-            try {
+            try
+            {
                 clone.TraceMethod(methodName);
-            } catch ( UndeterministicIfException e ) {
+            }
+            catch (UndeterministicIfException e)
+            {
                 HintsDictionary hints0 = new(hints);
                 hints0[e.lineno] = false;
                 queue.Enqueue(hints0);
@@ -235,23 +254,31 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         if (swLabel == null)
             return;
 
-//        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
+        //        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
         SwitchSectionSyntax section = swLabel.Parent as SwitchSectionSyntax;
         int start_idx = 0;
 
-        while (true) {
-            try {
+        while (true)
+        {
+            try
+            {
                 TraceBlock(section.Statements, start_idx); // TODO: fallthrough
                 break;
 
-            } catch (BreakException) {
+            }
+            catch (BreakException)
+            {
                 break;
 
-            } catch (GotoCaseException e) {
+            }
+            catch (GotoCaseException e)
+            {
                 trace_switch(switchStmt, e.value);
                 return;
 
-            } catch (GotoException e) {
+            }
+            catch (GotoException e)
+            {
                 // real-life example - jump from one case inside a middle of another
                 //
                 //    case 1:
@@ -264,10 +291,12 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 //        bar();
                 string label = e.label;
                 bool found = false;
-                foreach (var section2 in switchStmt.Sections){
-                    for(int i=0; i<section2.Statements.Count; i++){
+                foreach (var section2 in switchStmt.Sections)
+                {
+                    for (int i = 0; i < section2.Statements.Count; i++)
+                    {
                         var stmt = section2.Statements[i];
-                        if (stmt is LabeledStatementSyntax l && l.Identifier.Text == label )
+                        if (stmt is LabeledStatementSyntax l && l.Identifier.Text == label)
                         {
                             section = section2;
                             start_idx = i;
@@ -276,7 +305,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         }
                     }
                 }
-                if( !found ) throw;
+                if (!found) throw;
             }
         }
     }
@@ -286,7 +315,8 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         var condition = ifStmt.Condition;
         int lineno = get_lineno(condition);
 
-        switch(value){
+        switch (value)
+        {
             case bool b:
                 if (b)
                 {
@@ -327,7 +357,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public object EvaluateHintedExpression(ExpressionSyntax expression)
     {
-        if( _flowHints.TryGetValue(get_lineno(expression), out bool hint) )
+        if (_flowHints.TryGetValue(get_lineno(expression), out bool hint))
         {
             return hint;
         }
@@ -349,7 +379,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             labels[stmt.Identifier.Text] = statements.IndexOf(stmt) - 1;
         }
 
-//        Console.WriteLine($"[d] {get_lineno(statements.First())}: labels: {String.Join(", ", labels.Keys)}");
+        //        Console.WriteLine($"[d] {get_lineno(statements.First())}: labels: {String.Join(", ", labels.Keys)}");
 
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
@@ -371,7 +401,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 {
                     case IfStatementSyntax ifStmt:
                         value = EvaluateHintedExpression(ifStmt.Condition);
-                        if( value is bool b )
+                        if (value is bool b)
                         {
                             comment = b.ToString();
                         }
@@ -402,15 +432,15 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
 
             string line = NodeTitle(stmt);
-//            if (label != "")
-//            {
-//                line = label + ": " + line;
-//            }
+            //            if (label != "")
+            //            {
+            //                line = label + ": " + line;
+            //            }
             if (comment != "")
             {
                 line = line.PadRight(120) + " // " + comment;
             }
-//            Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
+            //            Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
             _trace.Add(new TraceEntry(stmt, value));
 
             try
@@ -466,9 +496,9 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         TraceBlock(block); // TODO: local vars
                         break;
 
-                    case BreakStatementSyntax:    throw new BreakException();
+                    case BreakStatementSyntax: throw new BreakException();
                     case ContinueStatementSyntax: throw new ContinueException();
-                    case ReturnStatementSyntax:   throw new ReturnException(null); // TODO: return value
+                    case ReturnStatementSyntax: throw new ReturnException(null); // TODO: return value
 
                     default:
                         throw new NotImplementedException($"Unhandled statement type: {stmt.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")}");
@@ -479,7 +509,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
             catch (GotoException e)
             {
-//                Console.WriteLine($"[d] Goto '{e.label}' at line {get_lineno(stmt)}, labels: {String.Join(", ", labels.Keys)}");
+                //                Console.WriteLine($"[d] Goto '{e.label}' at line {get_lineno(stmt)}, labels: {String.Join(", ", labels.Keys)}");
                 if (labels.TryGetValue(e.label, out i))
                 {
                     // local block goto

@@ -12,7 +12,7 @@ public class VariableProcessor : ICloneable
         public VarNotFoundException(string varName) : base($"Variable '{varName}' not found.") { }
     }
 
-    private Dictionary<string, object> variableValues = new Dictionary<string, object>();
+    private VarDict variableValues = new();
 
     public object Clone()
     {
@@ -188,7 +188,7 @@ public class VariableProcessor : ICloneable
         }
     }
 
-    public Dictionary<string, object> GetVariableValues()
+    public VarDict GetVariableValues()
     {
         return variableValues;
     }
