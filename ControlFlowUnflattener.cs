@@ -6,11 +6,25 @@ using System.Linq;
 using System;
 
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
+using TraceLog = System.Collections.Generic.List<ControlFlowUnflattener.TraceEntry>;
 
 class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 {
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
+    TraceLog _trace = new();
+
+    public class TraceEntry
+    {
+        public StatementSyntax stmt;
+        public object value;
+
+        public TraceEntry(StatementSyntax stmt, object value)
+        {
+            this.stmt = stmt;
+            this.value = value;
+        }
+    }
 
     private SyntaxTree _tree;
 
@@ -65,7 +79,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    public void TraceMethod(string methodName)
+    public TraceLog TraceMethod(string methodName)
     {
         var method = _tree.GetRoot().DescendantNodes()
             .OfType<MethodDeclarationSyntax>()
@@ -78,6 +92,8 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             TraceBlock(method.Body);
         } catch(ReturnException e) {
         }
+
+        return _trace;
     }
 
     public ControlFlowUnflattener(string code, HintsDictionary flowHints = null)
@@ -116,7 +132,6 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         while( queue.Count > 0 )
         {
             HintsDictionary hints = queue.Dequeue();
-            Console.WriteLine();
             Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
 
             ControlFlowUnflattener clone = CloneWithHints(hints);
@@ -220,7 +235,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         if (swLabel == null)
             return;
 
-        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
+//        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
         SwitchSectionSyntax section = swLabel.Parent as SwitchSectionSyntax;
         int start_idx = 0;
 
@@ -395,8 +410,8 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 line = line.PadRight(120) + " // " + comment;
             }
-            Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
-//            _traced.Add(stmt);
+//            Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
+            _trace.Add(new TraceEntry(stmt, value));
 
             try
             {
