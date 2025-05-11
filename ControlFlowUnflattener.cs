@@ -29,9 +29,9 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public class TraceEntry
     {
         public StatementSyntax stmt;
-        public object value;
+        public object? value;
 
-        public TraceEntry(StatementSyntax stmt, object value)
+        public TraceEntry(StatementSyntax stmt, object? value)
         {
             this.stmt = stmt;
             this.value = value;
@@ -42,8 +42,8 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     class ReturnException : Exception
     {
-        public object result;
-        public ReturnException(object result) : base($"return {result}")
+        public object? result;
+        public ReturnException(object? result) : base($"return {result}")
         {
             this.result = result;
         }
@@ -104,7 +104,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             TraceBlock(method.Body);
         }
-        catch (ReturnException e)
+        catch (ReturnException)
         {
         }
 
@@ -387,7 +387,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             StatementSyntax stmt = statements[i];
             string comment = "";
             string label = "";
-            object value = null;
+            object? value = null;
 
             if (stmt is LabeledStatementSyntax l0)
             {
@@ -426,7 +426,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 comment = e.Message;
             }
-            catch (VariableProcessor.VarNotFoundException e)
+            catch (VariableProcessor.VarNotFoundException /* e */)
             {
                 //comment = e.Message;
             }

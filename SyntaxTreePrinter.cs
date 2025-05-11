@@ -249,7 +249,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         return traced;
     }
 
-    private StatementSyntax GetNextStatement(StatementSyntax current, BlockSyntax block)
+    private StatementSyntax? GetNextStatement(StatementSyntax current, BlockSyntax block)
     {
         var statements = block.Statements;
         int index = statements.IndexOf(current);
