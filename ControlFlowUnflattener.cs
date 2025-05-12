@@ -105,10 +105,10 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    class LoopException : Exception
-    {
-        public LoopException(string message) : base(message) { }
-    }
+//    class LoopException : Exception
+//    {
+//        public LoopException(string message) : base(message) { }
+//    }
 
     public TraceLog TraceMethod(string methodName)
     {
@@ -126,9 +126,9 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         catch (ReturnException)
         {
         }
-        catch (LoopException le)
-        {
-        }
+//        catch (LoopException le)
+//        {
+//        }
 
         return _traceLog;
     }
