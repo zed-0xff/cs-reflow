@@ -13,7 +13,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
-    Dictionary <State, int> _states = new();
+    Dictionary<State, int> _states = new();
 
     public class State
     {
@@ -49,6 +49,18 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             this.stmt = stmt;
             this.value = value;
             this.vars = (VarDict)vars.Clone();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is not TraceEntry other) return false;
+
+            return stmt.Equals(other.stmt) && vars.Equals(other.vars);
+        }
+
+        public override int GetHashCode()
+        {
+            throw new NotImplementedException();
         }
     }
 
@@ -105,30 +117,40 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-//    class LoopException : Exception
-//    {
-//        public LoopException(string message) : base(message) { }
-//    }
+    //    class LoopException : Exception
+    //    {
+    //        public LoopException(string message) : base(message) { }
+    //    }
+
+    public BlockSyntax GetMethodBody(string methodName)
+    {
+        var methods = _tree.GetRoot().DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Where(m => m.Identifier.Text == methodName);
+
+        switch (methods.Count())
+        {
+            case 0:
+                throw new ArgumentException($"Method '{methodName}' not found.");
+            case 1:
+                return methods.First().Body;
+            default:
+                throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
+        }
+    }
 
     public TraceLog TraceMethod(string methodName)
     {
-        var method = _tree.GetRoot().DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault(m => m.Identifier.Text == methodName);
-
-        if (method == null || method.Body == null)
-            throw new ArgumentException($"Method '{methodName}' not found or has no body.");
-
         try
         {
-            TraceBlock(method.Body);
+            TraceBlock(GetMethodBody(methodName));
         }
         catch (ReturnException)
         {
         }
-//        catch (LoopException le)
-//        {
-//        }
+        //        catch (LoopException le)
+        //        {
+        //        }
 
         return _traceLog;
     }
@@ -438,13 +460,13 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 line = line.PadRight(120) + " // " + comment;
             }
             // Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
-//            State state = new(get_lineno(stmt), _varProcessor.VariableValues);
+            //            State state = new(get_lineno(stmt), _varProcessor.VariableValues);
             _traceLog.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues));
 
-//            if (_states.TryGetValue(state, out int x))
-//            {
-//                throw new LoopException($"Loop: {x} -> {get_lineno(stmt)}");
-//            }
+            //            if (_states.TryGetValue(state, out int x))
+            //            {
+            //                throw new LoopException($"Loop: {x} -> {get_lineno(stmt)}");
+            //            }
             //_states[state] = get_lineno(stmt);
 
             try
@@ -528,10 +550,11 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    public void ReflowMethod(string methodName)
+    public void ReflowBlock(BlockSyntax block)
     {
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
+        List<TraceLog> logs = new();
 
         while (queue.Count > 0)
         {
@@ -539,10 +562,14 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
 
             ControlFlowUnflattener clone = CloneWithHints(hints);
-            TraceLog log;
             try
             {
-                log = clone.TraceMethod(methodName);
+                clone.TraceBlock(block);
+                logs.Add(clone._traceLog);
+            }
+            catch (ReturnException)
+            {
+                logs.Add(clone._traceLog);
             }
             catch (UndeterministicIfException e)
             {
@@ -556,14 +583,38 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 continue;
             }
 
-//            // have successful trace
-//            foreach (var entry in log)
-//            {
-//                var stmt = entry.stmt;
-//                var value = entry.value;
-//                Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {stmt} => {value}");
-//            }
+            //            // have successful trace
+            //            foreach (var entry in log)
+            //            {
+            //                var stmt = entry.stmt;
+            //                var value = entry.value;
+            //                Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {stmt} => {value}");
+            //            }
         }
+        Console.WriteLine($"[=] got {logs.Count} traces: {String.Join(", ", logs.Select(l => l.Count.ToString()))}");
+        cmp_logs(logs[0], logs[1]);
+        cmp_logs(logs[1], logs[2]);
     }
 
+    public void ReflowMethod(string methodName)
+    {
+        ReflowBlock(GetMethodBody(methodName));
+    }
+
+    void cmp_logs(TraceLog log1, TraceLog log2)
+    {
+        int commonStart = 0;
+        while (log1[commonStart].stmt == log2[commonStart].stmt)
+        {
+            commonStart++;
+        }
+        Console.WriteLine($"[=] common start: {commonStart}, uncommon: {log1.Count - commonStart} vs {log2.Count - commonStart}");
+
+        int commonEnd = 0;
+        while (log1[log1.Count - 1 - commonEnd].stmt == log2[log2.Count - 1 - commonEnd].stmt)
+        {
+            commonEnd++;
+        }
+        Console.WriteLine($"[=] common end: {commonEnd}, uncommon: {log1.Count - commonEnd - commonStart} vs {log2.Count - commonEnd - commonStart}");
+    }
 }
