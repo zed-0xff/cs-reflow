@@ -12,7 +12,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 {
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
-    TraceLog _trace = new();
+    TraceLog _traceLog = new();
     Dictionary <State, int> _states = new();
 
     public class State
@@ -40,13 +40,15 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public class TraceEntry
     {
-        public StatementSyntax stmt;
-        public object? value;
+        public readonly StatementSyntax stmt;
+        public readonly object? value;
+        public readonly VarDict vars;
 
-        public TraceEntry(StatementSyntax stmt, object? value)
+        public TraceEntry(StatementSyntax stmt, object? value, VarDict vars)
         {
             this.stmt = stmt;
             this.value = value;
+            this.vars = (VarDict)vars.Clone();
         }
     }
 
@@ -124,8 +126,11 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         catch (ReturnException)
         {
         }
+        catch (LoopException le)
+        {
+        }
 
-        return _trace;
+        return _traceLog;
     }
 
     public ControlFlowUnflattener(string code, HintsDictionary flowHints = null)
@@ -141,9 +146,12 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public object Clone()
     {
         var clone = new ControlFlowUnflattener();
-        clone._tree = _tree; // shared
         clone._flowHints = new(_flowHints);
         clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
+
+        clone._tree = _tree;     // shared, r/o
+        clone._states = _states; // shared, r/w
+
         return clone;
     }
 
@@ -155,34 +163,6 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             clone._flowHints[hint.Key] = hint.Value;
         }
         return clone;
-    }
-
-    public void ReflowMethod(string methodName)
-    {
-        Queue<HintsDictionary> queue = new();
-        queue.Enqueue(_flowHints);
-
-        while (queue.Count > 0)
-        {
-            HintsDictionary hints = queue.Dequeue();
-            Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
-
-            ControlFlowUnflattener clone = CloneWithHints(hints);
-            try
-            {
-                clone.TraceMethod(methodName);
-            }
-            catch (UndeterministicIfException e)
-            {
-                HintsDictionary hints0 = new(hints);
-                hints0[e.lineno] = false;
-                queue.Enqueue(hints0);
-
-                HintsDictionary hints1 = new(hints);
-                hints1[e.lineno] = true;
-                queue.Enqueue(hints1);
-            }
-        }
     }
 
     public List<string> Methods => _tree.GetRoot().DescendantNodes()
@@ -396,7 +376,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             labels[stmt.Identifier.Text] = statements.IndexOf(stmt) - 1;
         }
 
-        //        Console.WriteLine($"[d] {get_lineno(statements.First())}: labels: {String.Join(", ", labels.Keys)}");
+        // Console.WriteLine($"[d] {get_lineno(statements.First())}: labels: {String.Join(", ", labels.Keys)}");
 
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
@@ -457,13 +437,15 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 line = line.PadRight(120) + " // " + comment;
             }
-            //            Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
-            State state = new(get_lineno(stmt), _varProcessor.VariableValues);
-            _trace.Add(new TraceEntry(stmt, value));
-            if (_states.TryGetValue(state, out int x))
-            {
-                throw new LoopException($"Loop: {x} -> {get_lineno(stmt)}");
-            }
+            // Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
+//            State state = new(get_lineno(stmt), _varProcessor.VariableValues);
+            _traceLog.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues));
+
+//            if (_states.TryGetValue(state, out int x))
+//            {
+//                throw new LoopException($"Loop: {x} -> {get_lineno(stmt)}");
+//            }
+            //_states[state] = get_lineno(stmt);
 
             try
             {
@@ -545,4 +527,43 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
         }
     }
+
+    public void ReflowMethod(string methodName)
+    {
+        Queue<HintsDictionary> queue = new();
+        queue.Enqueue(_flowHints);
+
+        while (queue.Count > 0)
+        {
+            HintsDictionary hints = queue.Dequeue();
+            Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
+
+            ControlFlowUnflattener clone = CloneWithHints(hints);
+            TraceLog log;
+            try
+            {
+                log = clone.TraceMethod(methodName);
+            }
+            catch (UndeterministicIfException e)
+            {
+                HintsDictionary hints0 = new(hints);
+                hints0[e.lineno] = false;
+                queue.Enqueue(hints0);
+
+                HintsDictionary hints1 = new(hints);
+                hints1[e.lineno] = true;
+                queue.Enqueue(hints1);
+                continue;
+            }
+
+//            // have successful trace
+//            foreach (var entry in log)
+//            {
+//                var stmt = entry.stmt;
+//                var value = entry.value;
+//                Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {stmt} => {value}");
+//            }
+        }
+    }
+
 }
