@@ -1,5 +1,3 @@
-
-[=] got 1 traces: 73
 static Bytes_afff()
 {
     int num = 192;

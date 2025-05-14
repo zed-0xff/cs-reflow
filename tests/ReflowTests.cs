@@ -31,7 +31,9 @@ public class ReflowTests
         var expectedOutput = File.ReadAllText(expectedPath);
 
         // Act
-        var actualOutput = expectedOutput; //Reflow.ProcessData(input);
+        var controlFlowUnflattener = new ControlFlowUnflattener(input);
+        var methodName = "Bytes_afff";
+        var actualOutput = controlFlowUnflattener.ReflowMethod(methodName);
 
         // Assert
         Assert.Equal(expectedOutput, actualOutput);

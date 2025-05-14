@@ -9,7 +9,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
 
-class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
+public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 {
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
@@ -648,7 +648,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return indent + line;
     }
 
-    public void ReflowMethod(string methodName)
+    public string ReflowMethod(string methodName)
     {
         var method = GetMethod(methodName);
         TraceLog log = ReflowBlock(method.Body);
@@ -688,6 +688,6 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
         var newMethod = method.WithBody(Block(statements));
         string newMethodStr = newMethod.NormalizeWhitespace().ToFullString();
-        Console.WriteLine(newMethodStr);
+        return newMethodStr + Environment.NewLine;
     }
 }
