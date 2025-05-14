@@ -44,7 +44,7 @@ class Program
                 var fname = opts.Filename;
                 var code = File.ReadAllText(fname);
 
-                SyntaxTreePrinter printer = new SyntaxTreePrinter(code);
+                //SyntaxTreePrinter printer = new SyntaxTreePrinter(code);
                 ControlFlowUnflattener controlFlowUnflattener = new ControlFlowUnflattener(code, hints);
 
                 if (opts.Methods == null || !opts.Methods.Any())

@@ -98,7 +98,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     //        public LoopException(string message) : base(message) { }
     //    }
 
-    public BlockSyntax GetMethodBody(string methodName)
+    public BaseMethodDeclarationSyntax GetMethod(string methodName)
     {
         var methods = _tree.GetRoot().DescendantNodes()
             .Where(n =>
@@ -112,10 +112,15 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             case 0:
                 throw new ArgumentException($"Method '{methodName}' not found.");
             case 1:
-                return (methods.First() as BaseMethodDeclarationSyntax).Body;
+                return methods.First() as BaseMethodDeclarationSyntax;
             default:
                 throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
         }
+    }
+
+    public BlockSyntax GetMethodBody(string methodName)
+    {
+        return GetMethod(methodName).Body;
     }
 
     public TraceLog TraceMethod(string methodName)
@@ -586,7 +591,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    public void ReflowBlock(BlockSyntax block)
+    public TraceLog ReflowBlock(BlockSyntax block)
     {
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
@@ -634,9 +639,26 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             logs[logs.Count - 1] = merged;
         }
 
-        var final_log = logs[logs.Count - 1];
+        return logs[0];
+    }
 
-        foreach (var entry in final_log.entries)
+    string indent(string line, int level)
+    {
+        string indent = new(' ', level * 4);
+        return indent + line;
+    }
+
+    public void ReflowMethod(string methodName)
+    {
+        var method = GetMethod(methodName);
+        TraceLog log = ReflowBlock(method.Body);
+        if (log.entries[log.entries.Count - 1].stmt.ToString() == "return;")
+        {
+            log.entries.RemoveAt(log.entries.Count - 1);
+        }
+
+        List<StatementSyntax> statements = new();
+        foreach (var entry in log.entries)
         {
             var stmt = entry.stmt;
 
@@ -653,24 +675,19 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
 
             var comment = entry.comment;
-            string line = stmt.ToString();
-            line = $"{get_lineno(stmt).ToString().PadLeft(6)}: {line}";
+            //            string line = stmt.ToString();
+            //            //line = $"{get_lineno(stmt).ToString().PadLeft(6)}: {line}";
+            //            line = indent(line, 1);
             if (comment != null && comment != "")
             {
-                line = line.PadRight(80) + " // " + comment;
+                stmt = stmt.WithTrailingTrivia(Comment(" // " + comment));
             }
-            Console.WriteLine(line);
+            //            Console.WriteLine(line);
+            statements.Add(stmt);
         }
-    }
 
-    public BlockSyntax ReflowBlock2(BlockSyntax block)
-    {
-        List<StatementSyntax> statements = new();
-        return Block(statements);
-    }
-
-    public void ReflowMethod(string methodName)
-    {
-        ReflowBlock(GetMethodBody(methodName));
+        var newMethod = method.WithBody(Block(statements));
+        string newMethodStr = newMethod.NormalizeWhitespace().ToFullString();
+        Console.WriteLine(newMethodStr);
     }
 }
