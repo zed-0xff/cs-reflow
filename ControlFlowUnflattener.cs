@@ -5,64 +5,40 @@ using System.IO;
 using System.Linq;
 using System;
 
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
-using TraceLog = System.Collections.Generic.List<ControlFlowUnflattener.TraceEntry>;
 
 class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 {
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
-    Dictionary<State, int> _states = new();
+    //    Dictionary<State, int> _states = new();
+    int verbosity = 0;
 
-    public class State
-    {
-        readonly int lineno;
-        readonly VarDict vars;
-
-        public State(int lineno, VarDict vars)
-        {
-            this.lineno = lineno;
-            this.vars = (VarDict)vars.Clone();
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is not State other) return false;
-            return lineno == other.lineno && vars.Equals(other.vars);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(lineno, vars);
-        }
-    };
-
-    public class TraceEntry
-    {
-        public readonly StatementSyntax stmt;
-        public readonly object? value;
-        public readonly VarDict vars;
-
-        public TraceEntry(StatementSyntax stmt, object? value, VarDict vars)
-        {
-            this.stmt = stmt;
-            this.value = value;
-            this.vars = (VarDict)vars.Clone();
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is not TraceEntry other) return false;
-
-            return stmt.Equals(other.stmt) && vars.Equals(other.vars);
-        }
-
-        public override int GetHashCode()
-        {
-            throw new NotImplementedException();
-        }
-    }
+    //    public class State
+    //    {
+    //        readonly int lineno;
+    //        readonly VarDict vars;
+    //
+    //        public State(int lineno, VarDict vars)
+    //        {
+    //            this.lineno = lineno;
+    //            this.vars = (VarDict)vars.Clone();
+    //        }
+    //
+    //        public override bool Equals(object obj)
+    //        {
+    //            if (obj is not State other) return false;
+    //            return lineno == other.lineno && vars.Equals(other.vars);
+    //        }
+    //
+    //        public override int GetHashCode()
+    //        {
+    //            return HashCode.Combine(lineno, vars);
+    //        }
+    //    };
 
     private SyntaxTree _tree;
 
@@ -125,15 +101,18 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public BlockSyntax GetMethodBody(string methodName)
     {
         var methods = _tree.GetRoot().DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
-            .Where(m => m.Identifier.Text == methodName);
+            .Where(n =>
+                    (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
+                    (n is ConstructorDeclarationSyntax c && c.Identifier.Text == methodName)
+                  )
+            .ToList();
 
         switch (methods.Count())
         {
             case 0:
                 throw new ArgumentException($"Method '{methodName}' not found.");
             case 1:
-                return methods.First().Body;
+                return (methods.First() as BaseMethodDeclarationSyntax).Body;
             default:
                 throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
         }
@@ -172,7 +151,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
 
         clone._tree = _tree;     // shared, r/o
-        clone._states = _states; // shared, r/w
+                                 //        clone._states = _states; // shared, r/w
 
         return clone;
     }
@@ -184,13 +163,18 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             clone._flowHints[hint.Key] = hint.Value;
         }
+        clone._traceLog.hints = new(clone._flowHints);
         return clone;
     }
 
-    public List<string> Methods => _tree.GetRoot().DescendantNodes()
-        .OfType<MethodDeclarationSyntax>()
-        .Select(m => m.Identifier.Text)
-        .ToList();
+    public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
+        .Where(n => n is MethodDeclarationSyntax || n is ConstructorDeclarationSyntax)
+        .ToDictionary(
+                n => n.SpanStart,
+                n => n is MethodDeclarationSyntax m ? m.Identifier.Text :
+                n is ConstructorDeclarationSyntax c ? c.Identifier.Text :
+                "<unknown>"
+                );
 
     int get_lineno(CSharpSyntaxNode stmt)
     {
@@ -241,7 +225,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     {
         if (value == null)
         {
-            throw new NotImplementedException("Switch statement with null value.");
+            throw new NotImplementedException($"{get_lineno(switchStmt)}: Switch statement with null value.");
         }
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
 
@@ -352,18 +336,18 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             case null:
                 throw new UndeterministicIfException(condition.ToString(), get_lineno(condition));
 
-                // trace both
-                Console.WriteLine($"[d] {get_lineno(condition).ToString().PadLeft(6)}: {condition} // => true");
-                TraceBlock(ifStmt.Statement as BlockSyntax);
-
-                Console.WriteLine();
-                Console.WriteLine($"[d] {get_lineno(condition).ToString().PadLeft(6)}: {condition} // => false");
-                if (ifStmt.Else != null)
-                {
-                    TraceBlock(ifStmt.Else.Statement as BlockSyntax);
-                    Console.WriteLine();
-                }
-                break;
+            // trace both
+            //                Console.WriteLine($"[d] {get_lineno(condition).ToString().PadLeft(6)}: {condition} // => true");
+            //                TraceBlock(ifStmt.Statement as BlockSyntax);
+            //
+            //                Console.WriteLine();
+            //                Console.WriteLine($"[d] {get_lineno(condition).ToString().PadLeft(6)}: {condition} // => false");
+            //                if (ifStmt.Else != null)
+            //                {
+            //                    TraceBlock(ifStmt.Else.Statement as BlockSyntax);
+            //                    Console.WriteLine();
+            //                }
+            //                break;
             default:
                 throw new NotImplementedException($"If condition type '{condition.GetType()}' is not supported.");
         }
@@ -374,6 +358,16 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return _varProcessor.EvaluateExpression(expression);
     }
 
+    public VariableProcessor.Expression EvaluateExpressionEx(StatementSyntax expression)
+    {
+        return _varProcessor.EvaluateExpressionEx(expression);
+    }
+
+    public VariableProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression)
+    {
+        return _varProcessor.EvaluateExpressionEx(expression);
+    }
+
     public object EvaluateHintedExpression(ExpressionSyntax expression)
     {
         if (_flowHints.TryGetValue(get_lineno(expression), out bool hint))
@@ -381,6 +375,16 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             return hint;
         }
         return _varProcessor.EvaluateExpression(expression);
+    }
+
+    bool isSwitchVar(string varName)
+    {
+        return _varProcessor.VariableValues.IsSwitchVar(varName);
+    }
+
+    void setSwitchVar(string varName, bool isSwitch = true)
+    {
+        _varProcessor.VariableValues.SetSwitchVar(varName, isSwitch);
     }
 
     public void TraceBlock(BlockSyntax block, int start_idx = 0)
@@ -407,6 +411,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             string comment = "";
             string label = "";
             object? value = null;
+            bool skip = false;
 
             if (stmt is LabeledStatementSyntax l0)
             {
@@ -416,6 +421,7 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
             try
             {
+                VariableProcessor.Expression ex;
                 switch (stmt)
                 {
                     case IfStatementSyntax ifStmt:
@@ -426,18 +432,49 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         }
                         break;
 
-                    case ExpressionStatementSyntax e:
-                        value = EvaluateExpression(e.Expression);
-                        comment = value.ToString();
-                        break;
-
-                    case LocalDeclarationStatementSyntax l:
-                        _varProcessor.ProcessLocalDeclaration(l);
+                    case ExpressionStatementSyntax:
+                    case LocalDeclarationStatementSyntax:
+                        ex = EvaluateExpressionEx(stmt);
+                        value = ex.Result;
+                        if (value != null && !stmt.ToString().Contains($"= {value};"))
+                        {
+                            comment = value.ToString();
+                        }
+                        if (ex.VarsRead.Count > 0 && ex.VarsRead.All(v => isSwitchVar(v)))
+                        {
+                            foreach (string v in ex.VarsWritten)
+                            {
+                                setSwitchVar(v);
+                            }
+                        }
+                        if (ex.VarsWritten.Count > 0 && ex.VarsWritten.All(v => isSwitchVar(v)))
+                        {
+                            skip = true;
+                        }
                         break;
 
                     case SwitchStatementSyntax sw:
-                        value = EvaluateExpression(sw.Expression);
+                        ex = EvaluateExpressionEx(sw.Expression);
+                        value = ex.Result;
                         comment = value.ToString();
+                        skip = true; // skip only if value is known
+                        foreach (string varName in ex.VarsReferenced)
+                        {
+                            setSwitchVar(varName);
+                        }
+                        break;
+
+                    case WhileStatementSyntax whileStmt:
+                        value = EvaluateHintedExpression(whileStmt.Condition);
+                        comment = value.ToString();
+                        skip = true; // skip only if value is known
+                        break;
+
+                    case GotoStatementSyntax:
+                    case ContinueStatementSyntax:
+                    case BreakStatementSyntax:
+                    case BlockSyntax:
+                        skip = true;
                         break;
                 }
             }
@@ -451,23 +488,19 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
 
             string line = NodeTitle(stmt);
-            //            if (label != "")
-            //            {
-            //                line = label + ": " + line;
-            //            }
             if (comment != "")
             {
                 line = line.PadRight(120) + " // " + comment;
             }
-            // Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
-            //            State state = new(get_lineno(stmt), _varProcessor.VariableValues);
-            _traceLog.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues));
+            if (verbosity > 0)
+            {
+                Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {line}");
+            }
 
-            //            if (_states.TryGetValue(state, out int x))
-            //            {
-            //                throw new LoopException($"Loop: {x} -> {get_lineno(stmt)}");
-            //            }
-            //_states[state] = get_lineno(stmt);
+            if (!skip)
+            {
+                _traceLog.entries.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues, comment));
+            }
 
             try
             {
@@ -475,7 +508,6 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 {
                     case LocalDeclarationStatementSyntax: // already handled above
                     case ExpressionStatementSyntax:       // already handled above
-                    case TryStatementSyntax:              // copy as-is
                         break;
 
                     case GotoStatementSyntax gotoStmt:
@@ -522,6 +554,10 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         TraceBlock(block); // TODO: local vars
                         break;
 
+                    case TryStatementSyntax tryStmt:
+                        TraceBlock(tryStmt.Block);
+                        break;
+
                     case BreakStatementSyntax: throw new BreakException();
                     case ContinueStatementSyntax: throw new ContinueException();
                     case ReturnStatementSyntax: throw new ReturnException(null); // TODO: return value
@@ -559,8 +595,6 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         while (queue.Count > 0)
         {
             HintsDictionary hints = queue.Dequeue();
-            Console.WriteLine($"[d] hints: {String.Join(", ", hints.Select(kvp => $"{kvp.Key}:{kvp.Value}"))}");
-
             ControlFlowUnflattener clone = CloneWithHints(hints);
             try
             {
@@ -591,30 +625,52 @@ class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             //                Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {stmt} => {value}");
             //            }
         }
-        Console.WriteLine($"[=] got {logs.Count} traces: {String.Join(", ", logs.Select(l => l.Count.ToString()))}");
-        cmp_logs(logs[0], logs[1]);
-        cmp_logs(logs[1], logs[2]);
+        Console.WriteLine($"[=] got {logs.Count} traces: {String.Join(", ", logs.Select(l => l.entries.Count.ToString()))}");
+
+        while (logs.Count > 1)
+        {
+            TraceLog merged = logs[logs.Count - 2].Merge(logs[logs.Count - 1]);
+            logs.RemoveAt(logs.Count - 1);
+            logs[logs.Count - 1] = merged;
+        }
+
+        var final_log = logs[logs.Count - 1];
+
+        foreach (var entry in final_log.entries)
+        {
+            var stmt = entry.stmt;
+
+            switch (stmt)
+            {
+                case LocalDeclarationStatementSyntax localDecl:
+                    var decl = localDecl.Declaration.Variables.First();
+                    string varName = decl.Identifier.Text;
+                    if (isSwitchVar(varName))
+                    {
+                        continue; // skip switch vars
+                    }
+                    break;
+            }
+
+            var comment = entry.comment;
+            string line = stmt.ToString();
+            line = $"{get_lineno(stmt).ToString().PadLeft(6)}: {line}";
+            if (comment != null && comment != "")
+            {
+                line = line.PadRight(80) + " // " + comment;
+            }
+            Console.WriteLine(line);
+        }
+    }
+
+    public BlockSyntax ReflowBlock2(BlockSyntax block)
+    {
+        List<StatementSyntax> statements = new();
+        return Block(statements);
     }
 
     public void ReflowMethod(string methodName)
     {
         ReflowBlock(GetMethodBody(methodName));
-    }
-
-    void cmp_logs(TraceLog log1, TraceLog log2)
-    {
-        int commonStart = 0;
-        while (log1[commonStart].stmt == log2[commonStart].stmt)
-        {
-            commonStart++;
-        }
-        Console.WriteLine($"[=] common start: {commonStart}, uncommon: {log1.Count - commonStart} vs {log2.Count - commonStart}");
-
-        int commonEnd = 0;
-        while (log1[log1.Count - 1 - commonEnd].stmt == log2[log2.Count - 1 - commonEnd].stmt)
-        {
-            commonEnd++;
-        }
-        Console.WriteLine($"[=] common end: {commonEnd}, uncommon: {log1.Count - commonEnd - commonStart} vs {log2.Count - commonEnd - commonStart}");
     }
 }

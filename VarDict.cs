@@ -2,10 +2,23 @@ using System.Collections.Generic;
 
 public class VarDict : Dictionary<string, object>, ICloneable
 {
+    Dictionary<string, bool> switchFlags = new();
+
+    public bool IsSwitchVar(string varName)
+    {
+        return switchFlags.TryGetValue(varName, out bool isSwitch) && isSwitch;
+    }
+
+    public void SetSwitchVar(string varName, bool isSwitch = true)
+    {
+        switchFlags[varName] = isSwitch;
+    }
+
     public object Clone()
     {
         // Create a new instance of VarDict
         var clonedDict = new VarDict();
+        clonedDict.switchFlags = switchFlags; // XXX byRef!
 
         // Deep copy the dictionary
         foreach (var entry in this)

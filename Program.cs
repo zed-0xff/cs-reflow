@@ -9,7 +9,7 @@ class Options
     [Value(0, MetaName = "filename", Required = true, HelpText = "Input .cs file.")]
     public string Filename { get; set; }
 
-    [Value(1, MetaName = "methods", Min = 1, HelpText = "Method names to process.")]
+    [Value(1, MetaName = "methods", HelpText = "Method names to process.")]
     public IEnumerable<string> Methods { get; set; }
 
     [Option("hint", HelpText = "Set lineno:bool control flow hint.")]
@@ -49,13 +49,19 @@ class Program
 
                 if (opts.Methods == null || !opts.Methods.Any())
                 {
-                    Console.WriteLine("methods:\n - " + String.Join("\n - ", controlFlowUnflattener.Methods));
+                    Dictionary<int, string> methods = controlFlowUnflattener.Methods;
+                    if (methods.Count == 0)
+                    {
+                        Console.WriteLine("[?] No methods found.");
+                        return;
+                    }
+                    Console.WriteLine("methods:\n - " + String.Join("\n - ", controlFlowUnflattener.Methods.Select(kv => $"{kv.Key}: {kv.Value}")));
                 }
                 else
                 {
                     foreach (string methodName in opts.Methods)
                     {
-                        printer.PrintMethod(methodName);
+                        //                        printer.PrintMethod(methodName);
                         Console.WriteLine();
                         controlFlowUnflattener.ReflowMethod(methodName);
                     }
