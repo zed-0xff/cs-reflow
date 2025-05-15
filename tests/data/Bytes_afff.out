@@ -1,10 +1,6 @@
 static Bytes_afff()
 {
-    int num = 192;
     _114 = 114;
-    num = 118;
-    num = 118;
-    int bzh = default(int);  // 0
     _118 = 118;
     _19 = 19;
     _12 = 12;
@@ -24,19 +20,16 @@ static Bytes_afff()
     _11 = 11;
     _23 = 23;
     _78 = 78;
-    int iend = Structs_e0d5.IEND;  // MemberAccessExpressionSyntax is not supported.
     _222 = 222;
     _233 = 233;
     _244 = 244;
     _245 = 245;
-    bzh = Structs_a7cb.BZh;  // MemberAccessExpressionSyntax is not supported.
     _234 = 234;
     _111 = 111;
     _125 = 125;
     _37 = 37;
     _137 = 137;
     _42 = 42;
-    num = (num & -129) | 0x36;  // 118
     _43 = 43;
     _56 = 56;
     _92 = 92;
