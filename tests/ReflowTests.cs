@@ -34,7 +34,7 @@ public class ReflowTests
         var actualOutput = controlFlowUnflattener.ReflowMethod(methodName);
 
         // Assert
-        Assert.Equal(expectedOutput, actualOutput);
+        Assert.Equal(expectedOutput.TrimEnd(), actualOutput.TrimEnd());
     }
 
     [Fact]

@@ -935,7 +935,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return ReflowMethod(GetMethod(methodName));
     }
 
-    public string ReflowMethod(CSharpSyntaxNode methodNode, string eol = "")
+    public string ReflowMethod(CSharpSyntaxNode methodNode, string indentation = "", string eol = "")
     {
         BlockSyntax body = methodNode switch
         {
@@ -945,9 +945,26 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             _ => throw new ArgumentException($"Unsupported method node type: {methodNode.GetType()}", nameof(methodNode))
         };
 
+        string methodStr = methodNode.ToFullString();
+        string linePrefix = "";
+
         if (eol == "")
         {
-            eol = body.ToString().Contains("\r\n") ? "\r\n" : "\n";
+            eol = methodStr.Contains("\r\n") ? "\r\n" : "\n";
+        }
+
+        List<string> lines = methodStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        while (lines[0].Trim() == "")
+            lines.RemoveAt(0);
+
+        if (indentation == "")
+        {
+            indentation = methodStr.Contains("\n\t") ? "\t" : "    ";
+        }
+
+        while (lines[0].StartsWith(linePrefix + indentation))
+        {
+            linePrefix += indentation;
         }
 
         if (body == null)
@@ -983,7 +1000,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             _ => throw new ArgumentException("Unsupported method node type.", nameof(methodNode))
         };
 
-        return newMethodNode.NormalizeWhitespace(eol: eol).ToFullString() + eol;
+        string result = newMethodNode.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true).ToFullString();
+        if (linePrefix != "")
+        {
+            result = linePrefix + result.Replace(eol, eol + linePrefix);
+        }
+        return result;
     }
 
 }
