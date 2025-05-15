@@ -1,4 +1,3 @@
-public class Module {
 	public unsafe static string get_icon_a661(object object_0a)
 	{
 		string text = get_str(72129, 73044, 169);
@@ -307,4 +306,3 @@ public class Module {
 		while ((1 & (((num4 | (QRR << 26)) >>> 7) ^ (num5 + 2028))) == 0);
 		return Class_ae29.ae97e074e9e7420fa7898158aca772e9;
 	}
-}

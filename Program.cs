@@ -6,7 +6,7 @@ using System.Linq;
 
 class Options
 {
-    [Value(0, MetaName = "filename", Required = true, HelpText = "Input .cs file.")]
+    [Value(0, MetaName = "filename", Required = false, HelpText = "Input .cs file.")]
     public string Filename { get; set; }
 
     [Value(1, MetaName = "methods", HelpText = "Method names to process.")]
@@ -17,6 +17,12 @@ class Options
 
     [Option('v', "verbosity", Default = 0, HelpText = "Set verbosity level.")]
     public int Verbosity { get; set; }
+
+    [Option('a', "all", Default = false, HelpText = "Process all methods (default if processing STDIN)")]
+    public bool ProcessAllMethods { get; set; }
+
+    [Option('T', "tree", Default = false, HelpText = "Print syntax tree.")]
+    public bool PrintTree { get; set; }
 
     [Option("remove-switch-vars", Default = true, HelpText = "Remove switch variables.")]
     public bool RemoveSwitchVars { get; set; }
@@ -48,9 +54,30 @@ class Program
                 }
 
                 var fname = opts.Filename;
-                var code = File.ReadAllText(fname);
+                string code;
 
-                //SyntaxTreePrinter printer = new SyntaxTreePrinter(code);
+                if (string.IsNullOrEmpty(fname))
+                {
+                    if (!Console.IsInputRedirected)
+                    {
+                        Console.WriteLine("No input file nor pipe is specified. Run with --help for more information.");
+                        return;
+                    }
+                    code = Console.In.ReadToEnd();
+                    opts.ProcessAllMethods = true;
+                }
+                else
+                {
+                    code = File.ReadAllText(fname);
+                }
+
+                if (opts.PrintTree)
+                {
+                    SyntaxTreePrinter printer = new SyntaxTreePrinter(code);
+                    printer.Print();
+                    return;
+                }
+
                 ControlFlowUnflattener controlFlowUnflattener = new ControlFlowUnflattener(code, hints);
                 controlFlowUnflattener.Verbosity = opts.Verbosity;
                 controlFlowUnflattener.RemoveSwitchVars = opts.RemoveSwitchVars;
@@ -63,13 +90,25 @@ class Program
                         Console.WriteLine("[?] No methods found.");
                         return;
                     }
-                    Console.WriteLine("methods:\n - " + String.Join("\n - ", controlFlowUnflattener.Methods.Select(kv => $"{kv.Key}: {kv.Value}")));
+
+                    if (opts.ProcessAllMethods)
+                    {
+                        foreach (var method in methods)
+                        {
+                            string methodStr = controlFlowUnflattener.ReflowMethod(method.Key);
+                            Console.WriteLine(methodStr);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("methods:\n - " + String.Join("\n - ", controlFlowUnflattener.Methods.Select(kv => $"{kv.Key}: {kv.Value}")));
+                    }
                 }
                 else
                 {
                     foreach (string methodName in opts.Methods)
                     {
-                        //                        printer.PrintMethod(methodName);
+                        // printer.PrintMethod(methodName);
                         string methodStr = controlFlowUnflattener.ReflowMethod(methodName);
                         Console.WriteLine(methodStr);
                     }

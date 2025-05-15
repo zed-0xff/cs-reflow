@@ -81,84 +81,89 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
             Console.Write(ANSI_COLOR_RESET);
         }
 
-        if (node is BlockSyntax block)
+        switch (node)
         {
-            EnumerateStatements(block.Statements, indent + 1);
-        }
-        else if (node is SwitchSectionSyntax switchSection)
-        {
-            EnumerateStatements(switchSection.Statements, indent + 1);
-        }
-        else if (node is ExpressionSyntax expression)
-        {
-            // never here
-        }
-        else if (node is StatementSyntax statement)
-        {
-            // Handle specific statement types if needed (e.g., loops, assignments, etc.)
-            if (statement is ExpressionStatementSyntax exprStmt)
-            {
-                // Console.WriteLine($"{indent_str}  Expression: {exprStmt.Expression}");
-            }
-            else if (statement is IfStatementSyntax ifStmt)
-            {
-                // Console.WriteLine($"{indent_str}  If statement with condition: {ifStmt.Condition}");
-                Print(ifStmt.Statement, indent + 1);  // Print if body
-                if (ifStmt.Else != null)
+            case BlockSyntax block:
+                EnumerateStatements(block.Statements, indent + 1);
+                break;
+
+            case SwitchSectionSyntax switchSection:
+                EnumerateStatements(switchSection.Statements, indent + 1);
+                break;
+
+            case ExpressionSyntax expression:
+                // never here
+                break;
+
+            case StatementSyntax statement:
+                // Handle specific statement types if needed (e.g., loops, assignments, etc.)
+                if (statement is ExpressionStatementSyntax exprStmt)
                 {
-                    Print(ifStmt.Else.Statement, indent + 1);  // Print else block
+                    // Console.WriteLine($"{indent_str}  Expression: {exprStmt.Expression}");
                 }
-            }
-            else if (statement is SwitchStatementSyntax switchStmt)
-            {
-                EnumerateStatements(switchStmt.Sections, indent + 1);
-            }
-            else if (statement is TryStatementSyntax tryStmt)
-            {
-                Print(tryStmt.Block, indent + 1);  // Print try block
-                foreach (var catchClause in tryStmt.Catches)
+                else if (statement is IfStatementSyntax ifStmt)
                 {
-                    Print(catchClause.Block, indent + 1);  // Print catch block
+                    // Console.WriteLine($"{indent_str}  If statement with condition: {ifStmt.Condition}");
+                    Print(ifStmt.Statement, indent + 1);  // Print if body
+                    if (ifStmt.Else != null)
+                    {
+                        Print(ifStmt.Else.Statement, indent + 1);  // Print else block
+                    }
                 }
-                if (tryStmt.Finally != null)
+                else if (statement is SwitchStatementSyntax switchStmt)
                 {
-                    Print(tryStmt.Finally.Block, indent + 1);  // Print finally block
+                    EnumerateStatements(switchStmt.Sections, indent + 1);
                 }
-            }
-            else if (statement is WhileStatementSyntax whileStmt)
-            {
-                Print(whileStmt.Statement, indent + 1);  // Print body of while loop
-            }
-            else if (statement is DoStatementSyntax doStmt)
-            {
-                Print(doStmt.Statement, indent + 1);  // Print body of do-while loop
-            }
-            else if (statement is ForStatementSyntax forStmt)
-            {
-                Print(forStmt.Statement, indent + 1);  // Print body of for loop
-            }
-            else if (statement is ForEachStatementSyntax forEachStmt)
-            {
-                Print(forEachStmt.Statement, indent + 1);  // Print body of foreach loop
-            }
-            else if (statement is LabeledStatementSyntax labeledStmt)
-            {
-                // Check if the statement inside the label is a block (compound statement)
-                if (labeledStmt.Statement is BlockSyntax block2)
+                else if (statement is TryStatementSyntax tryStmt)
                 {
-                    // If it's a block, enumerate its statements
-                    EnumerateStatements(block2.Statements, indent + 1);
+                    Print(tryStmt.Block, indent + 1);  // Print try block
+                    foreach (var catchClause in tryStmt.Catches)
+                    {
+                        Print(catchClause.Block, indent + 1);  // Print catch block
+                    }
+                    if (tryStmt.Finally != null)
+                    {
+                        Print(tryStmt.Finally.Block, indent + 1);  // Print finally block
+                    }
                 }
-                else
+                else if (statement is WhileStatementSyntax whileStmt)
                 {
-                    // If it's not a block, print the single statement inside the label
-                    Print(labeledStmt.Statement, indent + 1);
+                    Print(whileStmt.Statement, indent + 1);  // Print body of while loop
                 }
-            }
-        }
-        else
-        {
-            throw new NotImplementedException($"Unhandled node type: {node.GetType().Name}");
+                else if (statement is DoStatementSyntax doStmt)
+                {
+                    Print(doStmt.Statement, indent + 1);  // Print body of do-while loop
+                }
+                else if (statement is ForStatementSyntax forStmt)
+                {
+                    Print(forStmt.Statement, indent + 1);  // Print body of for loop
+                }
+                else if (statement is ForEachStatementSyntax forEachStmt)
+                {
+                    Print(forEachStmt.Statement, indent + 1);  // Print body of foreach loop
+                }
+                else if (statement is LabeledStatementSyntax labeledStmt)
+                {
+                    // Check if the statement inside the label is a block (compound statement)
+                    if (labeledStmt.Statement is BlockSyntax block2)
+                    {
+                        // If it's a block, enumerate its statements
+                        EnumerateStatements(block2.Statements, indent + 1);
+                    }
+                    else
+                    {
+                        // If it's not a block, print the single statement inside the label
+                        Print(labeledStmt.Statement, indent + 1);
+                    }
+                }
+                break;
+
+            default:
+                foreach (var child in node.ChildNodes())
+                {
+                    Print(child, indent + 1);
+                }
+                break;
         }
     }
 
@@ -276,5 +281,10 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         {
             Console.WriteLine("This method doesn't have a body (it might be an abstract or interface method).");
         }
+    }
+
+    public void Print()
+    {
+        Print(root);
     }
 }

@@ -122,11 +122,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    public BaseMethodDeclarationSyntax GetMethod(string methodName)
+    public CSharpSyntaxNode GetMethod(string methodName)
     {
         var methods = _tree.GetRoot().DescendantNodes()
             .Where(n =>
                     (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
+                    (n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName) ||
                     (n is ConstructorDeclarationSyntax c && c.Identifier.Text == methodName)
                   )
             .ToList();
@@ -136,15 +137,31 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             case 0:
                 throw new ArgumentException($"Method '{methodName}' not found.");
             case 1:
-                return methods.First() as BaseMethodDeclarationSyntax;
+                return methods.First() as CSharpSyntaxNode;
             default:
                 throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
         }
     }
 
+    public CSharpSyntaxNode GetMethod(int lineno)
+    {
+        return _tree.GetRoot().DescendantNodes()
+            .Where(n =>
+                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno) ||
+                    (n is LocalFunctionStatementSyntax l && l.SpanStart <= lineno && l.Span.End > lineno)
+                  )
+            .First() as CSharpSyntaxNode;
+    }
+
     public BlockSyntax GetMethodBody(string methodName)
     {
-        return GetMethod(methodName).Body;
+        return GetMethod(methodName) switch
+        {
+            BaseMethodDeclarationSyntax baseMethod => baseMethod.Body,
+            LocalFunctionStatementSyntax localFunc => localFunc.Body,
+            null => throw new ArgumentNullException(nameof(methodName), "Method name cannot be null."),
+            _ => throw new ArgumentException($"Unsupported method node type: {methodName.GetType()}", nameof(methodName))
+        };
     }
 
     public TraceLog TraceMethod(string methodName)
@@ -198,11 +215,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     }
 
     public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
-        .Where(n => n is MethodDeclarationSyntax || n is ConstructorDeclarationSyntax)
+        .Where(n => n is MethodDeclarationSyntax || n is ConstructorDeclarationSyntax || n is LocalFunctionStatementSyntax)
         .ToDictionary(
                 n => n.SpanStart,
                 n => n is MethodDeclarationSyntax m ? m.Identifier.Text :
                 n is ConstructorDeclarationSyntax c ? c.Identifier.Text :
+                n is LocalFunctionStatementSyntax l ? l.Identifier.Text :
                 "<unknown>"
                 );
 
@@ -907,11 +925,31 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return block.WithStatements(List(statements));
     }
 
+    public string ReflowMethod(int lineno)
+    {
+        return ReflowMethod(GetMethod(lineno));
+    }
+
     public string ReflowMethod(string methodName)
     {
-        var method = GetMethod(methodName);
-        TraceLog log = ReflowBlock(method.Body);
-        if (log.entries[log.entries.Count - 1].stmt.ToString() == "return;")
+        return ReflowMethod(GetMethod(methodName));
+    }
+
+    public string ReflowMethod(CSharpSyntaxNode methodNode)
+    {
+        BlockSyntax body = methodNode switch
+        {
+            BaseMethodDeclarationSyntax baseMethod => baseMethod.Body,
+            LocalFunctionStatementSyntax localFunc => localFunc.Body,
+            null => throw new ArgumentNullException(nameof(methodNode), "Method node cannot be null."),
+            _ => throw new ArgumentException($"Unsupported method node type: {methodNode.GetType()}", nameof(methodNode))
+        };
+
+        if (body == null)
+            throw new InvalidOperationException("Method body cannot be null.");
+
+        TraceLog log = ReflowBlock(body);
+        if (log.entries.Count > 0 && log.entries[^1].stmt.ToString() == "return;")
         {
             log.entries.RemoveAt(log.entries.Count - 1);
         }
@@ -920,21 +958,28 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         foreach (var entry in log.entries)
         {
             var stmt = entry.stmt;
-
             var comment = entry.comment;
-            if (comment != null && comment != "")
+            if (!string.IsNullOrEmpty(comment))
             {
-                stmt = stmt.WithTrailingTrivia(Comment(" // " + comment));
+                stmt = stmt.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
             }
             statements.Add(stmt);
         }
 
         if (Verbosity > 0)
-            Console.WriteLine("[d] switch vars: " + String.Join(", ", _varProcessor.VariableValues.SwitchVars()));
+            Console.WriteLine("[d] switch vars: " + string.Join(", ", _varProcessor.VariableValues.SwitchVars()));
 
-        // intentionally postprocess twice, to remove all unused vars
-        var newMethod = method.WithBody(PostProcess(PostProcess(Block(statements))));
-        string newMethodStr = newMethod.NormalizeWhitespace().ToFullString();
+        var newBody = PostProcess(PostProcess(SyntaxFactory.Block(statements)));
+
+        SyntaxNode newMethodNode = methodNode switch
+        {
+            BaseMethodDeclarationSyntax baseMethod => baseMethod.WithBody(newBody),
+            LocalFunctionStatementSyntax localFunc => localFunc.WithBody(newBody),
+            _ => throw new ArgumentException("Unsupported method node type.", nameof(methodNode))
+        };
+
+        string newMethodStr = newMethodNode.NormalizeWhitespace().ToFullString();
         return newMethodStr + Environment.NewLine;
     }
+
 }
