@@ -866,7 +866,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     var decl = localDecl.Declaration.Variables.First();
                     string varName = decl.Identifier.Text;
                     if (!isSwitchVar(varName) && !is_var_used(block, varName))
-                        setSwitchVar(varName); // XXX not actuall a switch var, but useless var
+                        setSwitchVar(varName); // XXX not actually a switch var, but an useless var
                     if (RemoveSwitchVars && isSwitchVar(varName))
                         continue;
                     break;
