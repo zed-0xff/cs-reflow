@@ -535,7 +535,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     case LocalDeclarationStatementSyntax:
                         ex = EvaluateExpressionEx(stmt);
                         value = ex.Result;
-                        if (value != null && !stmt.ToString().Contains($"= {value};"))
+                        string valueStr = value?.ToString();
+                        if (value is Boolean)
+                            valueStr = valueStr.ToLower();
+
+                        if (value != null && !stmt.ToString().Contains($"= {valueStr};"))
                         {
                             comment = value.ToString();
                         }
