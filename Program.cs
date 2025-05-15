@@ -14,6 +14,12 @@ class Options
 
     [Option("hint", HelpText = "Set lineno:bool control flow hint.")]
     public IEnumerable<string> Hint { get; set; }
+
+    [Option('v', "verbosity", Default = 0, HelpText = "Set verbosity level.")]
+    public int Verbosity { get; set; }
+
+    [Option("remove-switch-vars", Default = true, HelpText = "Remove switch variables.")]
+    public bool RemoveSwitchVars { get; set; }
 }
 
 class Program
@@ -46,6 +52,8 @@ class Program
 
                 //SyntaxTreePrinter printer = new SyntaxTreePrinter(code);
                 ControlFlowUnflattener controlFlowUnflattener = new ControlFlowUnflattener(code, hints);
+                controlFlowUnflattener.Verbosity = opts.Verbosity;
+                controlFlowUnflattener.RemoveSwitchVars = opts.RemoveSwitchVars;
 
                 if (opts.Methods == null || !opts.Methods.Any())
                 {
@@ -62,8 +70,8 @@ class Program
                     foreach (string methodName in opts.Methods)
                     {
                         //                        printer.PrintMethod(methodName);
-                        Console.WriteLine();
-                        controlFlowUnflattener.ReflowMethod(methodName);
+                        string methodStr = controlFlowUnflattener.ReflowMethod(methodName);
+                        Console.WriteLine(methodStr);
                     }
                 }
             });

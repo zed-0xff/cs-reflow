@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 public class TraceEntry
 {
-    public readonly StatementSyntax stmt;
+    public StatementSyntax stmt;
     public readonly object? value;
     public readonly VarDict vars;
     public string? comment;

@@ -13,6 +13,13 @@ public class VariableProcessor : ICloneable
     }
 
     public VarDict VariableValues { get; private set; } = new();
+    public static VarDict Constants { get; private set; } = new();
+
+    static VariableProcessor()
+    {
+        Constants["string.Empty"] = string.Empty;
+        Constants["Structs_e0d5.QRR"] = 0x00525251; // "QRR"
+    }
 
     public object Clone()
     {
@@ -62,7 +69,7 @@ public class VariableProcessor : ICloneable
                     Result = EvaluateExpression(expressionStatement.Expression);
                     break;
                 default:
-                    throw new NotSupportedException($"Syntax node type '{stmt.GetType()}' is not supported.");
+                    throw new NotSupportedException($"Syntax node type '{stmt?.GetType()}' is not supported.");
             }
             return Result;
         }
@@ -153,8 +160,8 @@ public class VariableProcessor : ICloneable
                     return ConvertLiteral(literal);
 
                 case MemberAccessExpressionSyntax:
-                    if (expression.ToString() == "string.Empty")
-                        return string.Empty;
+                    if (Constants.ContainsKey(expression.ToString()))
+                        return Constants[expression.ToString()];
                     else
                         goto default;
 
@@ -163,15 +170,38 @@ public class VariableProcessor : ICloneable
 
                 case PrefixUnaryExpressionSyntax unaryExpr:
                     // Handle unary expressions (e.g., -num3)
-                    var operand = unaryExpr.Operand;
-                    var operandValue = EvaluateExpression(operand);
+                    var operandPrefix = unaryExpr.Operand;
+                    var valuePrefix = EvaluateExpression(operandPrefix);
                     return unaryExpr.Kind() switch
                     {
-                        SyntaxKind.UnaryPlusExpression => operandValue,
-                        SyntaxKind.UnaryMinusExpression => -Convert.ToUInt32(operandValue),
-                        SyntaxKind.BitwiseNotExpression => ~Convert.ToUInt32(operandValue),
+                        SyntaxKind.UnaryPlusExpression => valuePrefix,
+                        SyntaxKind.UnaryMinusExpression => -Convert.ToInt64(valuePrefix),
+                        SyntaxKind.BitwiseNotExpression => ~Convert.ToInt64(valuePrefix),
                         _ => throw new NotSupportedException($"Unary operator '{unaryExpr.Kind()}' is not supported.")
                     };
+
+                case PostfixUnaryExpressionSyntax postfixUnaryExpr:
+                    // Handle postfix unary expressions (e.g., num3++)
+                    var operandPostfix = postfixUnaryExpr.Operand;
+                    var valuePostfix = EvaluateExpression(operandPostfix);
+                    var newValue = postfixUnaryExpr.Kind() switch
+                    {
+                        SyntaxKind.PostIncrementExpression => Convert.ToInt64(valuePostfix) + 1,
+                        SyntaxKind.PostDecrementExpression => Convert.ToInt64(valuePostfix) - 1,
+                        _ => throw new NotSupportedException($"Postfix operator '{postfixUnaryExpr.Kind()}' is not supported.")
+                    };
+                    if (operandPostfix is IdentifierNameSyntax identifierPostfix)
+                    {
+                        string varNamePostfix = identifierPostfix.Identifier.Text;
+                        VarsWritten.Add(varNamePostfix);
+                        VarsRead.Add(varNamePostfix);
+                        variableValues[varNamePostfix] = newValue;
+                    }
+                    else
+                    {
+                        throw new NotSupportedException($"Postfix operand '{operandPostfix.Kind()}' is not supported.");
+                    }
+                    return newValue;
 
                 default:
                     throw new NotSupportedException($"{expression.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")} is not supported.");
@@ -201,9 +231,21 @@ public class VariableProcessor : ICloneable
                 "&" => l & r,
                 "|" => l | r,
                 "^" => l ^ r,
-                "<<" => (int)l << (int)r,
-                ">>" => (int)l >> (int)r,
-                _ => throw new InvalidOperationException($"Unsupported operator '{op}'")
+
+                "||" => ((l != 0) || (r != 0)) ? 1 : 0,
+
+                "<<" => l << (int)r,
+                ">>" => l >> (int)r,
+                ">>>" => l >> (int)r,
+
+                "==" => l == r ? 1 : 0,
+                "!=" => l != r ? 1 : 0,
+                ">=" => l >= r ? 1 : 0,
+                "<=" => l <= r ? 1 : 0,
+                ">" => l > r ? 1 : 0,
+                "<" => l < r ? 1 : 0,
+
+                _ => throw new InvalidOperationException($"Unsupported operator '{op}' in '{binaryExpr}'")
             };
             return unchecked((uint)result);
         }
@@ -216,6 +258,7 @@ public class VariableProcessor : ICloneable
                     return Convert.ToUInt32(literal.Token.Value);
                 case SyntaxKind.NumericLiteralExpression:
                     return Convert.ToUInt32(literal.Token.ValueText);
+                case SyntaxKind.StringLiteralExpression:
                 case SyntaxKind.StringLiteralToken:
                     return literal.Token.ValueText;
                 case SyntaxKind.TrueLiteralExpression:

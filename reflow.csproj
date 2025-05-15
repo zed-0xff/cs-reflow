@@ -14,9 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Tests\**\*.cs" />
+    <Compile Remove="Tests\**\*" />
     <None Remove="Tests\**\*" />
     <Content Remove="Tests\**\*" />
+
+    <Compile Remove="tmp\**\*" />
+    <None Remove="tmp\**\*" />
+    <Content Remove="tmp\**\*" />
   </ItemGroup>
 
 </Project>

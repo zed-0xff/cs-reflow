@@ -40,43 +40,82 @@ public class TraceLog
         return diff_idx;
     }
 
+    public int diff1(TraceLog other)
+    {
+        return hints_diff1(hints, other.hints);
+    }
+
     public bool CanMergeWith(TraceLog other)
     {
-        return hints_diff1(hints, other.hints) != -1;
+        return diff1(other) != -1;
+    }
+
+    string hints2str(HintsDictionary hints)
+    {
+        return "{" + string.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}")) + "}";
     }
 
     public TraceLog Merge(TraceLog other)
     {
         int hint_idx = hints_diff1(hints, other.hints);
         if (hint_idx == -1)
-            throw new System.Exception("Cannot merge TraceLogs with different hints.");
+            throw new System.Exception($"Cannot merge TraceLogs with different hints: {hints2str(hints)} vs {hints2str(other.hints)}");
 
         int commonStart = 0;
         while (this.entries[commonStart].stmt == other.entries[commonStart].stmt)
         {
             commonStart++;
         }
-        Console.WriteLine($"[=] common start: {commonStart}, uncommon: {this.entries.Count - commonStart} vs {other.entries.Count - commonStart}");
+        //        Console.WriteLine($"[=] common start: {commonStart}, uncommon: {this.entries.Count - commonStart} vs {other.entries.Count - commonStart}");
 
         int commonEnd = 0;
         while (this.entries[this.entries.Count - 1 - commonEnd].stmt == other.entries[other.entries.Count - 1 - commonEnd].stmt)
         {
             commonEnd++;
         }
-        Console.WriteLine($"[=] common end: {commonEnd}, uncommon: {this.entries.Count - commonEnd - commonStart} vs {other.entries.Count - commonEnd - commonStart}");
+        //        Console.WriteLine($"[=] common end: {commonEnd}, uncommon: {this.entries.Count - commonEnd - commonStart} vs {other.entries.Count - commonEnd - commonStart}");
 
         TraceLog result = new();
 
         // add common head
-        result.entries.AddRange(this.entries.GetRange(0, commonStart));
+        result.entries.AddRange(this.entries.GetRange(0, commonStart - 1));
 
         // make new if/then/else
         var ifEntry = this.entries[commonStart - 1];
         var ifStmt = ifEntry.stmt as IfStatementSyntax;
         if (ifStmt == null)
-            throw new System.Exception($"Expected if statement at {commonStart - 1}, got {ifEntry.stmt}");
+        {
+            for (int i = 0; i <= commonStart; i++)
+            {
+                if (i >= this.entries.Count)
+                    break;
+                Console.WriteLine($"A{i}: {this.entries[i].stmt.ToString().Split("\n")[0]}");
+            }
+            Console.WriteLine();
 
-        Console.WriteLine($"[d] old if: {ifStmt}");
+            for (int j = 0; j <= commonStart; j++)
+            {
+                if (j >= other.entries.Count)
+                    break;
+                Console.WriteLine($"B{j}: {other.entries[j].stmt.ToString().Split("\n")[0]}");
+            }
+            Console.WriteLine();
+
+            //            Console.WriteLine($"[d] {this.entries[commonStart - 1].stmt} vs {other.entries[commonStart - 1].stmt}");
+            //            Console.WriteLine($"[d] {this.entries[commonStart - 1].stmt == other.entries[commonStart - 1].stmt}");
+            //            Console.WriteLine();
+            //
+            //            Console.WriteLine($"[d] {this.entries[commonStart].stmt == other.entries[commonStart].stmt}");
+            //            Console.WriteLine($"[d] {this.entries[commonStart].stmt.ToString() == other.entries[commonStart].stmt.ToString()}");
+            //            Console.WriteLine();
+            //
+            System.IO.File.WriteAllText("a.txt", this.entries[commonStart].stmt.ToString());
+            System.IO.File.WriteAllText("b.txt", other.entries[commonStart].stmt.ToString());
+
+            throw new System.Exception($"Expected if statement at {commonStart - 1}, got {ifEntry.stmt}");
+        }
+
+        //        Console.WriteLine($"[d] old if: {ifStmt}");
 
         BlockSyntax thenBlock = Block(
                 this.entries.GetRange(commonStart, this.entries.Count - commonEnd - commonStart)
@@ -97,10 +136,10 @@ public class TraceLog
             .WithStatement(thenBlock1)
             .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null);
 
-        Console.WriteLine($"[d] new if: {newIfStmt}");
-        Console.WriteLine();
+        //        Console.WriteLine($"[d] new if: {newIfStmt}");
+        //        Console.WriteLine();
 
-        result.entries[commonStart - 1] = new TraceEntry(newIfStmt, null, ifEntry.vars);
+        result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry.vars));
 
         // add common tail
         result.entries.AddRange(this.entries.GetRange(this.entries.Count - commonEnd, commonEnd));

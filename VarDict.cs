@@ -14,6 +14,11 @@ public class VarDict : Dictionary<string, object>, ICloneable
         switchFlags[varName] = isSwitch;
     }
 
+    public List<string> SwitchVars()
+    {
+        return new List<string>(switchFlags.Where(kvp => kvp.Value).Select(kvp => kvp.Key));
+    }
+
     public object Clone()
     {
         // Create a new instance of VarDict

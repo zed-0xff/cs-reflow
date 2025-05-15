@@ -25,7 +25,6 @@ static Bytes_afff()
     _23 = 23;
     _78 = 78;
     int iend = Structs_e0d5.IEND;  // MemberAccessExpressionSyntax is not supported.
-    num5 = 14; //((-671088640 + (iend >>> 24) == 65536 * (bzh << 20)) ? (-725462250) : 14);
     _222 = 222;
     _233 = 233;
     _244 = 244;
@@ -39,7 +38,6 @@ static Bytes_afff()
     _42 = 42;
     num = (num & -129) | 0x36;  // 118
     _43 = 43;
-    int num6 = 21;
     _56 = 56;
     _92 = 92;
     _97 = 97;
