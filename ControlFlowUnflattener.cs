@@ -36,6 +36,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
+    public bool AddComments = true;
 
     public class State
     {
@@ -637,9 +638,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 string msg = $"Loop detected at line {get_lineno(stmt)}: {stmt} (state: {idx})";
                 if (Verbosity > 0)
                     Console.WriteLine($"[d] {msg}");
-                if (!skip)
+                if (!skip && AddComments)
                 {
-                    //                    //_traceLog.entries[idx].stmt = _traceLog.entries[idx].stmt.WithTrailingTrivia(Comment($"// {idx}"));
+                    // //_traceLog.entries[idx].stmt = _traceLog.entries[idx].stmt.WithTrailingTrivia(Comment($"// {idx}"));
                     _traceLog.entries.Last().stmt = stmt.WithTrailingTrivia(Comment($"// loop {idx}, lineno {get_lineno(stmt)}"));
                 }
                 throw new LoopException(msg, get_lineno(stmt));
@@ -985,7 +986,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             var stmt = entry.stmt;
             var comment = entry.comment;
-            if (!string.IsNullOrEmpty(comment))
+            if (!string.IsNullOrEmpty(comment) && AddComments)
             {
                 stmt = stmt.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
             }
