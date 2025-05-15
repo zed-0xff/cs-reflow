@@ -1,164 +1,177 @@
-using CommandLine;
-using System;
+using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-class Options
-{
-    [Value(0, MetaName = "filename", Required = false, HelpText = "Input .cs file.")]
-    public string Filename { get; set; }
-
-    [Value(1, MetaName = "methods", HelpText = "Method names to process.")]
-    public IEnumerable<string> Methods { get; set; }
-
-    [Option("hint", HelpText = "Set lineno:bool control flow hint.")]
-    public IEnumerable<string> Hint { get; set; }
-
-    [Option('v', "verbosity", Default = 0, HelpText = "Set verbosity level.")]
-    public int Verbosity { get; set; }
-
-    [Option('a', "all", Default = false, HelpText = "Process all methods (default if processing STDIN)")]
-    public bool ProcessAllMethods { get; set; }
-
-    [Option('T', "tree", Default = false, HelpText = "Print syntax tree.")]
-    public bool PrintTree { get; set; }
-
-    [Option('c', "comments", Default = true, HelpText = "Add comments")]
-    public bool AddComments { get; set; }
-
-    [Option("remove-switch-vars", Default = true, HelpText = "Remove switch variables.")]
-    public bool RemoveSwitchVars { get; set; }
-}
-
 class Program
 {
-    static int RunWithOptions(Options opts)
+    public static int Main(string[] args)
     {
-        // --- Validate input ---
-        if (opts.Methods != null)
-        {
-            foreach (var method in opts.Methods)
-            {
-                if (method == "true" || method == "false")
-                {
-                    Console.Error.WriteLine("[error] 'true' or 'false' was parsed as a method name. Did you misplace an option like `--comments false`?");
-                    return 1;
-                }
-            }
-        }
+        // --- Define arguments and options ---
+        var filenameArg = new Argument<string?>("filename", description: "Input .cs file (optional).") { Arity = ArgumentArity.ZeroOrOne };
 
-        var hints = new Dictionary<int, bool>();
+        var methodsArg = new Argument<List<string>>("methods", description: "Method names to process.") { Arity = ArgumentArity.ZeroOrMore };
 
-        foreach (var entry in opts.Hint ?? Enumerable.Empty<string>())
-        {
-            var parts = entry.Split(':');
-            if (parts.Length == 2 &&
-                int.TryParse(parts[0], out int lineno) &&
-                bool.TryParse(parts[1], out bool hintValue))
-            {
-                hints[lineno] = hintValue;
-            }
-            else
-            {
-                Console.WriteLine($"Invalid --hint entry: {entry}");
-            }
-        }
+        var hintOpt = new Option<List<string>>(
+            name: "--hint",
+            description: "Set lineno:bool control flow hint.",
+            parseArgument: result => result.Tokens.Select(t => t.Value).ToList()
+        );
 
-        string code;
-        if (string.IsNullOrEmpty(opts.Filename))
-        {
-            if (!Console.IsInputRedirected)
-            {
-                Console.WriteLine("No input file nor pipe is specified. Run with --help for more information.");
-                return 1;
-            }
-            code = Console.In.ReadToEnd();
-            opts.ProcessAllMethods = true;
-        }
-        else
-        {
-            if (!File.Exists(opts.Filename))
-            {
-                Console.Error.WriteLine($"[error] File not found: {opts.Filename}");
-                return 1;
-            }
-            code = File.ReadAllText(opts.Filename);
-        }
+        var verbosityOpt = new Option<int>(
+            aliases: new[] { "--verbosity", "-v" },
+            getDefaultValue: () => 0,
+            description: "Set verbosity level."
+        );
 
-        if (opts.PrintTree)
-        {
-            var printer = new SyntaxTreePrinter(code);
-            printer.Print();
-            return 0;
-        }
+        var processAllOpt = new Option<bool>(
+            aliases: new[] { "--all", "-a" },
+            getDefaultValue: () => false,
+            description: "Process all methods (default if processing STDIN)."
+        );
 
-        var controlFlowUnflattener = new ControlFlowUnflattener(code, hints)
+        var printTreeOpt = new Option<bool>(
+            aliases: new[] { "--tree", "-T" },
+            getDefaultValue: () => false,
+            description: "Print syntax tree."
+        );
+
+        var addCommentsOpt = new Option<bool>(
+            aliases: new[] { "--comments", "-c" },
+            getDefaultValue: () => true,
+            description: "Add comments."
+        );
+
+        var removeSwitchVarsOpt = new Option<bool>(
+            name: "--remove-switch-vars",
+            getDefaultValue: () => true,
+            description: "Remove switch variables."
+        );
+
+        // --- Define the root command ---
+        var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
-            Verbosity = opts.Verbosity,
-            RemoveSwitchVars = opts.RemoveSwitchVars,
-            AddComments = opts.AddComments
+            filenameArg,
+            methodsArg,
+            hintOpt,
+            verbosityOpt,
+            processAllOpt,
+            printTreeOpt,
+            addCommentsOpt,
+            removeSwitchVarsOpt
         };
 
-        if (opts.Methods == null || !opts.Methods.Any())
+        // --- Set the handler ---
+        rootCommand.SetHandler((
+            string? filename,
+            List<string> methods,
+            List<string> hintList,
+            int verbosity,
+            bool processAll,
+            bool printTree,
+            bool addComments,
+            bool removeSwitchVars) =>
         {
-            var methods = controlFlowUnflattener.Methods;
-            if (methods.Count == 0)
+            var hints = new Dictionary<int, bool>();
+
+            foreach (var entry in hintList ?? Enumerable.Empty<string>())
             {
-                Console.WriteLine("[?] No methods found.");
-                return 1;
+                var parts = entry.Split(':');
+                if (parts.Length == 2 &&
+                    int.TryParse(parts[0], out int lineno) &&
+                    bool.TryParse(parts[1], out bool hintValue))
+                {
+                    hints[lineno] = hintValue;
+                }
+                else
+                {
+                    Console.WriteLine($"Invalid --hint entry: {entry}");
+                }
             }
 
-            if (opts.ProcessAllMethods)
+            string code;
+
+            if (string.IsNullOrEmpty(filename))
             {
-                foreach (var method in methods)
+                if (!Console.IsInputRedirected)
                 {
-                    Console.WriteLine(controlFlowUnflattener.ReflowMethod(method.Key));
+                    Console.WriteLine("No input file nor pipe is specified. Run with --help for more information.");
+                    return;
+                }
+                code = Console.In.ReadToEnd();
+                processAll = true;
+            }
+            else
+            {
+                if (!File.Exists(filename))
+                {
+                    Console.Error.WriteLine($"[error] File not found: {filename}");
+                    return;
+                }
+                code = File.ReadAllText(filename);
+            }
+
+            if (printTree)
+            {
+                var printer = new SyntaxTreePrinter(code);
+                printer.Print();
+                return;
+            }
+
+            var controlFlowUnflattener = new ControlFlowUnflattener(code, hints)
+            {
+                Verbosity = verbosity,
+                RemoveSwitchVars = removeSwitchVars,
+                AddComments = addComments
+            };
+
+            if (methods == null || methods.Count == 0)
+            {
+                var methodDict = controlFlowUnflattener.Methods;
+                if (methodDict.Count == 0)
+                {
+                    Console.WriteLine("[?] No methods found.");
+                    return;
+                }
+
+                if (processAll)
+                {
+                    foreach (var method in methodDict)
+                    {
+                        Console.WriteLine(controlFlowUnflattener.ReflowMethod(method.Key));
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("methods:\n - " + string.Join("\n - ", methodDict.Select(kv => $"{kv.Key}: {kv.Value}")));
                 }
             }
             else
             {
-                Console.WriteLine("methods:\n - " + string.Join("\n - ", methods.Select(kv => $"{kv.Key}: {kv.Value}")));
-            }
-        }
-        else
-        {
-            foreach (var methodName in opts.Methods)
-            {
-                try
+                foreach (var methodName in methods)
                 {
-                    Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine($"[error] Failed to process method '{methodName}': {ex.Message}");
-                    return 1;
+                    try
+                    {
+                        Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[error] Failed to process method '{methodName}': {ex.Message}");
+                    }
                 }
             }
-        }
+        },
+        filenameArg,
+        methodsArg,
+        hintOpt,
+        verbosityOpt,
+        processAllOpt,
+        printTreeOpt,
+        addCommentsOpt,
+        removeSwitchVarsOpt
+        );
 
-        return 0;
-    }
-
-    static int HandleParseError(IEnumerable<Error> errs)
-    {
-        if (errs.Any(e => e is HelpRequestedError || e is VersionRequestedError))
-            return 0;
-
-        Console.Error.WriteLine("[error] Failed to parse command-line arguments.");
-        foreach (var err in errs)
-            Console.Error.WriteLine("  - " + err.ToString());
-
-        return 1;
-    }
-
-    public static void Main(string[] args)
-    {
-        Parser.Default.ParseArguments<Options>(args)
-            .MapResult(
-                    (Options opts) => RunWithOptions(opts),
-                    errs => HandleParseError(errs)
-                    );
+        return rootCommand.Invoke(args);
     }
 }
-
