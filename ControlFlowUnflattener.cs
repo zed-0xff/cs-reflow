@@ -329,6 +329,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 else if (l is DefaultSwitchLabelSyntax)
                 {
                     defaultLabel = l;
+                    if (value is GotoDefaultCaseException)
+                    {
+                        swLabel = l;
+                        break;
+                    }
                 }
             }
         }
@@ -363,6 +368,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 trace_switch(switchStmt, e.value);
                 return;
 
+            }
+            catch (GotoDefaultCaseException e)
+            {
+                trace_switch(switchStmt, e);
+                return;
             }
             catch (GotoException e)
             {

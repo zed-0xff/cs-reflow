@@ -48,4 +48,10 @@ public class ReflowTests
     {
         checkData("get_icon_a661");
     }
+
+    [Fact]
+    public void ProcessData2()
+    {
+        checkData("goto_default_case");
+    }
 }
