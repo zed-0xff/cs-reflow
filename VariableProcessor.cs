@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
 public class VariableProcessor : ICloneable
 {
     public class VarNotFoundException : Exception
@@ -118,8 +120,32 @@ public class VariableProcessor : ICloneable
                     try
                     {
                         var rightValue = EvaluateExpression(right);
-                        variableValues[varName] = rightValue;
-                        return rightValue;
+                        switch (assignmentExpr.Kind())
+                        {
+                            case SyntaxKind.SimpleAssignmentExpression:
+                                variableValues[varName] = rightValue;
+                                break;
+
+                            default:
+                                // convert to BinaryExpressionSyntax
+                                SyntaxKind binaryOperatorKind = assignmentExpr.Kind() switch
+                                {
+                                    SyntaxKind.AddAssignmentExpression => SyntaxKind.AddExpression,
+                                    SyntaxKind.SubtractAssignmentExpression => SyntaxKind.SubtractExpression,
+                                    SyntaxKind.MultiplyAssignmentExpression => SyntaxKind.MultiplyExpression,
+                                    SyntaxKind.DivideAssignmentExpression => SyntaxKind.DivideExpression,
+                                    SyntaxKind.ModuloAssignmentExpression => SyntaxKind.ModuloExpression,
+                                    SyntaxKind.AndAssignmentExpression => SyntaxKind.BitwiseAndExpression,
+                                    SyntaxKind.OrAssignmentExpression => SyntaxKind.BitwiseOrExpression,
+                                    SyntaxKind.ExclusiveOrAssignmentExpression => SyntaxKind.ExclusiveOrExpression,
+                                    SyntaxKind.LeftShiftAssignmentExpression => SyntaxKind.LeftShiftExpression,
+                                    SyntaxKind.RightShiftAssignmentExpression => SyntaxKind.RightShiftExpression,
+                                    _ => throw new InvalidOperationException("Unsupported compound assignment operator")
+                                };
+                                variableValues[varName] = EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right));
+                                break;
+                        }
+                        return variableValues[varName];
                     }
                     catch (Exception e)
                     {
