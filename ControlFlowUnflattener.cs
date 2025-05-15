@@ -843,6 +843,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             if (trimmed == $"int {varName};")
                 continue;
 
+            if (trimmed.StartsWith($"int {varName} = "))
+                continue;
+
             if (trimmed.Contains(varName))
                 return true;
         }
@@ -928,7 +931,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         if (Verbosity > 0)
             Console.WriteLine("[d] switch vars: " + String.Join(", ", _varProcessor.VariableValues.SwitchVars()));
 
-        var newMethod = method.WithBody(PostProcess(Block(statements)));
+        // intentionally postprocess twice, to remove all unused vars
+        var newMethod = method.WithBody(PostProcess(PostProcess(Block(statements))));
         string newMethodStr = newMethod.NormalizeWhitespace().ToFullString();
         return newMethodStr + Environment.NewLine;
     }

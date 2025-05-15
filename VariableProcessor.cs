@@ -18,7 +18,8 @@ public class VariableProcessor : ICloneable
     static VariableProcessor()
     {
         Constants["string.Empty"] = string.Empty;
-        Constants["Structs_e0d5.QRR"] = 0x00525251; // "QRR"
+        Constants["Structs_e0d5.QRR"] = 0x00525251;
+        Constants["Structs_e0d5.IHDR"] = 0x52444849;
     }
 
     public object Clone()
@@ -129,9 +130,15 @@ public class VariableProcessor : ICloneable
                 case BinaryExpressionSyntax binaryExpr:
                     return EvaluateBinaryExpression(binaryExpr);
 
-                case CastExpressionSyntax castExpr:
-                    // Handle cast expressions (e.g., (uint)(num2 ^ 0x76ED016F))
+                case CastExpressionSyntax castExpr:               // (uint)num2
                     return EvaluateExpression(castExpr.Expression);
+
+                case ConditionalExpressionSyntax conditionalExpr: // num3 == 0 ? num4 : num5
+                    var condition = EvaluateExpression(conditionalExpr.Condition);
+                    if (Convert.ToBoolean(condition))
+                        return EvaluateExpression(conditionalExpr.WhenTrue);
+                    else
+                        return EvaluateExpression(conditionalExpr.WhenFalse);
 
                 case DefaultExpressionSyntax defaultExpr:
                     // Handle default expressions (e.g., default(uint))
@@ -233,6 +240,7 @@ public class VariableProcessor : ICloneable
                 "^" => l ^ r,
 
                 "||" => ((l != 0) || (r != 0)) ? 1 : 0,
+                "&&" => ((l != 0) && (r != 0)) ? 1 : 0,
 
                 "<<" => l << (int)r,
                 ">>" => l >> (int)r,
@@ -263,6 +271,8 @@ public class VariableProcessor : ICloneable
                     return literal.Token.ValueText;
                 case SyntaxKind.TrueLiteralExpression:
                     return true;
+                case SyntaxKind.FalseLiteralExpression:
+                    return false;
                 default:
                     throw new NotSupportedException($"Literal type '{literal.Kind()}' is not supported.");
             }
