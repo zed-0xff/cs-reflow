@@ -20,22 +20,32 @@ public class ReflowTests
         }
     }
 
-    [Fact]
-    public void ProcessData_TransformsInput_Correctly()
+    void checkData(string name)
     {
-        // Arrange
-        var inputPath = Path.Combine(DataPath, "Bytes_afff.cs");
-        var expectedPath = Path.Combine(DataPath, "Bytes_afff.out");
+        var inputPath = Path.Combine(DataPath, $"{name}.cs");
+        var expectedPath = Path.Combine(DataPath, $"{name}.out");
 
         var input = File.ReadAllText(inputPath);
         var expectedOutput = File.ReadAllText(expectedPath);
 
         // Act
         var controlFlowUnflattener = new ControlFlowUnflattener(input);
-        var methodName = "Bytes_afff";
+        var methodName = name;
         var actualOutput = controlFlowUnflattener.ReflowMethod(methodName);
 
         // Assert
         Assert.Equal(expectedOutput, actualOutput);
+    }
+
+    [Fact]
+    public void ProcessData0()
+    {
+        checkData("Bytes_afff");
+    }
+
+    [Fact]
+    public void ProcessData1()
+    {
+        checkData("get_icon_a661");
     }
 }

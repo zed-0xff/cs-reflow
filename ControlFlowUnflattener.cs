@@ -633,6 +633,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 {
                     case LocalDeclarationStatementSyntax: // already handled above
                     case ExpressionStatementSyntax:       // already handled above
+                    case EmptyStatementSyntax:            // do nothing
                         break;
 
                     case GotoStatementSyntax gotoStmt:
