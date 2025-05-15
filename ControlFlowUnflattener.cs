@@ -935,7 +935,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return ReflowMethod(GetMethod(methodName));
     }
 
-    public string ReflowMethod(CSharpSyntaxNode methodNode)
+    public string ReflowMethod(CSharpSyntaxNode methodNode, string eol = "")
     {
         BlockSyntax body = methodNode switch
         {
@@ -944,6 +944,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             null => throw new ArgumentNullException(nameof(methodNode), "Method node cannot be null."),
             _ => throw new ArgumentException($"Unsupported method node type: {methodNode.GetType()}", nameof(methodNode))
         };
+
+        if (eol == "")
+        {
+            eol = body.ToString().Contains("\r\n") ? "\r\n" : "\n";
+        }
 
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
@@ -978,8 +983,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             _ => throw new ArgumentException("Unsupported method node type.", nameof(methodNode))
         };
 
-        string newMethodStr = newMethodNode.NormalizeWhitespace().ToFullString();
-        return newMethodStr + Environment.NewLine;
+        return newMethodNode.NormalizeWhitespace(eol: eol).ToFullString() + eol;
     }
 
 }
