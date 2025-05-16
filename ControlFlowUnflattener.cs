@@ -573,6 +573,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         if (value is not null)
                         {
                             comment = value.ToString();
+                            if (!_flowHints.ContainsKey(get_lineno(ifStmt)))
+                                skip = true;
                         }
                         break;
 
@@ -589,7 +591,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                             comment = value.ToString();
                         }
 
-                        // TODO: move this 2 block to PostProcess()
+                        // TODO: move this 2 blocks to PostProcess()
                         if (ex.VarsRead.Count > 0 && ex.VarsRead.All(v => isSwitchVar(v)))
                         {
                             foreach (string v in ex.VarsWritten)

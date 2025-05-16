@@ -1,7 +1,6 @@
 	public unsafe static string get_icon_a661(object object_0a)
 	{
 		string text = get_str(72129, 73044, 169);  // InvocationExpressionSyntax is not supported.
-		int num2 = 0;
 		string text2 = get_str(8975, 9889, 160);  // InvocationExpressionSyntax is not supported.
 		string text3 = get_str(44130, 45101, 188);  // InvocationExpressionSyntax is not supported.
 		bool ab759f63c28b4fceadd28e63ce8bde = Class_ae29.flag_ab75;  // MemberAccessExpressionSyntax is not supported.
@@ -20,11 +19,6 @@
 			Class_ae29.phones_dict.Add("Samsung Galaxy S24 Ultra 5G", "Samsung Galaxy S24 Ultra 5G|Samsung|S928BZ|6.8|8GB|Android|14");
 			Class_ae29.phones_dict.Add("Samsung Galaxy A15 5G", "Samsung Galaxy A15 5G|Samsung|A156E|6.5|8GB|Android|14");
 			Class_ae29.phones_dict.Add("Samsung Galaxy M14 5G", "Samsung Galaxy M14 5G|Samsung|M146B|6.6|8GB|Android|13");
-			if ((int)((uint)(num2 >>> 4) & (num12 / 65536)) >= 0)
-			{
-				goto IL_036c;
-			}
-	
 			Class_ae29.phones_dict.Add("Samsung M04", "Samsung M04|Samsung|M045F|6.5|8GB|Android|12");
 			Class_ae29.phones_dict.Add("Samsung Galaxy Flip5 5G", "Samsung Galaxy Flip5 5G|Samsung|F731B|6.5|8GB|Android|13");
 			Class_ae29.phones_dict.Add("Samsung Galaxy F54 5G", "Samsung Galaxy F54 5G|Samsung|E546BZSHINS|6.7|8GB|Android|13");
