@@ -20,6 +20,11 @@ public class VariableProcessor : ICloneable
     static VariableProcessor()
     {
         Constants["string.Empty"] = string.Empty;
+        Constants["int.MinValue"] = int.MinValue;
+        Constants["int.MaxValue"] = int.MaxValue;
+        Constants["uint.MinValue"] = uint.MinValue;
+        Constants["uint.MaxValue"] = uint.MaxValue;
+
         Constants["Structs_e0d5.IDAT"] = 0x54414449;
         Constants["Structs_e0d5.IEND"] = 0x444e4549;
         Constants["Structs_e0d5.IHDR"] = 0x52444849;

@@ -451,7 +451,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    TryStatementSyntax trace_try(TryStatementSyntax tryStmt)
+    TryStatementSyntax reflow_try(TryStatementSyntax tryStmt)
     {
         var clone = (ControlFlowUnflattener)Clone();
         var newBlock = clone.ReflowBlock(tryStmt.Block);
@@ -645,7 +645,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         break;
 
                     case TryStatementSyntax tryStmt:
-                        stmt = trace_try(tryStmt);
+                        stmt = reflow_try(tryStmt);
                         break;
                 }
             }
