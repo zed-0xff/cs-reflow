@@ -78,7 +78,8 @@ public class TraceLog
         TraceLog result = new();
 
         // add common head
-        result.entries.AddRange(this.entries.GetRange(0, commonStart - 1));
+        if (commonStart > 0)
+            result.entries.AddRange(this.entries.GetRange(0, commonStart - 1));
 
         // make new if/then/else
         var ifEntry = this.entries[commonStart - 1];
@@ -89,7 +90,7 @@ public class TraceLog
             {
                 if (i >= this.entries.Count)
                     break;
-                Console.WriteLine($"A{i}: {this.entries[i].stmt.ToString().Split("\n")[0]}");
+                Console.WriteLine($"A{i}: {this.entries[i].TitleWithLineNo()}");
             }
             Console.WriteLine();
 
@@ -97,7 +98,7 @@ public class TraceLog
             {
                 if (j >= other.entries.Count)
                     break;
-                Console.WriteLine($"B{j}: {other.entries[j].stmt.ToString().Split("\n")[0]}");
+                Console.WriteLine($"B{j}: {other.entries[j].TitleWithLineNo()}");
             }
             Console.WriteLine();
 
@@ -109,8 +110,8 @@ public class TraceLog
             //            Console.WriteLine($"[d] {this.entries[commonStart].stmt.ToString() == other.entries[commonStart].stmt.ToString()}");
             //            Console.WriteLine();
             //
-            System.IO.File.WriteAllText("a.txt", this.entries[commonStart].stmt.ToString());
-            System.IO.File.WriteAllText("b.txt", other.entries[commonStart].stmt.ToString());
+            //            System.IO.File.WriteAllText("a.txt", this.entries[commonStart].stmt.ToString());
+            //            System.IO.File.WriteAllText("b.txt", other.entries[commonStart].stmt.ToString());
 
             throw new System.Exception($"Expected if statement at {commonStart - 1}, got {ifEntry.stmt}");
         }

@@ -151,14 +151,7 @@ class Program
             {
                 foreach (var methodName in methods)
                 {
-                    try
-                    {
-                        Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine($"[error] Failed to process method '{methodName}': {ex.Message}");
-                    }
+                    Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
                 }
             }
         },

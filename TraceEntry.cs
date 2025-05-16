@@ -17,6 +17,21 @@ public class TraceEntry
         this.comment = comment;
     }
 
+    public string Title()
+    {
+        string result = stmt.ToString().Split(new[] { '\r', '\n' })[0];
+        if (comment != null && comment.Length > 0)
+        {
+            result += " // " + comment;
+        }
+        return result;
+    }
+
+    public string TitleWithLineNo()
+    {
+        return $"{stmt.GetLocation().GetLineSpan().StartLinePosition.Line + 1}: {Title()}";
+    }
+
     public override bool Equals(object obj)
     {
         if (obj is not TraceEntry other) return false;
