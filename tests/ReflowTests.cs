@@ -33,6 +33,13 @@ public class ReflowTests
         var methodName = name;
         var actualOutput = controlFlowUnflattener.ReflowMethod(methodName);
 
+        if (expectedOutput.TrimEnd() != actualOutput.TrimEnd())
+        {
+            // write to file
+            var outputPath = Path.Combine(DataPath, $"{name}.out.actual");
+            File.WriteAllText(outputPath, actualOutput);
+        }
+
         // Assert
         Assert.Equal(expectedOutput.TrimEnd(), actualOutput.TrimEnd());
     }
@@ -59,5 +66,11 @@ public class ReflowTests
     public void ProcessData3()
     {
         checkData("invert_if");
+    }
+
+    [Fact]
+    public void ProcessData4()
+    {
+        checkData("try_catch");
     }
 }

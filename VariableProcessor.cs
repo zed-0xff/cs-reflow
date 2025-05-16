@@ -100,10 +100,43 @@ public class VariableProcessor : ICloneable
                 var value = EvaluateExpression(initializerExpression);
 
                 // Store the value of the variable
-                variableValues[varName] = value;
+                variableValues[varName] = value; //, localDeclaration.Declaration.Type.ToString());
                 return value;
             }
             return null;
+        }
+
+        object cast_var(object value, string toType)
+        {
+            switch (toType)
+            {
+                case "uint":
+                    switch (value)
+                    {
+                        case int i:
+                            return unchecked((uint)i);
+                        case long l:
+                            return unchecked((uint)l);
+                        case uint u:
+                            return u;
+                        default:
+                            throw new NotSupportedException($"Cast from'{value.GetType()}' to '{toType}' is not supported.");
+                    }
+                case "int":
+                    switch (value)
+                    {
+                        case int i:
+                            return i;
+                        case long l:
+                            return unchecked((int)l);
+                        case uint u:
+                            return unchecked((int)u);
+                        default:
+                            throw new NotSupportedException($"Cast from'{value.GetType()}' to '{toType}' is not supported.");
+                    }
+                default:
+                    throw new NotSupportedException($"Cast from to '{toType}' is not supported.");
+            }
         }
 
         object EvaluateExpression(ExpressionSyntax expression)
@@ -161,7 +194,8 @@ public class VariableProcessor : ICloneable
                     return EvaluateBinaryExpression(binaryExpr);
 
                 case CastExpressionSyntax castExpr:               // (uint)num2
-                    return EvaluateExpression(castExpr.Expression);
+                    var value = EvaluateExpression(castExpr.Expression);
+                    return cast_var(value, castExpr.Type.ToString());
 
                 case ConditionalExpressionSyntax conditionalExpr: // num3 == 0 ? num4 : num5
                     var condition = EvaluateExpression(conditionalExpr.Condition);

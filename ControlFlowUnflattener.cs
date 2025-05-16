@@ -170,7 +170,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     {
         try
         {
-            TraceBlock(GetMethodBody(methodName));
+            trace_block(GetMethodBody(methodName));
         }
         catch (ReturnException)
         {
@@ -197,10 +197,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         var clone = new ControlFlowUnflattener();
         clone._flowHints = new(_flowHints);
         clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
+
         clone.Verbosity = Verbosity;
+        clone.RemoveSwitchVars = RemoveSwitchVars;
+        clone.AddComments = AddComments;
 
         clone._tree = _tree;     // shared, r/o
-                                 //        clone._states = _states; // shared, r/w
 
         return clone;
     }
@@ -248,7 +250,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     {
                         try
                         {
-                            TraceBlock(body as BlockSyntax); // TODO: single-statement body
+                            trace_block(body as BlockSyntax); // TODO: single-statement body
                         }
                         catch (BreakException)
                         {
@@ -280,7 +282,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             try
             {
-                TraceBlock(body as BlockSyntax); // TODO: single-statement body
+                trace_block(body as BlockSyntax); // TODO: single-statement body
             }
             catch (BreakException)
             {
@@ -355,7 +357,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             try
             {
-                TraceBlock(section.Statements, start_idx); // TODO: fallthrough
+                trace_block(section.Statements, start_idx); // TODO: fallthrough
                 break;
 
             }
@@ -418,7 +420,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             case bool b:
                 if (b)
                 {
-                    TraceBlock(ifStmt.Statement as BlockSyntax); // TODO: single-statement body
+                    trace_block(ifStmt.Statement as BlockSyntax); // TODO: single-statement body
                 }
                 else
                 {
@@ -427,7 +429,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         switch (ifStmt.Else.Statement)
                         {
                             case BlockSyntax block:
-                                TraceBlock(block);
+                                trace_block(block);
                                 break;
 
                             case IfStatementSyntax ifStmt2:
@@ -447,6 +449,24 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             default:
                 throw new NotImplementedException($"If condition type '{value?.GetType()}' is not supported.");
         }
+    }
+
+    TryStatementSyntax trace_try(TryStatementSyntax tryStmt)
+    {
+        var clone = (ControlFlowUnflattener)Clone();
+        var newBlock = clone.ReflowBlock(tryStmt.Block);
+
+        var newCatches = SyntaxFactory.List(
+                tryStmt.Catches.Select(c =>
+                    {
+                        clone = (ControlFlowUnflattener)Clone();
+                        return c.WithBlock(clone.ReflowBlock(c.Block));
+                    })
+                );
+
+        return tryStmt
+            .WithBlock(newBlock)
+            .WithCatches(newCatches);
     }
 
     public object EvaluateExpression(ExpressionSyntax expression)
@@ -505,12 +525,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         _varProcessor.VariableValues.SetSwitchVar(varName, isSwitch);
     }
 
-    public void TraceBlock(BlockSyntax block, int start_idx = 0)
+    public void trace_block(BlockSyntax block, int start_idx = 0)
     {
-        TraceBlock(block.Statements, start_idx);
+        trace_block(block.Statements, start_idx);
     }
 
-    public void TraceBlock(SyntaxList<StatementSyntax> statements, int start_idx = 0)
+    public void trace_block(SyntaxList<StatementSyntax> statements, int start_idx = 0)
     {
         Dictionary<string, int> labels = new();
 
@@ -623,6 +643,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     case DoStatementSyntax:
                         skip = true;
                         break;
+
+                    case TryStatementSyntax tryStmt:
+                        stmt = trace_try(tryStmt);
+                        break;
                 }
             }
             catch (NotSupportedException e)
@@ -683,11 +707,34 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 string msg = $"Loop detected at line {get_lineno(stmt)}: {stmt} (state: {idx})";
                 if (Verbosity > 0)
                     Console.WriteLine($"[d] {msg}");
-                if (!skip && AddComments)
+
+                VarDict varValues = _varProcessor.VariableValues;
+                while (idx > 0 && _traceLog.entries.Last().stmt == _traceLog.entries[idx].stmt)
                 {
-                    // //_traceLog.entries[idx].stmt = _traceLog.entries[idx].stmt.WithTrailingTrivia(Comment($"// {idx}"));
-                    _traceLog.entries.Last().stmt = stmt.WithTrailingTrivia(Comment($"// loop {idx}, lineno {get_lineno(stmt)}"));
+                    varValues = _traceLog.entries[_traceLog.entries.Count - 1].vars;
+                    _traceLog.entries.RemoveAt(_traceLog.entries.Count - 1);
+                    idx--;
                 }
+
+                SyntaxToken labelId;
+                if (_traceLog.entries[idx].stmt is LabeledStatementSyntax labelStmt)
+                {
+                    labelId = labelStmt.Identifier;
+                }
+                else
+                {
+                    labelId = SyntaxFactory.Identifier($"l{get_lineno(_traceLog.entries[idx].stmt)}");
+                    _traceLog.entries[idx].stmt = LabeledStatement(labelId, _traceLog.entries[idx].stmt);
+                    //_traceLog.entries[idx].stmt = LabeledStatement(labelId, EmptyStatement());
+                }
+
+                _traceLog.entries.Add(
+                        new TraceEntry(
+                            GotoStatement(SyntaxKind.GotoStatement, IdentifierName(labelId)),
+                            null,
+                            varValues
+                        )
+                );
                 throw new LoopException(msg, get_lineno(stmt));
             }
             else
@@ -699,6 +746,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 switch (stmt)
                 {
+                    case TryStatementSyntax tryStmt:      // already handled above
                     case LocalDeclarationStatementSyntax: // already handled above
                     case ExpressionStatementSyntax:       // already handled above
                     case EmptyStatementSyntax:            // do nothing
@@ -751,15 +799,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         break;
 
                     case BlockSyntax block:
-                        TraceBlock(block); // TODO: local vars
-                        break;
-
-                    case TryStatementSyntax tryStmt:
-                        TraceBlock(tryStmt.Block);
+                        trace_block(block); // TODO: local vars
                         break;
 
                     case UsingStatementSyntax usingStmt:
-                        TraceBlock(usingStmt.Statement as BlockSyntax);
+                        trace_block(usingStmt.Statement as BlockSyntax);
                         break;
 
                     case BreakStatementSyntax: throw new BreakException();
@@ -790,7 +834,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    public TraceLog ReflowBlock(BlockSyntax block)
+    public TraceLog TraceBlock(BlockSyntax block)
     {
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
@@ -804,7 +848,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 Console.WriteLine($"[d] >>> start tracing with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
             try
             {
-                clone.TraceBlock(block);
+                clone.trace_block(block);
                 logs.Add(clone._traceLog);
                 if (Verbosity > 0)
                     Console.WriteLine($"[d] <<< end of block at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
@@ -972,6 +1016,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
                 break;
 
+            case TryStatementSyntax tryStmt:
+                return tryStmt
+                    .WithBlock(PostProcess(tryStmt.Block))
+                    .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })));
+                break;
+
             case BlockSyntax blockStmt:
                 stmt = PostProcess(blockStmt);
                 break;
@@ -1094,6 +1144,32 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return ReflowMethod(GetMethod(methodName));
     }
 
+    public BlockSyntax ReflowBlock(BlockSyntax block)
+    {
+        TraceLog log = TraceBlock(block);
+        if (log.entries.Count > 0 && log.entries.Last().stmt.ToString() == "return;")
+        {
+            log.entries.RemoveAt(log.entries.Count - 1);
+        }
+
+        List<StatementSyntax> statements = new();
+        foreach (var entry in log.entries)
+        {
+            var stmt = entry.stmt;
+            var comment = entry.comment;
+            if (!string.IsNullOrEmpty(comment) && AddComments)
+            {
+                stmt = stmt.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
+            }
+            statements.Add(stmt);
+        }
+
+        if (Verbosity > 0)
+            Console.WriteLine("[d] switch vars: " + string.Join(", ", _varProcessor.VariableValues.SwitchVars()));
+
+        return PostProcess(PostProcess(SyntaxFactory.Block(statements)));
+    }
+
     public string ReflowMethod(CSharpSyntaxNode methodNode, string indentation = "", string eol = "")
     {
         BlockSyntax body = methodNode switch
@@ -1129,28 +1205,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
 
-        TraceLog log = ReflowBlock(body);
-        if (log.entries.Count > 0 && log.entries.Last().stmt.ToString() == "return;")
-        {
-            log.entries.RemoveAt(log.entries.Count - 1);
-        }
-
-        List<StatementSyntax> statements = new();
-        foreach (var entry in log.entries)
-        {
-            var stmt = entry.stmt;
-            var comment = entry.comment;
-            if (!string.IsNullOrEmpty(comment) && AddComments)
-            {
-                stmt = stmt.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
-            }
-            statements.Add(stmt);
-        }
-
-        if (Verbosity > 0)
-            Console.WriteLine("[d] switch vars: " + string.Join(", ", _varProcessor.VariableValues.SwitchVars()));
-
-        var newBody = PostProcess(PostProcess(SyntaxFactory.Block(statements)));
+        var newBody = ReflowBlock(body);
 
         SyntaxNode newMethodNode = methodNode switch
         {
