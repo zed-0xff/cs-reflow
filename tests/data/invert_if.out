@@ -1,0 +1,12 @@
+	protected override void invert_if(bool bool_0aw)
+	{
+		if (bool_0aw)
+		{
+			if (b96b84d42d854f1f93d6e45a6dc465f7 != null)
+			{
+				((IDisposable)b96b84d42d854f1f93d6e45a6dc465f7).Dispose();
+			}
+		}
+	
+		((Form)this).Dispose(bool_0aw);  // InvocationExpressionSyntax is not supported.
+	}

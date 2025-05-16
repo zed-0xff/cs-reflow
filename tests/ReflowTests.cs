@@ -54,4 +54,10 @@ public class ReflowTests
     {
         checkData("goto_default_case");
     }
+
+    [Fact]
+    public void ProcessData3()
+    {
+        checkData("invert_if");
+    }
 }

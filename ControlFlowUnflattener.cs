@@ -1010,6 +1010,37 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return false;
     }
 
+    ExpressionSyntax invert_condition(ExpressionSyntax condition)
+    {
+        switch (condition)
+        {
+            case BinaryExpressionSyntax binaryExpr:
+                if (binaryExpr.IsKind(SyntaxKind.EqualsExpression))
+                    return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken));
+                else if (binaryExpr.IsKind(SyntaxKind.NotEqualsExpression))
+                    return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken));
+                break;
+
+            case PrefixUnaryExpressionSyntax unaryExpr:
+                if (unaryExpr.IsKind(SyntaxKind.LogicalNotExpression))
+                    return unaryExpr.Operand;
+                break;
+        }
+
+        return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, condition);
+    }
+
+    IfStatementSyntax postprocess_if(IfStatementSyntax ifStmt)
+    {
+        //      if (!bool_0aw) {} else ...
+        if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0)
+            return ifStmt
+                .WithCondition(invert_condition(ifStmt.Condition))
+                .WithStatement(ifStmt.Else.Statement)
+                .WithElse(null);
+        return ifStmt;
+    }
+
     BlockSyntax PostProcess(BlockSyntax block)
     {
         if (block == null)
@@ -1038,6 +1069,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
             if (is_empty_if(stmt))
                 continue;
+
+            if (stmt is IfStatementSyntax ifStmt)
+            {
+                stmt = postprocess_if(ifStmt);
+            }
 
             if (stmt is EmptyStatementSyntax)
                 continue;
