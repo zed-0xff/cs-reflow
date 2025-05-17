@@ -25,6 +25,14 @@ public class VariableProcessor : ICloneable
         Constants["uint.MinValue"] = uint.MinValue;
         Constants["uint.MaxValue"] = uint.MaxValue;
 
+        Constants["Png_a7cb.BZh"] = 0x00685a42;
+        Constants["Png_e0d5.IDAT"] = 0x54414449;
+        Constants["Png_e0d5.IEND"] = 0x444e4549;
+        Constants["Png_e0d5.IHDR"] = 0x52444849;
+        Constants["Png_e0d5.PLTE"] = 0x45544c50;
+        Constants["Png_e0d5.QRR"] = 0x00525251;
+        Constants["Png_e0d5.tRNS"] = 0x534e5274;
+
         Constants["Structs_a7cb.BZh"] = 0x00685a42;
         Constants["Structs_e0d5.IDAT"] = 0x54414449;
         Constants["Structs_e0d5.IEND"] = 0x444e4549;
@@ -33,13 +41,7 @@ public class VariableProcessor : ICloneable
         Constants["Structs_e0d5.QRR"] = 0x00525251;
         Constants["Structs_e0d5.tRNS"] = 0x534e5274;
 
-        Constants["Png_a7cb.BZh"] = 0x00685a42;
-        Constants["Png_e0d5.IDAT"] = 0x54414449;
-        Constants["Png_e0d5.IEND"] = 0x444e4549;
-        Constants["Png_e0d5.IHDR"] = 0x52444849;
-        Constants["Png_e0d5.PLTE"] = 0x45544c50;
-        Constants["Png_e0d5.QRR"] = 0x00525251;
-        Constants["Png_e0d5.tRNS"] = 0x534e5274;
+        Constants["Type.EmptyTypes.LongLength"] = Type.EmptyTypes.LongLength;
     }
 
     public object Clone()
@@ -165,9 +167,6 @@ public class VariableProcessor : ICloneable
 
         object EvaluateExpression(ExpressionSyntax expression)
         {
-            // You can add support for more complex expressions here, 
-            // for now, we will handle simple assignments and basic operations.
-
             switch (expression)
             {
                 case AssignmentExpressionSyntax assignmentExpr:
@@ -263,47 +262,87 @@ public class VariableProcessor : ICloneable
                 case ParenthesizedExpressionSyntax parenExpr:
                     return EvaluateExpression(parenExpr.Expression);
 
-                case PrefixUnaryExpressionSyntax unaryExpr:
-                    // Handle unary expressions (e.g., -num3)
-                    var operandPrefix = unaryExpr.Operand;
-                    var valuePrefix = EvaluateExpression(operandPrefix);
-                    return unaryExpr.Kind() switch
-                    {
-                        SyntaxKind.UnaryPlusExpression => valuePrefix,
-                        SyntaxKind.UnaryMinusExpression => -Convert.ToInt64(valuePrefix),
-                        SyntaxKind.BitwiseNotExpression => ~Convert.ToInt64(valuePrefix),
-                        _ => throw new NotSupportedException($"Unary operator '{unaryExpr.Kind()}' is not supported.")
-                    };
+                case CheckedExpressionSyntax checkedExpr: // TODO: simulate exception on overflow?
+                    return EvaluateExpression(checkedExpr.Expression);
 
-                case PostfixUnaryExpressionSyntax postfixUnaryExpr:
-                    // Handle postfix unary expressions (e.g., num3++)
-                    var operandPostfix = postfixUnaryExpr.Operand;
-                    var valuePostfix = EvaluateExpression(operandPostfix);
-                    var newValue = postfixUnaryExpr.Kind() switch
-                    {
-                        SyntaxKind.PostIncrementExpression => Convert.ToInt64(valuePostfix) + 1,
-                        SyntaxKind.PostDecrementExpression => Convert.ToInt64(valuePostfix) - 1,
-                        _ => throw new NotSupportedException($"Postfix operator '{postfixUnaryExpr.Kind()}' is not supported.")
-                    };
-                    if (operandPostfix is IdentifierNameSyntax identifierPostfix)
-                    {
-                        string varNamePostfix = identifierPostfix.Identifier.Text;
-                        VarsWritten.Add(varNamePostfix);
-                        VarsRead.Add(varNamePostfix);
-                        variableValues[varNamePostfix] = newValue;
-                    }
-                    else
-                    {
-                        throw new NotSupportedException($"Postfix operand '{operandPostfix.Kind()}' is not supported.");
-                    }
-                    return newValue;
+                case PrefixUnaryExpressionSyntax prefixExpr:
+                    return EvaluatePrefixExpression(prefixExpr);
+
+                case PostfixUnaryExpressionSyntax postfixExpr:
+                    return EvaluatePostfixExpression(postfixExpr);
 
                 default:
                     throw new NotSupportedException($"{expression.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")} is not supported.");
             }
         }
 
-        private object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
+        // -x
+        // +x
+        // ~x
+        // --x
+        // ++x
+        object EvaluatePrefixExpression(PrefixUnaryExpressionSyntax expr)
+        {
+            var value = EvaluateExpression(expr.Operand);
+            var retValue = value;
+
+            if (expr.Operand is IdentifierNameSyntax id)
+            {
+                retValue = expr.Kind() switch
+                {
+                    SyntaxKind.UnaryPlusExpression => value,
+                    SyntaxKind.UnaryMinusExpression => -Convert.ToInt64(value),
+                    SyntaxKind.BitwiseNotExpression => ~Convert.ToInt64(value),
+                    SyntaxKind.PreDecrementExpression => Convert.ToInt64(value) - 1,
+                    SyntaxKind.PreIncrementExpression => Convert.ToInt64(value) + 1,
+                    _ => throw new NotSupportedException($"Unary operator '{expr.Kind()}' is not supported.")
+                };
+
+                string varName = id.Identifier.Text;
+                VarsWritten.Add(varName);
+                VarsRead.Add(varName);
+                variableValues[varName] = retValue;
+            }
+            else
+            {
+                retValue = expr.Kind() switch
+                {
+                    SyntaxKind.UnaryPlusExpression => value,
+                    SyntaxKind.UnaryMinusExpression => -Convert.ToInt64(value),
+                    SyntaxKind.BitwiseNotExpression => ~Convert.ToInt64(value),
+                    // _ => throw new NotSupportedException($"Unary operator '{expr.Kind()}' is not supported on '{expr.Operand.Kind()}'.")
+                    _ => value
+                };
+            }
+            return retValue;
+        }
+
+        // x--
+        // x++
+        object EvaluatePostfixExpression(PostfixUnaryExpressionSyntax expr)
+        {
+            var retValue = EvaluateExpression(expr.Operand);
+            var newValue = expr.Kind() switch
+            {
+                SyntaxKind.PostIncrementExpression => Convert.ToInt64(retValue) + 1,
+                SyntaxKind.PostDecrementExpression => Convert.ToInt64(retValue) - 1,
+                _ => throw new NotSupportedException($"Postfix operator '{expr.Kind()}' is not supported.")
+            };
+            if (expr.Operand is IdentifierNameSyntax id)
+            {
+                string varName = id.Identifier.Text;
+                VarsWritten.Add(varName);
+                VarsRead.Add(varName);
+                variableValues[varName] = newValue;
+            }
+            else
+            {
+                throw new NotSupportedException($"Postfix operand '{expr.Operand.Kind()}' is not supported.");
+            }
+            return retValue;
+        }
+
+        object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
         {
             // Recursively evaluate the left and right parts of the binary expression
             var leftValue = EvaluateExpression(binaryExpr.Left);

@@ -91,19 +91,14 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
                 EnumerateStatements(switchSection.Statements, indent + 1);
                 break;
 
-            case ExpressionSyntax expression:
-                // never here
-                break;
-
             case StatementSyntax statement:
-                // Handle specific statement types if needed (e.g., loops, assignments, etc.)
                 if (statement is ExpressionStatementSyntax exprStmt)
                 {
                     // Console.WriteLine($"{indent_str}  Expression: {exprStmt.Expression}");
                 }
                 else if (statement is IfStatementSyntax ifStmt)
                 {
-                    // Console.WriteLine($"{indent_str}  If statement with condition: {ifStmt.Condition}");
+                    Print(ifStmt.Condition, indent + 1);  // Print if condition
                     Print(ifStmt.Statement, indent + 1);  // Print if body
                     if (ifStmt.Else != null)
                     {
