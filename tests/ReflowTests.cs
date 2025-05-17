@@ -64,7 +64,7 @@ public class ReflowTests
     }
 
     [Fact]
-    public void ProcessData3()
+    public void invert_if()
     {
         checkData("invert_if");
     }

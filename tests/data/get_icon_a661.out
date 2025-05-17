@@ -33,28 +33,9 @@
 			string key2 = "Samsung Galaxy A23 5G";
 			phones_dict_2.Add(key2, "Samsung Galaxy A23 5G|Samsung|A236E|6.6|8GB|Android|12");
 			Class_ae29.phones_dict.Add("OnePlus 7TPro", "OnePlus 7TPro|OnePlus|HD1911|6.6|8GB|Android|11");
-			if (String.op_Equality((string)object_0a, "in.org.npci.upiapp"))
-			{
-				return Class_ae29.ae97e074e9e7420fa7898158aca772e9;
-			}
-			else if (String.op_Equality((string)object_0a, "com.sbi.upi"))
-			{
-				return Class_ae29.a715a55768504143ad6674958663538e;
-			}
-			else if (String.op_Equality((string)object_0a, "com.upi.axispay"))
-			{
-				return Class_ae29.b64_axisPay_jpg;
-			}
-			else if (!String.op_Equality((string)object_0a, "com.sbi.SBISecure"))
-			{
-				return string.Empty;
-			}
-			else
-			{
-				return Class_ae29.b46_secureOTP_jpg;
-			}
 		}
-		else if (String.op_Equality((string)object_0a, "in.org.npci.upiapp"))
+	
+		if (String.op_Equality((string)object_0a, "in.org.npci.upiapp"))
 		{
 			return Class_ae29.ae97e074e9e7420fa7898158aca772e9;
 		}

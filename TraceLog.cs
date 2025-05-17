@@ -18,7 +18,7 @@ public class TraceLog
         if (hints1.Count != hints2.Count)
             return -1;
 
-        int diff_idx = -1;
+        int diff_key = -1;
         foreach (var kvp in hints1)
         {
             bool value1 = kvp.Value;
@@ -27,9 +27,9 @@ public class TraceLog
 
             if (value1 != value2)
             {
-                if (diff_idx == -1)
+                if (diff_key == -1)
                 {
-                    diff_idx = kvp.Key;
+                    diff_key = kvp.Key;
                 }
                 else
                 {
@@ -37,7 +37,7 @@ public class TraceLog
                 }
             }
         }
-        return diff_idx;
+        return diff_key;
     }
 
     public int diff1(TraceLog other)
@@ -60,45 +60,72 @@ public class TraceLog
         if (stmt1.Equals(stmt2))
             return true;
 
-        // case: label was added when a loop was detected
-
-        if (stmt1 is LabeledStatementSyntax l1 && l1.Statement.ToString() == stmt2.ToString())
+        if (stmt1.ToString().Trim() == stmt2.ToString().Trim()) // converted try{} blocks
             return true;
 
-        if (stmt2 is LabeledStatementSyntax l2 && l2.Statement.ToString() == stmt1.ToString())
+        // case: label was added when a loop was detected
+
+        if (stmt1 is LabeledStatementSyntax l1)
+        {
+            if (l1.Statement.ToString().Trim() == stmt2.ToString().Trim())
+                return true;
+
+            if (stmt2 is LabeledStatementSyntax l2_ && l2_.ToString().Trim() == l1.ToString().Trim())
+                return true;
+        }
+
+        if (stmt2 is LabeledStatementSyntax l2 && l2.Statement.ToString().Trim() == stmt1.ToString().Trim())
             return true;
 
         return false;
     }
 
+    // copy labels from both sources
+    void add_with_labels(TraceLog log1, TraceLog log2, int start1, int start2, int n)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            int pos1 = start1 + i;
+            int pos2 = start2 + i;
+            if (log2.entries[pos2].stmt is LabeledStatementSyntax)
+                entries.Add(log2.entries[pos2]);
+            else
+                entries.Add(log1.entries[pos1]);
+        }
+    }
+
     public TraceLog Merge(TraceLog other)
     {
-        int hint_idx = hints_diff1(hints, other.hints);
-        if (hint_idx == -1)
+        int hint_key = hints_diff1(hints, other.hints);
+        if (hint_key == -1)
             throw new System.Exception($"Cannot merge TraceLogs with different hints: {hints2str(hints)} vs {hints2str(other.hints)}");
 
         int commonStart = 0;
-        while (eq_stmt(this.entries[commonStart].stmt, other.entries[commonStart].stmt))
+        while (commonStart < this.entries.Count &&
+               commonStart < other.entries.Count &&
+               eq_stmt(this.entries[commonStart].stmt, other.entries[commonStart].stmt))
         {
+            if (this.entries[commonStart].stmt.LineNo() == hint_key)
+                break;
+
             commonStart++;
         }
-        //        Console.WriteLine($"[=] common start: {commonStart}, uncommon: {this.entries.Count - commonStart} vs {other.entries.Count - commonStart}");
 
         int commonEnd = 0;
-        while (eq_stmt(this.entries[this.entries.Count - 1 - commonEnd].stmt, other.entries[other.entries.Count - 1 - commonEnd].stmt))
+        if (commonStart < this.entries.Count && commonStart < other.entries.Count)
         {
-            commonEnd++;
+            while (eq_stmt(this.entries[this.entries.Count - commonEnd - 1].stmt, other.entries[other.entries.Count - commonEnd - 1].stmt))
+                commonEnd++;
         }
-        //        Console.WriteLine($"[=] common end: {commonEnd}, uncommon: {this.entries.Count - commonEnd - commonStart} vs {other.entries.Count - commonEnd - commonStart}");
 
         TraceLog result = new();
 
         // add common head
         if (commonStart > 0)
-            result.entries.AddRange(this.entries.GetRange(0, commonStart - 1));
+            result.add_with_labels(this, other, 0, 0, commonStart);
 
         // make new if/then/else
-        var ifEntry = this.entries[commonStart - 1];
+        var ifEntry = this.entries[commonStart];
         var ifStmt = ifEntry.stmt as IfStatementSyntax;
         if (ifStmt == null)
         {
@@ -106,7 +133,11 @@ public class TraceLog
             {
                 if (i >= this.entries.Count)
                     break;
-                Console.WriteLine($"A{i}: {this.entries[i].TitleWithLineNo()}");
+
+                if (i == commonStart)
+                    Console.WriteLine($"A{i}: {this.entries[i].stmt}");
+                else
+                    Console.WriteLine($"A{i}: {this.entries[i].TitleWithLineNo()}");
             }
             Console.WriteLine();
 
@@ -114,7 +145,11 @@ public class TraceLog
             {
                 if (j >= other.entries.Count)
                     break;
-                Console.WriteLine($"B{j}: {other.entries[j].TitleWithLineNo()}");
+
+                if (j == commonStart)
+                    Console.WriteLine($"B{j}: {other.entries[j].stmt}");
+                else
+                    Console.WriteLine($"B{j}: {other.entries[j].TitleWithLineNo()}");
             }
             Console.WriteLine();
 
@@ -135,19 +170,19 @@ public class TraceLog
         //        Console.WriteLine($"[d] old if: {ifStmt}");
 
         BlockSyntax thenBlock = Block(
-                this.entries.GetRange(commonStart, this.entries.Count - commonEnd - commonStart)
+                this.entries.GetRange(commonStart + 1, this.entries.Count - commonEnd - commonStart - 1)
                 .Select(e => e.stmt)
                 .ToArray()
                 );
 
         BlockSyntax elseBlock = Block(
-                other.entries.GetRange(commonStart, other.entries.Count - commonEnd - commonStart)
+                other.entries.GetRange(commonStart + 1, other.entries.Count - commonEnd - commonStart - 1)
                     .Select(e => e.stmt)
                     .ToArray()
                 );
 
-        BlockSyntax thenBlock1 = hints[hint_idx] ? thenBlock : elseBlock;
-        BlockSyntax elseBlock1 = hints[hint_idx] ? elseBlock : thenBlock;
+        BlockSyntax thenBlock1 = hints[hint_key] ? thenBlock : elseBlock;
+        BlockSyntax elseBlock1 = hints[hint_key] ? elseBlock : thenBlock;
 
         var newIfStmt = ifStmt
             .WithStatement(thenBlock1)
@@ -159,9 +194,12 @@ public class TraceLog
         result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry.vars));
 
         // add common tail
-        result.entries.AddRange(this.entries.GetRange(this.entries.Count - commonEnd, commonEnd));
+        if (commonEnd > 0)
+            //result.entries.AddRange(this.entries.GetRange(this.entries.Count - commonEnd, commonEnd));
+            result.add_with_labels(this, other, this.entries.Count - commonEnd, other.entries.Count - commonEnd, commonEnd);
+
         result.hints = new(hints);
-        result.hints.Remove(hint_idx);
+        result.hints.Remove(hint_key);
 
         return result;
     }

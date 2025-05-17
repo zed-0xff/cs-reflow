@@ -39,6 +39,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
+    public bool PostProcess = true;
 
     public class State
     {
@@ -873,7 +874,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 ControlFlowUnflattener clone = CloneWithHints(hints);
                 if (Verbosity > 0)
-                    Console.WriteLine($"[d] >>> start tracing with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+                    Console.WriteLine($"[d] >>> start tracing {get_lineno(block)} with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
 
                 try
                 {
@@ -922,7 +923,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     }
                     else
                     {
-                        labelId = SyntaxFactory.Identifier($"l{get_lineno(clone._traceLog.entries[idx].stmt)}");
+                        int label_lineno = get_lineno(clone._traceLog.entries[idx].stmt);
+                        if (label_lineno == 1 && idx > 0)
+                        {
+                            label_lineno = get_lineno(clone._traceLog.entries[idx - 1].stmt) + 1;
+                        }
+                        labelId = SyntaxFactory.Identifier($"l{label_lineno}");
                         clone._traceLog.entries[idx].stmt = LabeledStatement(labelId, clone._traceLog.entries[idx].stmt);
                     }
 
@@ -1042,6 +1048,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public BlockSyntax ReflowBlock(BlockSyntax block)
     {
+        if (block.Statements.Count == 0) // i.e. empty catch {}
+            return block;
+
         TraceLog log = TraceBlock(block);
         if (log.entries.Count > 0 && log.entries.Last().stmt.ToString() == "return;")
         {
@@ -1063,9 +1072,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         if (Verbosity > 0)
             Console.WriteLine("[d] switch vars: " + string.Join(", ", _varProcessor.VariableValues.SwitchVars()));
 
-        PostProcessor postProcessor = new(_varProcessor);
-        postProcessor.RemoveSwitchVars = RemoveSwitchVars;
-        return postProcessor.PostProcessAll(SyntaxFactory.Block(statements));
+        BlockSyntax result = SyntaxFactory.Block(statements);
+        if (PostProcess)
+        {
+            PostProcessor postProcessor = new(_varProcessor);
+            postProcessor.RemoveSwitchVars = RemoveSwitchVars;
+            result = postProcessor.PostProcessAll(result);
+        }
+        return result;
     }
 
     public string ReflowMethod(CSharpSyntaxNode methodNode, string indentation = "", string eol = "")

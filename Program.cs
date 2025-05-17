@@ -6,6 +6,18 @@ using System.Linq;
 
 class Program
 {
+    public record Options(
+        string? filename,
+        List<string> methods,
+        List<string> hintList,
+        int verbosity,
+        bool processAll,
+        bool printTree,
+        bool addComments,
+        bool removeSwitchVars,
+        bool postProcess
+    );
+
     public static int Main(string[] args)
     {
         // --- Define arguments and options ---
@@ -49,6 +61,12 @@ class Program
             description: "Remove switch variables."
         );
 
+        var postProcessOpt = new Option<bool>(
+            aliases: new[] { "--post-process", "-P" },
+            getDefaultValue: () => true,
+            description: "Post-process the code."
+        );
+
         // --- Define the root command ---
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
@@ -59,23 +77,28 @@ class Program
             processAllOpt,
             printTreeOpt,
             addCommentsOpt,
-            removeSwitchVarsOpt
+            removeSwitchVarsOpt,
+            postProcessOpt
         };
 
         // --- Set the handler ---
-        rootCommand.SetHandler((
-            string? filename,
-            List<string> methods,
-            List<string> hintList,
-            int verbosity,
-            bool processAll,
-            bool printTree,
-            bool addComments,
-            bool removeSwitchVars) =>
+        rootCommand.SetHandler((context) =>
         {
+            var opts = new Options(
+                filename: context.ParseResult.GetValueForArgument(filenameArg),
+                methods: context.ParseResult.GetValueForArgument(methodsArg),
+                hintList: context.ParseResult.GetValueForOption(hintOpt),
+                verbosity: context.ParseResult.GetValueForOption(verbosityOpt),
+                processAll: context.ParseResult.GetValueForOption(processAllOpt),
+                printTree: context.ParseResult.GetValueForOption(printTreeOpt),
+                addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
+                removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
+                postProcess: context.ParseResult.GetValueForOption(postProcessOpt)
+            );
+
             var hints = new Dictionary<int, bool>();
 
-            foreach (var entry in hintList ?? Enumerable.Empty<string>())
+            foreach (var entry in opts.hintList ?? Enumerable.Empty<string>())
             {
                 var parts = entry.Split(':');
                 if (parts.Length == 2 &&
@@ -91,48 +114,50 @@ class Program
             }
 
             string code;
+            bool processAll = opts.processAll;
 
-            if (string.IsNullOrEmpty(filename))
+            if (string.IsNullOrEmpty(opts.filename))
             {
                 if (!Console.IsInputRedirected)
                 {
                     Console.WriteLine("No input file nor pipe is specified. Run with --help for more information.");
-                    return;
+                    //return;
                 }
                 code = Console.In.ReadToEnd();
                 processAll = true;
             }
             else
             {
-                if (!File.Exists(filename))
+                if (!File.Exists(opts.filename))
                 {
-                    Console.Error.WriteLine($"[error] File not found: {filename}");
-                    return;
+                    Console.Error.WriteLine($"[error] File not found: {opts.filename}");
+                    //return;
                 }
-                code = File.ReadAllText(filename);
+                code = File.ReadAllText(opts.filename);
             }
 
-            if (printTree)
+            if (opts.printTree)
             {
                 var printer = new SyntaxTreePrinter(code);
                 printer.Print();
-                return;
+                //return;
             }
 
             var controlFlowUnflattener = new ControlFlowUnflattener(code, hints)
             {
-                Verbosity = verbosity,
-                RemoveSwitchVars = removeSwitchVars,
-                AddComments = addComments
+                Verbosity = opts.verbosity,
+                RemoveSwitchVars = opts.removeSwitchVars,
+                AddComments = opts.addComments,
+                PostProcess = opts.postProcess
             };
 
-            if (methods == null || methods.Count == 0)
+            if (opts.methods == null || opts.methods.Count == 0)
             {
                 var methodDict = controlFlowUnflattener.Methods;
                 if (methodDict.Count == 0)
                 {
                     Console.WriteLine("[?] No methods found.");
-                    return;
+                    //return;
                 }
 
                 if (processAll)
@@ -149,21 +174,12 @@ class Program
             }
             else
             {
-                foreach (var methodName in methods)
+                foreach (var methodName in opts.methods)
                 {
                     Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
                 }
             }
-        },
-        filenameArg,
-        methodsArg,
-        hintOpt,
-        verbosityOpt,
-        processAllOpt,
-        printTreeOpt,
-        addCommentsOpt,
-        removeSwitchVarsOpt
-        );
+        });
 
         return rootCommand.Invoke(args);
     }
