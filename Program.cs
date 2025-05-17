@@ -121,7 +121,7 @@ class Program
                 if (!Console.IsInputRedirected)
                 {
                     Console.WriteLine("No input file nor pipe is specified. Run with --help for more information.");
-                    //return;
+                    return;
                 }
                 code = Console.In.ReadToEnd();
                 processAll = true;
@@ -131,16 +131,9 @@ class Program
                 if (!File.Exists(opts.filename))
                 {
                     Console.Error.WriteLine($"[error] File not found: {opts.filename}");
-                    //return;
+                    return;
                 }
                 code = File.ReadAllText(opts.filename);
-            }
-
-            if (opts.printTree)
-            {
-                var printer = new SyntaxTreePrinter(code);
-                printer.Print();
-                //return;
             }
 
             var controlFlowUnflattener = new ControlFlowUnflattener(code, hints)
@@ -151,20 +144,29 @@ class Program
                 PostProcess = opts.postProcess
             };
 
+            var printer = new SyntaxTreePrinter(code);
+
             if (opts.methods == null || opts.methods.Count == 0)
             {
                 var methodDict = controlFlowUnflattener.Methods;
                 if (methodDict.Count == 0)
                 {
                     Console.WriteLine("[?] No methods found.");
-                    //return;
+                    return;
                 }
 
                 if (processAll)
                 {
-                    foreach (var method in methodDict)
+                    if (opts.printTree)
                     {
-                        Console.WriteLine(controlFlowUnflattener.ReflowMethod(method.Key));
+                        printer.Print();
+                    }
+                    else
+                    {
+                        foreach (var method in methodDict)
+                        {
+                            Console.WriteLine(controlFlowUnflattener.ReflowMethod(method.Key));
+                        }
                     }
                 }
                 else
@@ -176,7 +178,14 @@ class Program
             {
                 foreach (var methodName in opts.methods)
                 {
-                    Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
+                    if (opts.printTree)
+                    {
+                        printer.PrintMethod(methodName);
+                    }
+                    else
+                    {
+                        Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
+                    }
                 }
             }
         });

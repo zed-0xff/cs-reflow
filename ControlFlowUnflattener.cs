@@ -711,9 +711,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 comment = e.Message;
             }
-            catch (VariableProcessor.VarNotFoundException /* e */)
+            catch (VariableProcessor.VarNotFoundException e2)
             {
-                //comment = e.Message;
+                //                comment = e2.Message;
             }
 
             _visitedLines[lineno]++;

@@ -125,24 +125,34 @@ public class VariableProcessor : ICloneable
             switch (toType)
             {
                 case "uint":
+                case "nuint": // TODO: 32/64 bit cmdline switch
                     switch (value)
                     {
                         case int i:
                             return unchecked((uint)i);
                         case long l:
                             return unchecked((uint)l);
+                        case nint ni:
+                            return unchecked((uint)ni);
+                        case nuint nu:
+                            return unchecked((uint)nu);
                         case uint u:
                             return u;
                         default:
                             throw new NotSupportedException($"Cast from'{value.GetType()}' to '{toType}' is not supported.");
                     }
                 case "int":
+                case "nint": // TODO: 32/64 bit cmdline switch
                     switch (value)
                     {
                         case int i:
                             return i;
                         case long l:
                             return unchecked((int)l);
+                        case nint ni:
+                            return unchecked((int)ni);
+                        case nuint nu:
+                            return unchecked((int)nu);
                         case uint u:
                             return unchecked((int)u);
                         default:
