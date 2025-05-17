@@ -13,17 +13,16 @@
 		{
 			num10 = 0;
 			l101:
-				;
-			if (num10 >= num8)
-			{
-				return list2;
-			}
-			else
-			{
-				list2.Add(IO.Path.GetFileNameWithoutExtension((string)((object[])obj)[num10]));
-				num10++;
-				goto l101;
-			}
+				if (num10 >= num8)
+				{
+					return list2;
+				}
+				else
+				{
+					list2.Add(IO.Path.GetFileNameWithoutExtension((string)((object[])obj)[num10]));
+					num10++;
+					goto l101;
+				}
 		}
 		else
 		{

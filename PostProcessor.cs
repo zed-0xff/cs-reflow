@@ -218,6 +218,15 @@ public class PostProcessor
             statements.Add(stmt);
         }
 
+        for (int i = 0; i < statements.Count - 1; i++)
+        {
+            if (statements[i] is LabeledStatementSyntax labelStmt && labelStmt.Statement is EmptyStatementSyntax)
+            {
+                statements[i + 1] = labelStmt.WithStatement(statements[i + 1]);
+                statements.RemoveAt(i);
+            }
+        }
+
         return block.WithStatements(List(statements));
     }
 
