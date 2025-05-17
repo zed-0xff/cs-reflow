@@ -32,6 +32,14 @@ public class VariableProcessor : ICloneable
         Constants["Structs_e0d5.PLTE"] = 0x45544c50;
         Constants["Structs_e0d5.QRR"] = 0x00525251;
         Constants["Structs_e0d5.tRNS"] = 0x534e5274;
+
+        Constants["Png_a7cb.BZh"] = 0x00685a42;
+        Constants["Png_e0d5.IDAT"] = 0x54414449;
+        Constants["Png_e0d5.IEND"] = 0x444e4549;
+        Constants["Png_e0d5.IHDR"] = 0x52444849;
+        Constants["Png_e0d5.PLTE"] = 0x45544c50;
+        Constants["Png_e0d5.QRR"] = 0x00525251;
+        Constants["Png_e0d5.tRNS"] = 0x534e5274;
     }
 
     public object Clone()
