@@ -55,6 +55,22 @@ public class TraceLog
         return "{" + string.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}")) + "}";
     }
 
+    bool eq_stmt(StatementSyntax stmt1, StatementSyntax stmt2)
+    {
+        if (stmt1.Equals(stmt2))
+            return true;
+
+        // case: label was added when a loop was detected
+
+        if (stmt1 is LabeledStatementSyntax l1 && l1.Statement.ToString() == stmt2.ToString())
+            return true;
+
+        if (stmt2 is LabeledStatementSyntax l2 && l2.Statement.ToString() == stmt1.ToString())
+            return true;
+
+        return false;
+    }
+
     public TraceLog Merge(TraceLog other)
     {
         int hint_idx = hints_diff1(hints, other.hints);
@@ -62,14 +78,14 @@ public class TraceLog
             throw new System.Exception($"Cannot merge TraceLogs with different hints: {hints2str(hints)} vs {hints2str(other.hints)}");
 
         int commonStart = 0;
-        while (this.entries[commonStart].stmt == other.entries[commonStart].stmt)
+        while (eq_stmt(this.entries[commonStart].stmt, other.entries[commonStart].stmt))
         {
             commonStart++;
         }
         //        Console.WriteLine($"[=] common start: {commonStart}, uncommon: {this.entries.Count - commonStart} vs {other.entries.Count - commonStart}");
 
         int commonEnd = 0;
-        while (this.entries[this.entries.Count - 1 - commonEnd].stmt == other.entries[other.entries.Count - 1 - commonEnd].stmt)
+        while (eq_stmt(this.entries[this.entries.Count - 1 - commonEnd].stmt, other.entries[other.entries.Count - 1 - commonEnd].stmt))
         {
             commonEnd++;
         }

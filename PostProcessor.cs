@@ -71,6 +71,10 @@ public class PostProcessor
     {
         switch (stmt)
         {
+            case LabeledStatementSyntax labelStmt:
+                stmt = labelStmt.WithStatement(PostProcess(labelStmt.Statement));
+                break;
+
             case ExpressionStatementSyntax exprStmt:
                 var expr = exprStmt.Expression;
                 if (expr is AssignmentExpressionSyntax assignExpr)

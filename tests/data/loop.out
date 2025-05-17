@@ -1,0 +1,32 @@
+	public unsafe static List<string> loop()
+	{
+		List<string> list = new List<string>();  // ObjectCreationExpressionSyntax is not supported.
+		List<string> list2 = list;
+		int num8 = default(int);  // 0
+		object obj = default(object);
+		int num10 = default(int);  // 0
+		object obj2 = default(object);
+		obj2 = mkdir_abd3();  // InvocationExpressionSyntax is not supported.
+		obj = IO.Directory.GetFiles((string)obj2, Strings_a392.a8c2ee1d336b4bee9ea084c338609bd1);  // InvocationExpressionSyntax is not supported.
+		num8 = ((Array)obj).Length;  // MemberAccessExpressionSyntax is not supported.
+		if (num8 > 0)
+		{
+			num10 = 0;
+			l101:
+				;
+			if (num10 >= num8)
+			{
+				return list2;
+			}
+			else
+			{
+				list2.Add(IO.Path.GetFileNameWithoutExtension((string)((object[])obj)[num10]));
+				num10++;
+				goto l101;
+			}
+		}
+		else
+		{
+			return list2;
+		}
+	}

@@ -33,6 +33,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
     Dictionary<State, int> _states = new();
+    Dictionary<int, List<State>> _condStates = new();
     AutoDefaultIntDict _visitedLines = new();
 
     public int Verbosity = 0;
@@ -59,6 +60,39 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         public override int GetHashCode()
         {
             return HashCode.Combine(lineno, vars);
+        }
+
+        public override string ToString()
+        {
+            return $"<State lineno={lineno}, vars={vars}>";
+        }
+
+        public string? find_loop_var(State other)
+        {
+            if (lineno != other.lineno)
+                return null;
+
+            if (vars.Equals(other.vars))
+                return null;
+
+            if (vars.Count != other.vars.Count)
+                return null;
+
+            string? result = null;
+            foreach (var kv in vars)
+            {
+                if (other.vars.TryGetValue(kv.Key, out var otherValue))
+                {
+                    if (!kv.Value.Equals(otherValue))
+                    {
+                        if (result != null)
+                            return null; // multiple vars changed
+
+                        result = kv.Key;
+                    }
+                }
+            }
+            return result;
         }
     };
 
@@ -118,7 +152,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     class LoopException : Exception
     {
         public int lineno;
-        public LoopException(string message, int lineno) : base(message)
+        public int idx;
+        public LoopException(string message, int lineno, int idx) : base(message)
+        {
+            this.lineno = lineno;
+            this.idx = idx;
+        }
+    }
+
+    class ConditionalLoopException : Exception
+    {
+        public int lineno;
+        public ConditionalLoopException(string message, int lineno) : base(message)
         {
             this.lineno = lineno;
         }
@@ -557,6 +602,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 label = l0.Identifier.Text;
                 stmt = l0.Statement;
             }
+            int lineno = get_lineno(stmt);
 
             if (Verbosity > 1)
             {
@@ -569,11 +615,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 switch (stmt)
                 {
                     case IfStatementSyntax ifStmt:
+                        _condStates.TryAdd(lineno, new List<State>());
+                        _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues));
                         value = EvaluateHintedExpression(ifStmt.Condition);
                         if (value is not null)
                         {
                             comment = value.ToString();
-                            if (!_flowHints.ContainsKey(get_lineno(ifStmt)))
+                            if (!_flowHints.ContainsKey(lineno))
                                 skip = true;
                         }
                         break;
@@ -660,11 +708,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 //comment = e.Message;
             }
 
-            int lineno = get_lineno(stmt);
             _visitedLines[lineno]++;
-            if (_visitedLines[lineno] >= 1000)
+            if (_visitedLines[lineno] >= 100)
             {
-                throw new Exception($"Too many visits ({_visitedLines[lineno]}) to line {lineno}");
+                if (_visitedLines[lineno] >= 1000)
+                {
+                    throw new Exception($"Too many visits ({_visitedLines[lineno]}) to line {lineno}");
+                }
+                else if (_flowHints.ContainsKey(lineno))
+                {
+                    throw new ConditionalLoopException($"Conditional loop at line {lineno}: {_visitedLines[lineno]} visits", lineno);
+                }
             }
 
             string line = NodeTitle(stmt);
@@ -706,38 +760,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             var state = new State(get_lineno(stmt), _varProcessor.VariableValues);
             if (_states.TryGetValue(state, out int idx))
             {
-                string msg = $"Loop detected at line {get_lineno(stmt)}: {stmt} (state: {idx})";
-                if (Verbosity > 0)
-                    Console.WriteLine($"[d] {msg}");
-
-                VarDict varValues = _varProcessor.VariableValues;
-                while (idx > 0 && _traceLog.entries.Last().stmt == _traceLog.entries[idx].stmt)
-                {
-                    varValues = _traceLog.entries[_traceLog.entries.Count - 1].vars;
-                    _traceLog.entries.RemoveAt(_traceLog.entries.Count - 1);
-                    idx--;
-                }
-
-                SyntaxToken labelId;
-                if (_traceLog.entries[idx].stmt is LabeledStatementSyntax labelStmt)
-                {
-                    labelId = labelStmt.Identifier;
-                }
-                else
-                {
-                    labelId = SyntaxFactory.Identifier($"l{get_lineno(_traceLog.entries[idx].stmt)}");
-                    _traceLog.entries[idx].stmt = LabeledStatement(labelId, _traceLog.entries[idx].stmt);
-                    //_traceLog.entries[idx].stmt = LabeledStatement(labelId, EmptyStatement());
-                }
-
-                _traceLog.entries.Add(
-                        new TraceEntry(
-                            GotoStatement(SyntaxKind.GotoStatement, IdentifierName(labelId)),
-                            null,
-                            varValues
-                        )
-                );
-                throw new LoopException(msg, get_lineno(stmt));
+                throw new LoopException($"Loop detected at line {get_lineno(stmt)}: {stmt} (state: {idx})", get_lineno(stmt), idx);
             }
             else
             {
@@ -845,40 +868,90 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         while (queue.Count > 0)
         {
             HintsDictionary hints = queue.Dequeue();
-            ControlFlowUnflattener clone = CloneWithHints(hints);
-            if (Verbosity > 0)
-                Console.WriteLine($"[d] >>> start tracing with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
-            try
-            {
-                clone.trace_block(block);
-                logs.Add(clone._traceLog);
-                if (Verbosity > 0)
-                    Console.WriteLine($"[d] <<< end of block at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
-            }
-            catch (ReturnException)
-            {
-                logs.Add(clone._traceLog);
-                if (Verbosity > 0)
-                    Console.WriteLine($"[d] <<< return at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
-            }
-            catch (UndeterministicIfException e)
-            {
-                if (Verbosity > 0)
-                    Console.WriteLine($"[d] <<< {e.Message}");
 
-                HintsDictionary hints0 = new(hints);
-                hints0[e.lineno] = false;
-                queue.Enqueue(hints0);
-
-                HintsDictionary hints1 = new(hints);
-                hints1[e.lineno] = true;
-                queue.Enqueue(hints1);
-                continue;
-            }
-            catch (LoopException l)
+            while (true)
             {
-                Console.WriteLine($"[.] loop detected at line {l.lineno}");
-                logs.Add(clone._traceLog);
+                ControlFlowUnflattener clone = CloneWithHints(hints);
+                if (Verbosity > 0)
+                    Console.WriteLine($"[d] >>> start tracing with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+
+                try
+                {
+                    clone.trace_block(block);
+                    logs.Add(clone._traceLog);
+                    if (Verbosity > 0)
+                        Console.WriteLine($"[d] <<< end of block at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
+                }
+                catch (ReturnException)
+                {
+                    logs.Add(clone._traceLog);
+                    if (Verbosity > 0)
+                        Console.WriteLine($"[d] <<< return at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
+                }
+                catch (UndeterministicIfException e)
+                {
+                    if (Verbosity > 0)
+                        Console.WriteLine($"[d] <<< {e.Message}");
+
+                    HintsDictionary hints0 = new(hints);
+                    hints0[e.lineno] = false;
+                    queue.Enqueue(hints0);
+
+                    HintsDictionary hints1 = new(hints);
+                    hints1[e.lineno] = true;
+                    queue.Enqueue(hints1);
+                }
+                catch (LoopException l)
+                {
+                    if (Verbosity > 0)
+                        Console.WriteLine($"[.] loop at line {l.lineno} (idx={l.idx}, log_len={clone._traceLog.entries.Count})");
+
+                    int idx = l.idx;
+                    VarDict varValues = clone._varProcessor.VariableValues;
+                    while (idx > 0 && clone._traceLog.entries.Last().stmt == clone._traceLog.entries[idx].stmt)
+                    {
+                        varValues = clone._traceLog.entries.Last().vars;
+                        clone._traceLog.entries.RemoveAt(clone._traceLog.entries.Count - 1);
+                        idx--;
+                    }
+
+                    SyntaxToken labelId;
+                    if (clone._traceLog.entries[idx].stmt is LabeledStatementSyntax labelStmt)
+                    {
+                        labelId = labelStmt.Identifier;
+                    }
+                    else
+                    {
+                        labelId = SyntaxFactory.Identifier($"l{get_lineno(clone._traceLog.entries[idx].stmt)}");
+                        clone._traceLog.entries[idx].stmt = LabeledStatement(labelId, clone._traceLog.entries[idx].stmt);
+                    }
+
+                    clone._traceLog.entries.Add(
+                            new TraceEntry(
+                                GotoStatement(SyntaxKind.GotoStatement, IdentifierName(labelId)),
+                                null,
+                                varValues
+                                )
+                            );
+
+                    logs.Add(clone._traceLog);
+                }
+                catch (ConditionalLoopException e)
+                {
+                    string? loopVar = clone._condStates[e.lineno].Last().find_loop_var(clone._condStates[e.lineno][^2]);
+                    if (loopVar == null)
+                    {
+                        Console.WriteLine(clone._condStates[e.lineno][^2].ToString());
+                        Console.WriteLine(clone._condStates[e.lineno].Last().ToString());
+                        throw new Exception($"Loop var not found at line {e.lineno}");
+                    }
+                    if (Verbosity > 0)
+                        Console.WriteLine($"[.] conditional loop at line {e.lineno}, loopVar: {loopVar}");
+                    _varProcessor.VariableValues.SetLoopVar(loopVar);
+                    continue;
+                }
+
+                break;
             }
 
             //            // have successful trace

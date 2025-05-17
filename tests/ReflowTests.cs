@@ -80,4 +80,10 @@ public class ReflowTests
     {
         checkData("CheckBox_a47b", "Dispose");
     }
+
+    [Fact]
+    public void loop()
+    {
+        checkData("loop");
+    }
 }
