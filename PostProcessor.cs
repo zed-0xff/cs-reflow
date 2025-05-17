@@ -10,8 +10,6 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public class PostProcessor
 {
-    static readonly string[] assignmentOperators = { "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=" };
-
     public bool RemoveSwitchVars = true;
     VariableProcessor _varProcessor;
 
@@ -44,6 +42,8 @@ public class PostProcessor
         );
     }
 
+    static readonly string[] assignmentOperators = { "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=" };
+    static readonly string[] simpleTypes = { "int", "bool", "float", "double", "char", "string", "object" };
 
     bool is_var_used(BlockSyntax block, string varName)
     {
@@ -51,7 +51,10 @@ public class PostProcessor
         foreach (string line in blockStr.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             string trimmed = line.Trim();
-            if (trimmed == $"int {varName};")
+            if (simpleTypes.Any(type => trimmed == ($"{type} {varName};")))
+                continue;
+
+            if (simpleTypes.Any(type => trimmed == ($"{type}[] {varName};")))
                 continue;
 
             if (trimmed.StartsWith($"int {varName} = "))
@@ -161,7 +164,7 @@ public class PostProcessor
     IfStatementSyntax postprocess_if(IfStatementSyntax ifStmt)
     {
         //      if (!bool_0aw) {} else ...
-        if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0)
+        if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
             ifStmt = ifStmt
                 .WithCondition(invert_condition(ifStmt.Condition))
                 .WithStatement(ifStmt.Else.Statement)
@@ -175,6 +178,11 @@ public class PostProcessor
         {
             ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
         }
+
+        // remove empty else
+        if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax block3 && block3.Statements.Count == 0)
+            ifStmt = ifStmt.WithElse(null);
+
         return ifStmt;
     }
 
@@ -218,6 +226,7 @@ public class PostProcessor
             statements.Add(stmt);
         }
 
+        // label + empty statement => label + next statement
         for (int i = 0; i < statements.Count - 1; i++)
         {
             if (statements[i] is LabeledStatementSyntax labelStmt && labelStmt.Statement is EmptyStatementSyntax)

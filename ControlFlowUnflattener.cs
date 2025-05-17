@@ -68,32 +68,45 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             return $"<State lineno={lineno}, vars={vars}>";
         }
 
-        public string? find_loop_var(State other)
+        public List<string> find_loop_vars(State other)
         {
             if (lineno != other.lineno)
-                return null;
+                return new();
 
             if (vars.Equals(other.vars))
-                return null;
+                return new();
 
             if (vars.Count != other.vars.Count)
-                return null;
+                return new();
 
-            string? result = null;
+            VarDict d1 = vars;
+            VarDict d2 = other.vars;
+
             foreach (var kv in vars)
             {
                 if (other.vars.TryGetValue(kv.Key, out var otherValue))
                 {
-                    if (!kv.Value.Equals(otherValue))
+                    if (kv.Value == null || otherValue == null || kv.Value.Equals(otherValue))
                     {
-                        if (result != null)
-                            return null; // multiple vars changed
-
-                        result = kv.Key;
+                        d1.Remove(kv.Key);
+                        d2.Remove(kv.Key);
                     }
                 }
             }
-            return result;
+
+            if (d1.Count != d2.Count)
+                return new();
+
+            if (d1.Values.Distinct().Count() != 1)
+                return new();
+
+            if (d2.Values.Distinct().Count() != 1)
+                return new();
+
+            if (!d1.Keys.ToHashSet().SetEquals(d2.Keys))
+                return new();
+
+            return d1.Keys.ToList();
         }
     };
 
@@ -580,7 +593,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             labels[stmt.Identifier.Text] = statements.IndexOf(stmt) - 1;
         }
 
-        // Console.WriteLine($"[d] {get_lineno(statements.First())}: labels: {String.Join(", ", labels.Keys)}");
+        // Console.WriteLine($"[d] {statements.First().LineNo()}: labels: {String.Join(", ", labels.Keys)}");
 
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
@@ -938,16 +951,19 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
                 catch (ConditionalLoopException e)
                 {
-                    string? loopVar = clone._condStates[e.lineno].Last().find_loop_var(clone._condStates[e.lineno][^2]);
-                    if (loopVar == null)
+                    List<string> loopVars = clone._condStates[e.lineno].Last().find_loop_vars(clone._condStates[e.lineno][^2]);
+                    if (loopVars.Count == 0)
                     {
                         Console.WriteLine(clone._condStates[e.lineno][^2].ToString());
                         Console.WriteLine(clone._condStates[e.lineno].Last().ToString());
                         throw new Exception($"Loop var not found at line {e.lineno}");
                     }
-                    if (Verbosity > 0)
-                        Console.WriteLine($"[.] conditional loop at line {e.lineno}, loopVar: {loopVar}");
-                    _varProcessor.VariableValues.SetLoopVar(loopVar);
+                    foreach (var loopVar in loopVars)
+                    {
+                        if (Verbosity > 0)
+                            Console.WriteLine($"[.] conditional loop at line {e.lineno}, loopVar: {loopVar}");
+                        _varProcessor.VariableValues.SetLoopVar(loopVar);
+                    }
                     continue;
                 }
 

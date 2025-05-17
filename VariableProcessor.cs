@@ -25,6 +25,7 @@ public class VariableProcessor : ICloneable
         Constants["uint.MinValue"] = uint.MinValue;
         Constants["uint.MaxValue"] = uint.MaxValue;
 
+        Constants["Structs_a7cb.BZh"] = 0x00685a42;
         Constants["Structs_e0d5.IDAT"] = 0x54414449;
         Constants["Structs_e0d5.IEND"] = 0x444e4549;
         Constants["Structs_e0d5.IHDR"] = 0x52444849;
@@ -329,22 +330,7 @@ public class VariableProcessor : ICloneable
 
         private object ConvertLiteral(LiteralExpressionSyntax literal)
         {
-            switch (literal.Kind())
-            {
-                case SyntaxKind.NumericLiteralToken:
-                    return Convert.ToUInt32(literal.Token.Value);
-                case SyntaxKind.NumericLiteralExpression:
-                    return Convert.ToUInt32(literal.Token.ValueText);
-                case SyntaxKind.StringLiteralExpression:
-                case SyntaxKind.StringLiteralToken:
-                    return literal.Token.ValueText;
-                case SyntaxKind.TrueLiteralExpression:
-                    return true;
-                case SyntaxKind.FalseLiteralExpression:
-                    return false;
-                default:
-                    throw new NotSupportedException($"Literal type '{literal.Kind()}' is not supported.");
-            }
+            return literal.Token.Value;
         }
     }
 
