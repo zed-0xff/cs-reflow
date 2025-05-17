@@ -274,12 +274,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 "<unknown>"
                 );
 
-    int get_lineno(CSharpSyntaxNode stmt)
-    {
-        var lineno = stmt.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
-        return lineno;
-    }
-
     void trace_while(WhileStatementSyntax whileStmt)
     {
         var condition = whileStmt.Condition;
@@ -358,7 +352,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     {
         if (value == null)
         {
-            throw new NotImplementedException($"{get_lineno(switchStmt)}: Switch statement with null value.");
+            throw new NotImplementedException($"{switchStmt.LineNo()}: Switch statement with null value.");
         }
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
 
@@ -459,7 +453,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     void trace_if(IfStatementSyntax ifStmt, object value)
     {
         var condition = ifStmt.Condition;
-        int lineno = get_lineno(condition);
+        int lineno = condition.LineNo();
 
         switch (value)
         {
@@ -490,7 +484,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 break;
 
             case null:
-                throw new UndeterministicIfException(condition.ToString(), get_lineno(condition));
+                throw new UndeterministicIfException(condition.ToString(), condition.LineNo());
 
             default:
                 throw new NotImplementedException($"If condition type '{value?.GetType()}' is not supported.");
@@ -554,7 +548,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public object EvaluateHintedExpression(ExpressionSyntax expression)
     {
-        if (_flowHints.TryGetValue(get_lineno(expression), out bool hint))
+        if (_flowHints.TryGetValue(expression.LineNo(), out bool hint))
         {
             return hint;
         }
@@ -603,11 +597,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 label = l0.Identifier.Text;
                 stmt = l0.Statement;
             }
-            int lineno = get_lineno(stmt);
+            int lineno = stmt.LineNo();
 
             if (Verbosity > 1)
             {
-                Console.WriteLine($"[d] {get_lineno(stmt).ToString().PadLeft(6)}: {NodeTitle(stmt)}");
+                Console.WriteLine($"[d] {stmt.LineNo().ToString().PadLeft(6)}: {NodeTitle(stmt)}");
             }
 
             try
@@ -746,7 +740,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 if (skip)
                     Console.Write(ANSI_COLOR_GRAY);
-                Console.Write($"{get_lineno(stmt).ToString().PadLeft(6)}: ");
+                Console.Write($"{stmt.LineNo().ToString().PadLeft(6)}: ");
                 Console.Write(line);
                 if (skip)
                     Console.Write(ANSI_COLOR_RESET);
@@ -758,10 +752,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 _traceLog.entries.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues, comment));
             }
 
-            var state = new State(get_lineno(stmt), _varProcessor.VariableValues);
+            var state = new State(stmt.LineNo(), _varProcessor.VariableValues);
             if (_states.TryGetValue(state, out int idx))
             {
-                throw new LoopException($"Loop detected at line {get_lineno(stmt)}: {stmt} (state: {idx})", get_lineno(stmt), idx);
+                throw new LoopException($"Loop detected at line {stmt.LineNo()}: {stmt} (state: {idx})", stmt.LineNo(), idx);
             }
             else
             {
@@ -837,7 +831,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     case ReturnStatementSyntax: throw new ReturnException(null); // TODO: return value
 
                     default:
-                        throw new NotImplementedException($"{get_lineno(stmt)}: Unhandled statement type: {stmt.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")}");
+                        throw new NotImplementedException($"{stmt.LineNo()}: Unhandled statement type: {stmt.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")}");
                         //                    stmt = GetNextStatement(stmt, block);
                         //                    continue;
                 } // switch stmt
@@ -845,7 +839,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
             catch (GotoException e)
             {
-                //                Console.WriteLine($"[d] Goto '{e.label}' at line {get_lineno(stmt)}, labels: {String.Join(", ", labels.Keys)}");
+                //                Console.WriteLine($"[d] Goto '{e.label}' at line {stmt.LineNo()}, labels: {String.Join(", ", labels.Keys)}");
                 if (labels.TryGetValue(e.label, out i))
                 {
                     // local block goto
@@ -874,20 +868,20 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 ControlFlowUnflattener clone = CloneWithHints(hints);
                 if (Verbosity > 0)
-                    Console.WriteLine($"[d] >>> start tracing {get_lineno(block)} with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+                    Console.WriteLine($"[d] >>> start tracing {block.LineNo()} with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
 
                 try
                 {
                     clone.trace_block(block);
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
-                        Console.WriteLine($"[d] <<< end of block at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
+                        Console.WriteLine($"[d] <<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}");
                 }
                 catch (ReturnException)
                 {
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
-                        Console.WriteLine($"[d] <<< return at line {get_lineno(clone._traceLog.entries.Last().stmt)}");
+                        Console.WriteLine($"[d] <<< return at line {clone._traceLog.entries.Last().stmt.LineNo()}");
                 }
                 catch (UndeterministicIfException e)
                 {
@@ -923,10 +917,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     }
                     else
                     {
-                        int label_lineno = get_lineno(clone._traceLog.entries[idx].stmt);
+                        int label_lineno = clone._traceLog.entries[idx].stmt.LineNo();
                         if (label_lineno == 1 && idx > 0)
                         {
-                            label_lineno = get_lineno(clone._traceLog.entries[idx - 1].stmt) + 1;
+                            label_lineno = clone._traceLog.entries[idx - 1].stmt.LineNo() + 1;
                         }
                         labelId = SyntaxFactory.Identifier($"l{label_lineno}");
                         clone._traceLog.entries[idx].stmt = LabeledStatement(labelId, clone._traceLog.entries[idx].stmt);
@@ -965,7 +959,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             //            {
             //                var stmt = entry.stmt;
             //                var value = entry.value;
-            //                Console.WriteLine($"{get_lineno(stmt).ToString().PadLeft(6)}: {stmt} => {value}");
+            //                Console.WriteLine($"{stmt.LineNo().ToString().PadLeft(6)}: {stmt} => {value}");
             //            }
         }
 
