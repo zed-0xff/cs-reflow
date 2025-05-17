@@ -32,10 +32,14 @@ class Program
         );
 
         var verbosityOpt = new Option<int>(
-            aliases: new[] { "--verbosity", "-v" },
+            aliases: new[] { "--verbose", "-v" },
             getDefaultValue: () => 0,
-            description: "Set verbosity level."
-        );
+            description: "Increase verbosity level."
+        )
+        {
+            Arity = ArgumentArity.ZeroOrMore,
+            AllowMultipleArgumentsPerToken = true
+        };
 
         var processAllOpt = new Option<bool>(
             aliases: new[] { "--all", "-a" },
@@ -88,7 +92,7 @@ class Program
                 filename: context.ParseResult.GetValueForArgument(filenameArg),
                 methods: context.ParseResult.GetValueForArgument(methodsArg),
                 hintList: context.ParseResult.GetValueForOption(hintOpt),
-                verbosity: context.ParseResult.GetValueForOption(verbosityOpt),
+                verbosity: context.ParseResult.Tokens.Count(t => t.Value == "-v"),
                 processAll: context.ParseResult.GetValueForOption(processAllOpt),
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
