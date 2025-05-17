@@ -158,10 +158,19 @@ public class PostProcessor
     {
         //      if (!bool_0aw) {} else ...
         if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0)
-            return ifStmt
+            ifStmt = ifStmt
                 .WithCondition(invert_condition(ifStmt.Condition))
                 .WithStatement(ifStmt.Else.Statement)
                 .WithElse(null);
+
+        //      if (...) {} else { if (...) {} }
+        if (ifStmt.Else != null
+                && ifStmt.Else.Statement is BlockSyntax block2
+                && block2.Statements.Count == 1
+                && block2.Statements[0] is IfStatementSyntax)
+        {
+            ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
+        }
         return ifStmt;
     }
 
