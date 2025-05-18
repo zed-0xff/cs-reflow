@@ -76,7 +76,7 @@ public class ReflowTests
     }
 
     [Fact]
-    public void ProcessData5()
+    public void CheckBox_a47b()
     {
         checkData("CheckBox_a47b", "Dispose");
     }

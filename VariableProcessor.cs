@@ -14,6 +14,11 @@ public class VariableProcessor : ICloneable
         public VarNotFoundException(string varName) : base($"Variable '{varName}' not found.") { }
     }
 
+    public class UnknownValue
+    {
+        public override string ToString() => "<unknown>";
+    }
+
     public VarDict VariableValues { get; private set; } = new();
     public static VarDict Constants { get; private set; } = new();
 
@@ -61,7 +66,7 @@ public class VariableProcessor : ICloneable
         public List<string> VarsRead { get; } = new();
         public List<string> VarsReferenced => VarsRead.Union(VarsWritten).ToList();
 
-        public object? Result { get; private set; } = null;
+        public object? Result { get; private set; } = new UnknownValue();
 
         public Expression(StatementSyntax stmt, VarDict variableValues)
         {
@@ -119,7 +124,7 @@ public class VariableProcessor : ICloneable
                 variableValues[varName] = value; //, localDeclaration.Declaration.Type.ToString());
                 return value;
             }
-            return null;
+            return new UnknownValue();
         }
 
         object cast_var(object value, string toType)
@@ -344,7 +349,25 @@ public class VariableProcessor : ICloneable
 
         object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
         {
-            // Recursively evaluate the left and right parts of the binary expression
+            // handle falsely misinterpreted "(nint)-17648"
+            if (binaryExpr.Left is ParenthesizedExpressionSyntax parenExpr
+                    && binaryExpr.OperatorToken.Text == "-"
+                    && binaryExpr.Right is LiteralExpressionSyntax)
+            {
+                string ls = binaryExpr.Left.ToString();
+                switch (ls)
+                {
+                    case "(int)":
+                    case "(nint)":
+                    case "(uint)":
+                    case "(nuint)":
+                        return cast_var(
+                                EvaluatePrefixExpression(SyntaxFactory.PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, binaryExpr.Right)),
+                                parenExpr.Expression.ToString()
+                                );
+                }
+            }
+
             var leftValue = EvaluateExpression(binaryExpr.Left);
             var rightValue = EvaluateExpression(binaryExpr.Right);
 

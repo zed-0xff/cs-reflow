@@ -1,4 +1,4 @@
-task :default => [:test]
+task :default => [:fmt, :test]
 
 task :build do
   sh "dotnet build"

@@ -9,6 +9,7 @@ using System;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
+using UnknownValue = VariableProcessor.UnknownValue;
 
 public class AutoDefaultIntDict : Dictionary<int, int>
 {
@@ -86,7 +87,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 if (other.vars.TryGetValue(kv.Key, out var otherValue))
                 {
-                    if (kv.Value == null || otherValue == null || kv.Value.Equals(otherValue))
+                    if (kv.Value is UnknownValue || otherValue is UnknownValue || kv.Value is null || otherValue is null || kv.Value.Equals(otherValue))
                     {
                         d1.Remove(kv.Key);
                         d2.Remove(kv.Key);
@@ -364,9 +365,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     void trace_switch(SwitchStatementSyntax switchStmt, object value)
     {
         if (value == null)
-        {
             throw new NotImplementedException($"{switchStmt.LineNo()}: Switch statement with null value.");
-        }
+        if (value is UnknownValue)
+            throw new NotImplementedException($"{switchStmt.LineNo()}: Switch statement with UnknownValue.");
+
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
 
         foreach (var s in switchStmt.Sections)
@@ -496,7 +498,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
                 break;
 
-            case null:
+            case UnknownValue:
                 throw new UndeterministicIfException(condition.ToString(), condition.LineNo());
 
             default:
@@ -601,7 +603,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             StatementSyntax stmt = statements[i];
             string comment = "";
             string label = "";
-            object? value = null;
+            object? value = new UnknownValue();
             bool skip = false;
             bool trace = true;
 
@@ -626,7 +628,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         _condStates.TryAdd(lineno, new List<State>());
                         _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues));
                         value = EvaluateHintedExpression(ifStmt.Condition);
-                        if (value is not null)
+                        //if (value != null and value is not UnknownValue)
                         {
                             comment = value.ToString();
                             if (!_flowHints.ContainsKey(lineno))
@@ -642,9 +644,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         if (value is Boolean)
                             valueStr = valueStr.ToLower();
 
-                        if (value != null && !stmt.ToString().Contains($"= {valueStr};"))
+                        if (value is not UnknownValue && !stmt.ToString().Contains($"= {valueStr};"))
                         {
-                            comment = value.ToString();
+                            comment = valueStr;
                         }
 
                         // TODO: move this 2 blocks to PostProcess()
@@ -740,7 +742,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 line = line.Substring(0, 99) + "…";
             }
-            if (comment != "")
+            if (!String.IsNullOrEmpty(comment))
             {
                 if (comment.Length > 99)
                 {
