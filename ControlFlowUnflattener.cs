@@ -564,9 +564,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public object EvaluateHintedExpression(ExpressionSyntax expression)
     {
         if (_flowHints.TryGetValue(expression.LineNo(), out bool hint))
-        {
             return hint;
-        }
+
         return EvaluateBoolExpression(expression);
     }
 
@@ -627,7 +626,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     case IfStatementSyntax ifStmt:
                         _condStates.TryAdd(lineno, new List<State>());
                         _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues));
-                        value = EvaluateHintedExpression(ifStmt.Condition);
+                        if (NodeTitle(ifStmt).Contains("calli with instance method signature not support") && !_flowHints.ContainsKey(lineno))
+                            value = new UnknownValue();
+                        else
+                            value = EvaluateHintedExpression(ifStmt.Condition);
                         //if (value != null and value is not UnknownValue)
                         {
                             comment = value.ToString();

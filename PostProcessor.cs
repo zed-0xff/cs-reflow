@@ -43,7 +43,7 @@ public class PostProcessor
     }
 
     static readonly string[] assignmentOperators = { "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=" };
-    static readonly string[] simpleTypes = { "int", "uint", "nint", "nuint", "long", "ulong", "bool", "float", "double", "char", "string", "object" };
+    static readonly string[] simpleTypes = { "int", "uint", "nint", "nuint", "long", "ulong", "bool", "float", "double", "char", "string", "object", "byte", "sbyte" };
 
     bool is_var_used(BlockSyntax block, string varName)
     {

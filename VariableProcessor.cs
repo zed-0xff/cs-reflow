@@ -238,11 +238,19 @@ public class VariableProcessor : ICloneable
                     {
                         // Handle default values for common types
                         "default(bool)" => default(bool),
+                        "default(byte)" => default(byte),
                         "default(double)" => default(double),
+                        "default(float)" => default(float),
                         "default(int)" => default(int),
+                        "default(long)" => default(long),
+                        "default(nint)" => default(nint),   // TODO: 32/64 bit cmdline switch
+                        "default(nuint)" => default(nuint), // TODO: 32/64 bit cmdline switch
                         "default(object)" => default(object),
+                        "default(sbyte)" => default(sbyte),
                         "default(string)" => default(string),
                         "default(uint)" => default(uint),
+                        "default(ulong)" => default(ulong),
+                        "default(ushort)" => default(ushort),
                         _ => throw new NotSupportedException($"Default expression '{defaultExpr.ToString()}' is not supported.")
                     };
 
