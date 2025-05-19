@@ -15,6 +15,12 @@ public class LongRange
         return $"[{Min}..{Max}]";
     }
 
+    public IEnumerable<long> Values()
+    {
+        for (long i = Min; i <= Max; i++)
+            yield return i;
+    }
+
     static public LongRange operator /(LongRange left, long right)
     {
         if (right == 0)

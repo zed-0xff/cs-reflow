@@ -601,7 +601,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             StatementSyntax stmt = statements[i];
             string comment = "";
             string label = "";
-            object? value = new UnknownValue();
+            object? value = UnknownValue.Create();
             bool skip = false;
             bool trace = true;
 
@@ -626,7 +626,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         _condStates.TryAdd(lineno, new List<State>());
                         _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues));
                         if (NodeTitle(ifStmt).Contains("calli with instance method signature not support") && !_flowHints.ContainsKey(lineno))
-                            value = new UnknownValue();
+                            value = UnknownValue.Create();
                         else
                             value = EvaluateHintedExpression(ifStmt.Condition);
                         //if (value != null and value is not UnknownValue)

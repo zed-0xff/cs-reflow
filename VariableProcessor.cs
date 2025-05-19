@@ -112,7 +112,7 @@ public class VariableProcessor : ICloneable
             var initializerExpression = decl.Initializer?.Value;
 
             var value = initializerExpression == null
-                ? new UnknownValue(localDeclaration.Declaration.Type)
+                ? UnknownValue.Create(localDeclaration.Declaration.Type)
                 : EvaluateExpression(initializerExpression);
 
             // do not overwrite existing variable values if initializerExpression is null
@@ -217,7 +217,7 @@ public class VariableProcessor : ICloneable
                         Type? type = null;
                         if (variableValues.ContainsKey(varName))
                             type = variableValues[varName]?.GetType();
-                        variableValues[varName] = new UnknownValue(type);
+                        variableValues[varName] = UnknownValue.Create(type);
                         throw;
                     }
 

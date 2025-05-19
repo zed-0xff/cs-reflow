@@ -4,69 +4,49 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 public class UnknownValue
 {
     public string? Type { get; } = null;
-    public LongRange? Range { get; private set; } = null;
 
-    const ulong MAX_DISCRETE_CARDINALITY = 1000000;
-
-    void init()
-    {
-        switch (Type)
-        {
-            case "int":
-                Range = new LongRange(int.MinValue, int.MaxValue);
-                break;
-            case "uint":
-                Range = new LongRange(uint.MinValue, uint.MaxValue);
-                break;
-        }
-    }
+    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1000000;
 
     public UnknownValue()
     {
     }
 
-    public UnknownValue(Type? type)
-    {
-        Type = type?.ToString();
-        init();
-    }
-
-    public UnknownValue(TypeSyntax type)
-    {
-        Type = type.ToString();
-        init();
-    }
-
-    public UnknownValue(string type)
+    public UnknownValue(string? type)
     {
         Type = type;
-        init();
     }
 
-    public UnknownValue(string type, LongRange range)
+    public static UnknownValue Create() => new UnknownValue();
+    public static UnknownValue Create(string type) => new UnknownValue(type);
+    public static UnknownValue Create(Type? type) => Create(type?.ToString());
+    public static UnknownValue Create(TypeSyntax type) => Create(type.ToString());
+
+    public static UnknownValue operator +(UnknownValue left, object right)
     {
-        Type = type;
-        Range = range;
+        return UnknownValue.Create(left.Type);
     }
 
-    public ulong Cardinality()
+    public virtual UnknownValue Cast(string toType)
     {
-        if (Range is null)
-            return 0;
-
-        return (ulong)(Range.Max - Range.Min + 1); // because both are inclusive
+        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
     }
 
-    public UnknownValue Cast(string toType)
+    public virtual string ToString()
     {
-        if (Type == "uint" && toType == "int" && Range is not null && Range.Max <= 0x7FFFFFFF)
-        {
-            return new UnknownValue("int", new LongRange(0, Range.Max));
-        }
-        return new UnknownValue(toType);
+        return $"UnknownValue<{Type}>";
     }
 
-    private static bool TryConvertToLong(object obj, out long result)
+    public virtual ulong Cardinality()
+    {
+        throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
+    }
+
+    public virtual IEnumerable<long> Values()
+    {
+        throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
+    }
+
+    protected static bool TryConvertToLong(object obj, out long result)
     {
         switch (obj)
         {
@@ -88,63 +68,6 @@ public class UnknownValue
         }
     }
 
-    public static UnknownValue operator /(UnknownValue left, object right)
-    {
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValue(left.Type, left.Range / l)
-            : new UnknownValue(left.Type);
-    }
-
-    public static UnknownValue operator +(UnknownValue left, object right)
-    {
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValue(left.Type, left.Range + l)
-            : new UnknownValue(left.Type);
-    }
-
-    public static UnknownValue operator -(UnknownValue left, object right)
-    {
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValue(left.Type, left.Range - l)
-            : new UnknownValue(left.Type);
-    }
-
-    public static UnknownValue operator *(UnknownValue left, object right)
-    {
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValue(left.Type, left.Range * l)
-            : new UnknownValue(left.Type);
-    }
-
-    public static UnknownValue operator %(UnknownValue left, object right)
-    {
-        if (!TryConvertToLong(right, out long l))
-            return new UnknownValue(left.Type);
-
-        if (l == 0)
-            throw new DivideByZeroException();
-
-        // TODO: case when left is not full range
-        if (l > 0)
-            return new UnknownValue(left.Type, new LongRange(0, l - 1));
-        else
-            return new UnknownValue(left.Type, new LongRange(l + 1, 0));
-
-    }
-
-    public static UnknownValue operator ^(UnknownValue left, object right)
-    {
-        if (!TryConvertToLong(right, out long l))
-            return new UnknownValue(left.Type);
-
-        if (left.Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return new UnknownValue(left.Type);
-
-        // TODO: 
-
-        return new UnknownValue(left.Type);
-    }
-
     public object Op(string op, object rValue)
     {
         switch (op)
@@ -160,7 +83,7 @@ public class UnknownValue
             case "<<":
             case ">>":
             case ">>>":
-                return new UnknownValue(Type);
+                return UnknownValue.Create(Type);
 
             case "!=":
             case "<":
@@ -168,7 +91,7 @@ public class UnknownValue
             case "==":
             case ">":
             case ">=":
-                return new UnknownValue(typeof(bool));
+                return UnknownValue.Create(typeof(bool));
 
             default:
                 throw new NotImplementedException($"{ToString()}: Operator {op} is not implemented");
@@ -177,11 +100,6 @@ public class UnknownValue
 
     public object InverseOp(string op, object lValue)
     {
-        return new UnknownValue();
-    }
-
-    public override string ToString()
-    {
-        return $"UnknownValue<{Type}>";
+        return UnknownValue.Create(Type);
     }
 }
