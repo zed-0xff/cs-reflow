@@ -13,7 +13,7 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
-    public void TestRange_int()
+    public void Test_int()
     {
         UnknownValueRange a = new("int");
         Assert.NotNull(a.Range);
@@ -22,7 +22,7 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
-    public void TestRange_int_div()
+    public void Test_int_div()
     {
         UnknownValueRange a = new("int");
         a /= 10;
@@ -32,7 +32,7 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
-    public void TestRange_int_mod()
+    public void Test_int_mod()
     {
         UnknownValueRange a = new("int");
         a %= 100;
@@ -42,7 +42,7 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
-    public void TestRange_int_mod_negative()
+    public void Test_int_mod_negative()
     {
         UnknownValueRange a = new("int");
         a %= -100;
@@ -51,9 +51,44 @@ public class UnknownValueRangeTests
         Assert.Equal(0, a.Range.Max);
     }
 
+    [Fact]
+    public void Test_int_xor()
+    {
+        UnknownValueRange a = new("int", new LongRange(1, 5));
+        UnknownValue b = a ^ 0x10;
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { 0x11, 0x12, 0x13, 0x14, 0x15 }, values);
+    }
 
     [Fact]
-    public void TestRange_uint()
+    public void Test_int_add()
+    {
+        UnknownValueRange a = new("int", new LongRange(1, 5));
+        UnknownValue b = a + 0x10;
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { 0x11, 0x12, 0x13, 0x14, 0x15 }, values);
+    }
+
+    [Fact]
+    public void Test_int_sub()
+    {
+        UnknownValueRange a = new("int", new LongRange(10, 15));
+        UnknownValue b = a - 10;
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { 0, 1, 2, 3, 4, 5 }, values);
+    }
+
+    [Fact]
+    public void Test_int_mul()
+    {
+        UnknownValueRange a = new("int", new LongRange(1, 3));
+        UnknownValue b = a * 5;
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { 5, 10, 15 }, values);
+    }
+
+    [Fact]
+    public void Test_uint()
     {
         UnknownValueRange a = new("uint");
         Assert.NotNull(a.Range);
@@ -62,7 +97,7 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
-    public void TestCast()
+    public void Test_Cast()
     {
         UnknownValueRange a = new("uint");
         UnknownValueRange b = (a / 0x100).Cast("int");

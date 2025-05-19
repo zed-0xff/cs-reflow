@@ -30,5 +30,16 @@ public class UnknownValueList : UnknownValue
     {
         return values;
     }
+
+    public static UnknownValue operator ^(UnknownValueList left, object right)
+    {
+        if (!TryConvertToLong(right, out long l))
+            return UnknownValue.Create(left.Type);
+
+        if (left.Cardinality() > MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(left.Type);
+
+        return new UnknownValueList(left.Type, left.Values().Select(v => v ^ l).OrderBy(x => x).ToList());
+    }
 }
 

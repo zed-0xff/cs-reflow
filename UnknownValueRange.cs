@@ -16,16 +16,24 @@ public class UnknownValueRange : UnknownValue
     {
         switch (Type)
         {
+            case "bool":
+            case "System.Boolean":
+                Range = new LongRange(0, 1);
+                break;
             case "byte":
+            case "System.Byte":
                 Range = new LongRange(byte.MinValue, byte.MaxValue);
                 break;
             case "int":
+            case "System.Int32":
                 Range = new LongRange(int.MinValue, int.MaxValue);
                 break;
             case "sbyte":
+            case "System.SByte":
                 Range = new LongRange(sbyte.MinValue, sbyte.MaxValue);
                 break;
             case "uint":
+            case "System.UInt32":
                 Range = new LongRange(uint.MinValue, uint.MaxValue);
                 break;
             default:
@@ -35,7 +43,7 @@ public class UnknownValueRange : UnknownValue
 
     public override UnknownValueRange Cast(string toType)
     {
-        if (Type == "uint" && toType == "int" && Range is not null && Range.Max <= 0x7FFFFFFF)
+        if (Type == "uint" && toType == "int" && Range.Max <= 0x7FFFFFFF)
         {
             return new UnknownValueRange("int", new LongRange(0, Range.Max));
         }
@@ -63,17 +71,28 @@ public class UnknownValueRange : UnknownValue
             : new UnknownValueRange(left.Type);
     }
 
-    public static UnknownValueRange operator *(UnknownValueRange left, object right)
+    public static UnknownValue operator *(UnknownValueRange left, object right)
     {
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValueRange(left.Type, left.Range * l)
-            : new UnknownValueRange(left.Type);
+        if (!TryConvertToLong(right, out long l))
+            return UnknownValue.Create(left.Type);
+
+        if (left.Cardinality() > MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(left.Type);
+
+        // TODO: apply mask
+        return new UnknownValueList(left.Type, left.Values().Select(v => v * l).OrderBy(x => x).ToList());
     }
 
+    public override UnknownValueRange Mod(object right)
+    {
+        return this % right;
+    }
+
+    // should return UnknownValueRange, or '%=' won't compile
     public static UnknownValueRange operator %(UnknownValueRange left, object right)
     {
         if (!TryConvertToLong(right, out long l))
-            return new UnknownValueRange(left.Type);
+            return new(left.Type);
 
         if (l == 0)
             throw new DivideByZeroException();
@@ -89,29 +108,21 @@ public class UnknownValueRange : UnknownValue
     public static UnknownValue operator ^(UnknownValueRange left, object right)
     {
         if (!TryConvertToLong(right, out long l))
-            return new UnknownValueRange(left.Type);
+            return UnknownValue.Create(left.Type);
 
         if (left.Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueRange(left.Type);
+            return UnknownValue.Create(left.Type);
 
-        // TODO: 
-
-        return new UnknownValueList(left.Type);
+        return new UnknownValueList(left.Type, left.Values().Select(v => v ^ l).OrderBy(x => x).ToList());
     }
 
     public override IEnumerable<long> Values()
     {
-        if (Range is null)
-            return Enumerable.Empty<long>();
-
         return Range.Values();
     }
 
     public override ulong Cardinality()
     {
-        if (Range is null)
-            return 0;
-
         return (ulong)(Range.Max - Range.Min + 1); // because both are inclusive
     }
 

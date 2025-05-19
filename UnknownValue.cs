@@ -17,7 +17,7 @@ public class UnknownValue
     }
 
     public static UnknownValue Create() => new UnknownValue();
-    public static UnknownValue Create(string type) => new UnknownValue(type);
+    public static UnknownValue Create(string type) => type == null ? new UnknownValue() : new UnknownValueRange(type);
     public static UnknownValue Create(Type? type) => Create(type?.ToString());
     public static UnknownValue Create(TypeSyntax type) => Create(type.ToString());
 
@@ -44,6 +44,16 @@ public class UnknownValue
     public virtual IEnumerable<long> Values()
     {
         throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
+    }
+
+    public static UnknownValue operator %(UnknownValue left, object right)
+    {
+        throw new NotImplementedException($"{left.ToString()}.%: not implemented.");
+    }
+
+    public virtual UnknownValue Mod(object right)
+    {
+        throw new NotImplementedException($"{ToString()}.Mod(): not implemented.");
     }
 
     protected static bool TryConvertToLong(object obj, out long result)
@@ -100,6 +110,22 @@ public class UnknownValue
 
     public object InverseOp(string op, object lValue)
     {
-        return UnknownValue.Create(Type);
+        return op switch
+        {
+            "+" => Op(op, lValue),
+            "*" => Op(op, lValue),
+            "^" => Op(op, lValue),
+            "&" => Op(op, lValue),
+            "|" => Op(op, lValue),
+            "!=" => Op(op, lValue),
+            "==" => Op(op, lValue),
+
+            "<" => Op(">=", lValue),
+            "<=" => Op(">", lValue),
+            ">" => Op("<=", lValue),
+            ">=" => Op("<", lValue),
+
+            _ => throw new NotImplementedException($"{ToString()}.InverseOp(): '{op}' is not implemented"),
+        };
     }
 }

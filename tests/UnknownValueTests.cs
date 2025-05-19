@@ -17,4 +17,14 @@ public class UnknownValueTests
         UnknownValue a = new();
         Assert.Equal("UnknownValue<>", a.ToString());
     }
+
+    [Fact]
+    public void Test_expr()
+    {
+        UnknownValue a = UnknownValue.Create("int");
+        a = a.Cast("uint");
+        a = a.Mod(1949u);
+        Assert.Equal("UnknownValue<uint>[0..1948]", a.ToString());
+        //        a = a.Xor(0x70EF1C76);
+    }
 }
