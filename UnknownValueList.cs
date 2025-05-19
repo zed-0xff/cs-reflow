@@ -1,4 +1,4 @@
-public class UnknownValueList : UnknownValue
+public class UnknownValueList : UnknownTypedValue
 {
     public List<long> values = new();
 
@@ -31,15 +31,33 @@ public class UnknownValueList : UnknownValue
         return values;
     }
 
-    public static UnknownValue operator ^(UnknownValueList left, object right)
-    {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownValue.Create(left.Type);
+    public override UnknownValueBase Add(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => v + l).ToList())
+            : new UnknownValueList(Type);
 
-        if (left.Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(left.Type);
+    public override UnknownValueBase Sub(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => v - l).ToList())
+            : new UnknownValueList(Type);
 
-        return new UnknownValueList(left.Type, left.Values().Select(v => v ^ l).OrderBy(x => x).ToList());
-    }
+    public override UnknownValueBase Div(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => v / l).Distinct().ToList())
+            : new UnknownValueList(Type);
+
+    public override UnknownValueBase Mod(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => v % l).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(Type);
+
+    public override UnknownValueBase Mul(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => v * l).Distinct().ToList())
+            : new UnknownValueList(Type);
+
+    public override UnknownValueBase Xor(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => v ^ l).ToList())
+            : new UnknownValueList(Type);
 }
-

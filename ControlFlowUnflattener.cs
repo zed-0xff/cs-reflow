@@ -86,7 +86,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 if (other.vars.TryGetValue(kv.Key, out var otherValue))
                 {
-                    if (kv.Value is UnknownValue || otherValue is UnknownValue || kv.Value is null || otherValue is null || kv.Value.Equals(otherValue))
+                    if (kv.Value is UnknownValueBase || otherValue is UnknownValueBase || kv.Value is null || otherValue is null || kv.Value.Equals(otherValue))
                     {
                         d1.Remove(kv.Key);
                         d2.Remove(kv.Key);
@@ -365,7 +365,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     {
         if (value == null)
             throw new NotImplementedException($"{switchStmt.LineNo()}: Switch statement with null value.");
-        if (value is UnknownValue)
+        if (value is UnknownValueBase)
             throw new NotImplementedException($"{switchStmt.LineNo()}: Switch statement with UnknownValue.");
 
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
@@ -497,7 +497,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
                 break;
 
-            case UnknownValue:
+            case UnknownValueBase:
                 throw new UndeterministicIfException(condition.ToString(), condition.LineNo());
 
             default:

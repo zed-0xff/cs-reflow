@@ -1,131 +1,41 @@
 using System;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-public class UnknownValue
+public class UnknownValue : UnknownValueBase
 {
-    public string? Type { get; } = null;
-
-    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1000000;
-
     public UnknownValue()
     {
     }
 
-    public UnknownValue(string? type)
+    public static UnknownValueBase Create() => new UnknownValue();
+    public static UnknownValueBase Create(string type) => type == null ? Create() : new UnknownValueRange(type);
+    public static UnknownValueBase Create(Type? type) => Create(type?.ToString());
+    public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
+
+    public override UnknownValueBase Cast(string toType)
     {
-        Type = type;
+        return UnknownValue.Create(toType);
     }
 
-    public static UnknownValue Create() => new UnknownValue();
-    public static UnknownValue Create(string type) => type == null ? new UnknownValue() : new UnknownValueRange(type);
-    public static UnknownValue Create(Type? type) => Create(type?.ToString());
-    public static UnknownValue Create(TypeSyntax type) => Create(type.ToString());
-
-    public static UnknownValue operator +(UnknownValue left, object right)
+    public override string ToString()
     {
-        return UnknownValue.Create(left.Type);
+        return "UnknownValue";
     }
 
-    public virtual UnknownValue Cast(string toType)
-    {
-        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
-    }
-
-    public virtual string ToString()
-    {
-        return $"UnknownValue<{Type}>";
-    }
-
-    public virtual ulong Cardinality()
+    public override ulong Cardinality()
     {
         throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
     }
 
-    public virtual IEnumerable<long> Values()
+    public override IEnumerable<long> Values()
     {
         throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
     }
 
-    public static UnknownValue operator %(UnknownValue left, object right)
-    {
-        throw new NotImplementedException($"{left.ToString()}.%: not implemented.");
-    }
-
-    public virtual UnknownValue Mod(object right)
-    {
-        throw new NotImplementedException($"{ToString()}.Mod(): not implemented.");
-    }
-
-    protected static bool TryConvertToLong(object obj, out long result)
-    {
-        switch (obj)
-        {
-            case int i:
-                result = i;
-                return true;
-            case uint u:
-                result = u;
-                return true;
-            case long l:
-                result = l;
-                return true;
-            case ulong ul when ul <= long.MaxValue:
-                result = (long)ul;
-                return true;
-            default:
-                result = default;
-                return false;
-        }
-    }
-
-    public object Op(string op, object rValue)
-    {
-        switch (op)
-        {
-            case "+":
-            case "-":
-            case "*":
-            case "/":
-            case "%":
-            case "^":
-            case "&":
-            case "|":
-            case "<<":
-            case ">>":
-            case ">>>":
-                return UnknownValue.Create(Type);
-
-            case "!=":
-            case "<":
-            case "<=":
-            case "==":
-            case ">":
-            case ">=":
-                return UnknownValue.Create(typeof(bool));
-
-            default:
-                throw new NotImplementedException($"{ToString()}: Operator {op} is not implemented");
-        }
-    }
-
-    public object InverseOp(string op, object lValue)
-    {
-        return op switch
-        {
-            "+" => Op(op, lValue),
-            "*" => Op(op, lValue),
-            "^" => Op(op, lValue),
-            "&" => Op(op, lValue),
-            "|" => Op(op, lValue),
-            "!=" => Op(op, lValue),
-            "==" => Op(op, lValue),
-
-            "<" => Op(">=", lValue),
-            "<=" => Op(">", lValue),
-            ">" => Op("<=", lValue),
-            ">=" => Op("<", lValue),
-
-            _ => throw new NotImplementedException($"{ToString()}.InverseOp(): '{op}' is not implemented"),
-        };
-    }
+    public override UnknownValue Add(object right) => new UnknownValue();
+    public override UnknownValue Div(object right) => new UnknownValue();
+    public override UnknownValue Mod(object right) => new UnknownValue();
+    public override UnknownValue Mul(object right) => new UnknownValue();
+    public override UnknownValue Sub(object right) => new UnknownValue();
+    public override UnknownValue Xor(object right) => new UnknownValue();
 }

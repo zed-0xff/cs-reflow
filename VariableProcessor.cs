@@ -62,7 +62,7 @@ public class VariableProcessor : ICloneable
         public List<string> VarsRead { get; } = new();
         public List<string> VarsReferenced => VarsRead.Union(VarsWritten).ToList();
 
-        public object? Result { get; private set; } = new UnknownValue();
+        public object? Result { get; private set; } = UnknownValue.Create();
 
         public Expression(StatementSyntax stmt, VarDict variableValues)
         {
@@ -126,7 +126,7 @@ public class VariableProcessor : ICloneable
 
         object cast_var(object value, string toType)
         {
-            if (value is UnknownValue uv)
+            if (value is UnknownValueBase uv)
                 return uv.Cast(toType);
 
             switch (toType)
@@ -264,7 +264,7 @@ public class VariableProcessor : ICloneable
                     if (variableValues.ContainsKey(varName2))
                         return variableValues[varName2];
                     else
-                        return new UnknownValue();
+                        return UnknownValue.Create();
 
                 case LiteralExpressionSyntax literal:
                     return ConvertLiteral(literal);
@@ -423,9 +423,9 @@ public class VariableProcessor : ICloneable
 
             // evaluate rValue, handle everything else
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
-            if (lValue is UnknownValue luv)
+            if (lValue is UnknownValueBase luv)
                 return luv.Op(op, rValue);
-            if (rValue is UnknownValue ruv)
+            if (rValue is UnknownValueBase ruv)
                 return ruv.InverseOp(op, lValue);
 
             long ll = Convert.ToInt64(lValue);

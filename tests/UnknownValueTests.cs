@@ -8,20 +8,20 @@ public class UnknownValueTests
         UnknownValue a = new();
         UnknownValue b = new();
 
-        Assert.True((a + b) is UnknownValue);
+        Assert.True(a.Add(b) is UnknownValue);
     }
 
     [Fact]
     public void Test_ToString()
     {
         UnknownValue a = new();
-        Assert.Equal("UnknownValue<>", a.ToString());
+        Assert.Equal("UnknownValue", a.ToString());
     }
 
     [Fact]
     public void Test_expr()
     {
-        UnknownValue a = UnknownValue.Create("int");
+        var a = UnknownValue.Create("int");
         a = a.Cast("uint");
         a = a.Mod(1949u);
         Assert.Equal("UnknownValue<uint>[0..1948]", a.ToString());
