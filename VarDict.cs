@@ -93,6 +93,9 @@ public class VarDict : Dictionary<string, object>, ICloneable
                 continue; // Skip loop variables
 
             hash = hash * 31 + kvp.Key.GetHashCode();
+            if (kvp.Value is UnknownValue)
+                continue; // Skip unknown values
+
             hash = hash * 31 + (kvp.Value?.GetHashCode() ?? 0);
         }
         return hash;

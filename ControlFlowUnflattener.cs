@@ -9,7 +9,6 @@ using System;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
-using UnknownValue = VariableProcessor.UnknownValue;
 
 public class AutoDefaultIntDict : Dictionary<int, int>
 {
@@ -613,7 +612,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
             int lineno = stmt.LineNo();
 
-            if (Verbosity > 1)
+            if (Verbosity > 2)
             {
                 Console.WriteLine($"[d] {stmt.LineNo().ToString().PadLeft(6)}: {NodeTitle(stmt)}");
             }
@@ -633,7 +632,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         //if (value != null and value is not UnknownValue)
                         {
                             comment = value.ToString();
-                            if (!_flowHints.ContainsKey(lineno))
+                            if (_flowHints.ContainsKey(lineno))
+                                comment += " (hint)";
+                            else
                                 skip = true;
                         }
                         break;
@@ -715,10 +716,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 comment = e.Message;
             }
-            catch (VariableProcessor.VarNotFoundException e2)
-            {
-                //                comment = e2.Message;
-            }
+            //            catch (VariableProcessor.VarNotFoundException e2)
+            //            {
+            //                //                comment = e2.Message;
+            //            }
 
             _visitedLines[lineno]++;
             if (_visitedLines[lineno] >= 100)
@@ -762,6 +763,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 if (skip)
                     Console.Write(ANSI_COLOR_RESET);
                 Console.WriteLine();
+                if (Verbosity > 1)
+                    Console.WriteLine($"    vars: #{_varProcessor.VariableValues}");
             }
 
             if (!skip)

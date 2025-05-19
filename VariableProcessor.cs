@@ -1,23 +1,19 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public class VariableProcessor : ICloneable
 {
-    public class VarNotFoundException : Exception
-    {
-        public VarNotFoundException(string varName) : base($"Variable '{varName}' not found.") { }
-    }
-
-    public class UnknownValue
-    {
-        public override string ToString() => "<unknown>";
-    }
+    //    public class VarNotFoundException : Exception
+    //    {
+    //        public VarNotFoundException(string varName) : base($"Variable '{varName}' not found.") { }
+    //    }
 
     public VarDict VariableValues { get; private set; } = new();
     public static VarDict Constants { get; private set; } = new();
@@ -115,20 +111,24 @@ public class VariableProcessor : ICloneable
             // Extract the right-hand side expression (e.g., "(num4 = (uint)(num2 ^ 0x76ED016F))")
             var initializerExpression = decl.Initializer?.Value;
 
-            if (initializerExpression != null)
-            {
-                // Evaluate the expression to determine its value
-                var value = EvaluateExpression(initializerExpression);
+            var value = initializerExpression == null
+                ? new UnknownValue(localDeclaration.Declaration.Type)
+                : EvaluateExpression(initializerExpression);
 
-                // Store the value of the variable
-                variableValues[varName] = value; //, localDeclaration.Declaration.Type.ToString());
-                return value;
+            // do not overwrite existing variable values if initializerExpression is null
+            if (initializerExpression != null || !variableValues.ContainsKey(varName))
+            {
+                variableValues[varName] = value;
             }
-            return new UnknownValue();
+
+            return value;
         }
 
         object cast_var(object value, string toType)
         {
+            if (value is UnknownValue uv)
+                return uv.Cast(toType);
+
             switch (toType)
             {
                 case "uint":
@@ -146,7 +146,7 @@ public class VariableProcessor : ICloneable
                         case uint u:
                             return u;
                         default:
-                            throw new NotSupportedException($"Cast from'{value.GetType()}' to '{toType}' is not supported.");
+                            throw new NotSupportedException($"Cast from '{value.GetType()}' to '{toType}' is not supported.");
                     }
                 case "int":
                 case "nint": // TODO: 32/64 bit cmdline switch
@@ -163,7 +163,7 @@ public class VariableProcessor : ICloneable
                         case uint u:
                             return unchecked((int)u);
                         default:
-                            throw new NotSupportedException($"Cast from'{value.GetType()}' to '{toType}' is not supported.");
+                            throw new NotSupportedException($"Cast from '{value.GetType()}' to '{toType}' is not supported.");
                     }
                 default:
                     throw new NotSupportedException($"Cast from to '{toType}' is not supported.");
@@ -192,7 +192,7 @@ public class VariableProcessor : ICloneable
                                 break;
 
                             default:
-                                // convert to BinaryExpressionSyntax
+                                // +=, -=, etc
                                 SyntaxKind binaryOperatorKind = assignmentExpr.Kind() switch
                                 {
                                     SyntaxKind.AddAssignmentExpression => SyntaxKind.AddExpression,
@@ -214,7 +214,10 @@ public class VariableProcessor : ICloneable
                     }
                     catch (Exception e)
                     {
-                        variableValues.Remove(varName);
+                        Type? type = null;
+                        if (variableValues.ContainsKey(varName))
+                            type = variableValues[varName]?.GetType();
+                        variableValues[varName] = new UnknownValue(type);
                         throw;
                     }
 
@@ -261,7 +264,7 @@ public class VariableProcessor : ICloneable
                     if (variableValues.ContainsKey(varName2))
                         return variableValues[varName2];
                     else
-                        throw new VarNotFoundException(varName2);
+                        return new UnknownValue();
 
                 case LiteralExpressionSyntax literal:
                     return ConvertLiteral(literal);
@@ -289,6 +292,48 @@ public class VariableProcessor : ICloneable
             }
         }
 
+        static INumber<T> eval_prefix<T>(T value, SyntaxKind kind) where T : INumber<T>, IBitwiseOperators<T, T, T>
+        {
+            return kind switch
+            {
+                SyntaxKind.BitwiseNotExpression => ~value,
+                SyntaxKind.UnaryPlusExpression => value,
+                SyntaxKind.UnaryMinusExpression => -value,
+                SyntaxKind.PreDecrementExpression => value - T.One,
+                SyntaxKind.PreIncrementExpression => value + T.One,
+                _ => throw new NotSupportedException($"Unary operator '{kind}' is not supported for {typeof(T)}.")
+            };
+        }
+
+        static bool eval_prefix(bool value, SyntaxKind kind)
+        {
+            return kind switch
+            {
+                SyntaxKind.LogicalNotExpression => !value,
+                _ => throw new NotSupportedException($"Unary operator '{kind}' is not supported for bool.")
+            };
+        }
+
+        static object eval_prefix(object value, SyntaxKind kind)
+        {
+            return value switch
+            {
+                bool b => eval_prefix(b, kind),
+                byte b => eval_prefix(b, kind),
+                int i => eval_prefix(i, kind),
+                long l => eval_prefix(l, kind),
+                nint ni => eval_prefix(ni, kind),
+                nuint nu => eval_prefix(nu, kind),
+                sbyte sb => eval_prefix(sb, kind),
+                short s => eval_prefix(s, kind),
+                uint u => eval_prefix(u, kind),
+                ulong ul => eval_prefix(ul, kind),
+                ushort us => eval_prefix(us, kind),
+                _ => throw new NotSupportedException($"Unary operator '{kind}' is not supported for {value.GetType()}.")
+            };
+        }
+
+        // !x
         // -x
         // +x
         // ~x
@@ -296,36 +341,23 @@ public class VariableProcessor : ICloneable
         // ++x
         object EvaluatePrefixExpression(PrefixUnaryExpressionSyntax expr)
         {
+            if (
+                    expr.Operand is not IdentifierNameSyntax &&
+                    (expr.Kind() == SyntaxKind.PreDecrementExpression || expr.Kind() == SyntaxKind.PreIncrementExpression)
+               )
+            {
+                throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");
+            }
+
             var value = EvaluateExpression(expr.Operand);
-            var retValue = value;
+            var retValue = eval_prefix(value, expr.Kind());
 
             if (expr.Operand is IdentifierNameSyntax id)
             {
-                retValue = expr.Kind() switch
-                {
-                    SyntaxKind.UnaryPlusExpression => value,
-                    SyntaxKind.UnaryMinusExpression => -Convert.ToInt64(value),
-                    SyntaxKind.BitwiseNotExpression => ~Convert.ToInt64(value),
-                    SyntaxKind.PreDecrementExpression => Convert.ToInt64(value) - 1,
-                    SyntaxKind.PreIncrementExpression => Convert.ToInt64(value) + 1,
-                    _ => throw new NotSupportedException($"Unary operator '{expr.Kind()}' is not supported.")
-                };
-
                 string varName = id.Identifier.Text;
                 VarsWritten.Add(varName);
                 VarsRead.Add(varName);
                 variableValues[varName] = retValue;
-            }
-            else
-            {
-                retValue = expr.Kind() switch
-                {
-                    SyntaxKind.UnaryPlusExpression => value,
-                    SyntaxKind.UnaryMinusExpression => -Convert.ToInt64(value),
-                    SyntaxKind.BitwiseNotExpression => ~Convert.ToInt64(value),
-                    // _ => throw new NotSupportedException($"Unary operator '{expr.Kind()}' is not supported on '{expr.Operand.Kind()}'.")
-                    _ => value
-                };
             }
             return retValue;
         }
@@ -376,21 +408,25 @@ public class VariableProcessor : ICloneable
                 }
             }
 
+            // handle logic expressions bc rValue might not need to be evaluated
             string op = binaryExpr.OperatorToken.Text;
             var lValue = EvaluateExpression(binaryExpr.Left);  // always evaluated
-
             switch (op)
             {
                 case "&&":
                     return Convert.ToBoolean(lValue) ? EvaluateExpression(binaryExpr.Right) : false;
-                    break;
 
                 case "||":
                     return Convert.ToBoolean(lValue) ? true : EvaluateExpression(binaryExpr.Right);
-                    break;
             }
 
+
+            // evaluate rValue, handle everything else
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
+            if (lValue is UnknownValue luv)
+                return luv.Op(op, rValue);
+            if (rValue is UnknownValue ruv)
+                return ruv.InverseOp(op, lValue);
 
             long ll = Convert.ToInt64(lValue);
             long lr = Convert.ToInt64(rValue);
