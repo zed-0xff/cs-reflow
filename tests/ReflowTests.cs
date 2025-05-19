@@ -20,7 +20,7 @@ public class ReflowTests
         }
     }
 
-    void checkData(string name, string methodName = "")
+    void checkData(string name)
     {
         var inputPath = Path.Combine(DataPath, $"{name}.cs");
         var expectedPath = Path.Combine(DataPath, $"{name}.out");
@@ -30,9 +30,15 @@ public class ReflowTests
 
         // Act
         var controlFlowUnflattener = new ControlFlowUnflattener(input);
-        if (methodName == "")
-            methodName = name;
-        var actualOutput = controlFlowUnflattener.ReflowMethod(methodName);
+
+        string actualOutput = "";
+        foreach (var kv in controlFlowUnflattener.Methods)
+        {
+            actualOutput += controlFlowUnflattener.ReflowMethod(kv.Value);
+            if (!actualOutput.EndsWith("\n"))
+                actualOutput += "\n";
+            actualOutput += "\n";
+        }
 
         if (expectedOutput.TrimEnd() != actualOutput.TrimEnd())
         {
@@ -78,12 +84,18 @@ public class ReflowTests
     [Fact]
     public void CheckBox_a47b()
     {
-        checkData("CheckBox_a47b", "Dispose");
+        checkData("CheckBox_a47b");
     }
 
     [Fact]
     public void loop()
     {
         checkData("loop");
+    }
+
+    [Fact]
+    public void logic()
+    {
+        checkData("logic");
     }
 }

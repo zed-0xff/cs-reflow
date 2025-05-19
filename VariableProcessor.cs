@@ -184,11 +184,11 @@ public class VariableProcessor : ICloneable
                     // Evaluate the right-hand side expression
                     try
                     {
-                        var rightValue = EvaluateExpression(right);
+                        var rValue = EvaluateExpression(right);
                         switch (assignmentExpr.Kind())
                         {
                             case SyntaxKind.SimpleAssignmentExpression:
-                                variableValues[varName] = rightValue;
+                                variableValues[varName] = rValue;
                                 break;
 
                             default:
@@ -225,7 +225,7 @@ public class VariableProcessor : ICloneable
                     var value = EvaluateExpression(castExpr.Expression);
                     return cast_var(value, castExpr.Type.ToString());
 
-                case ConditionalExpressionSyntax conditionalExpr: // num3 == 0 ? num4 : num5
+                case ConditionalExpressionSyntax conditionalExpr: // ternary operator: num3 == 0 ? num4 : num5
                     var condition = EvaluateExpression(conditionalExpr.Condition);
                     if (Convert.ToBoolean(condition))
                         return EvaluateExpression(conditionalExpr.WhenTrue);
@@ -376,16 +376,28 @@ public class VariableProcessor : ICloneable
                 }
             }
 
-            var leftValue = EvaluateExpression(binaryExpr.Left);
-            var rightValue = EvaluateExpression(binaryExpr.Right);
+            string op = binaryExpr.OperatorToken.Text;
+            var lValue = EvaluateExpression(binaryExpr.Left);  // always evaluated
 
-            long ll = Convert.ToInt64(leftValue);
-            long lr = Convert.ToInt64(rightValue);
+            switch (op)
+            {
+                case "&&":
+                    return Convert.ToBoolean(lValue) ? EvaluateExpression(binaryExpr.Right) : false;
+                    break;
+
+                case "||":
+                    return Convert.ToBoolean(lValue) ? true : EvaluateExpression(binaryExpr.Right);
+                    break;
+            }
+
+            var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
+
+            long ll = Convert.ToInt64(lValue);
+            long lr = Convert.ToInt64(rValue);
 
             uint l = unchecked((uint)ll);
             uint r = unchecked((uint)lr);
 
-            string op = binaryExpr.OperatorToken.Text;
             long result = op switch
             {
                 "+" => l + r,
@@ -396,9 +408,6 @@ public class VariableProcessor : ICloneable
                 "&" => l & r,
                 "|" => l | r,
                 "^" => l ^ r,
-
-                "||" => ((l != 0) || (r != 0)) ? 1 : 0,
-                "&&" => ((l != 0) && (r != 0)) ? 1 : 0,
 
                 "<<" => l << (int)r,
                 ">>" => l >> (int)r,

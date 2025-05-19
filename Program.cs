@@ -170,6 +170,7 @@ class Program
                         foreach (var method in methodDict)
                         {
                             Console.WriteLine(controlFlowUnflattener.ReflowMethod(method.Key));
+                            Console.WriteLine();
                         }
                     }
                 }
@@ -189,6 +190,7 @@ class Program
                     else
                     {
                         Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
+                        Console.WriteLine();
                     }
                 }
             }
