@@ -121,7 +121,8 @@ public class VariableProcessor : ICloneable
                 variableValues[varName] = value;
             }
 
-            return value;
+            // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
+            return variableValues[varName];
         }
 
         object cast_var(object value, string toType)

@@ -647,10 +647,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         if (value is Boolean)
                             valueStr = valueStr.ToLower();
 
-                        if (value is not UnknownValue && !stmt.ToString().Contains($"= {valueStr};"))
-                        {
-                            comment = valueStr;
-                        }
+                        comment = valueStr;
 
                         // TODO: move this 2 blocks to PostProcess()
                         if (ex.VarsRead.Count > 0 && ex.VarsRead.All(v => isSwitchVar(v)))

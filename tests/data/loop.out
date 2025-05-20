@@ -1,7 +1,7 @@
 	public unsafe static List<string> loop()
 	{
 		List<string> list = new List<string>();  // ObjectCreationExpressionSyntax is not supported.
-		List<string> list2 = list;
+		List<string> list2 = list;  // UnknownValue
 		int num8 = default(int);  // 0
 		object obj = default(object);
 		int num10 = default(int);  // 0
@@ -29,3 +29,4 @@
 			return list2;
 		}
 	}
+
