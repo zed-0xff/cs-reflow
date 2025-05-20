@@ -6,10 +6,16 @@ public class UnknownValueRangeTests
     public void Test_ToString()
     {
         UnknownValueRange a = new("uint");
-        Assert.Equal("UnknownValue<uint>[0..4294967295]", a.ToString());
+        Assert.Equal("UnknownValue<uint>", a.ToString());
+        Assert.Equal("UnknownValue<uint>", $"{a}");
+
+        a = a.Div(0x100);
+        Assert.Equal("UnknownValue<uint>[0..16777215]", a.ToString());
+        Assert.Equal("UnknownValue<uint>[0..16777215]", $"{a}");
 
         UnknownValueRange b = new("int");
-        Assert.Equal("UnknownValue<int>[−2147483648..2147483647]", b.ToString());
+        Assert.Equal("UnknownValue<int>", b.ToString());
+        Assert.Equal("UnknownValue<int>", $"{b}");
     }
 
     [Fact]
@@ -85,6 +91,32 @@ public class UnknownValueRangeTests
         var b = a.Mul(5);
         List<long> values = b.Values().ToList();
         Assert.Equal(new List<long> { 5, 10, 15 }, values);
+    }
+
+    [Fact]
+    public void Test_int_lt()
+    {
+        UnknownValueRange a = new("int");
+        Assert.Equal(new UnknownValueRange("bool"), a.Lt(0));
+
+        Assert.Equal(new UnknownValueRange("bool"), a.Lt(int.MaxValue));
+        Assert.Equal(true, a.Lt(int.MaxValue + 1L));
+
+        Assert.Equal(new UnknownValueRange("bool"), a.Lt(int.MinValue));
+        Assert.Equal(false, a.Lt(int.MinValue - 1L));
+    }
+
+    [Fact]
+    public void Test_int_gt()
+    {
+        UnknownValueRange a = new("int");
+        Assert.Equal(new UnknownValueRange("bool"), a.Gt(0));
+
+        Assert.Equal(new UnknownValueRange("bool"), a.Gt(int.MaxValue));
+        Assert.Equal(false, a.Gt(int.MaxValue + 1L));
+
+        Assert.Equal(new UnknownValueRange("bool"), a.Gt(int.MinValue));
+        Assert.Equal(true, a.Gt(int.MinValue - 1L));
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 public abstract class UnknownValueBase
 {
-    public abstract string ToString();
+    public abstract override string ToString();
     public abstract UnknownValueBase Cast(string toType);
     public abstract ulong Cardinality();
     public abstract IEnumerable<long> Values();
@@ -12,36 +12,42 @@ public abstract class UnknownValueBase
     public abstract UnknownValueBase Sub(object right);
     public abstract UnknownValueBase Xor(object right);
 
+    public abstract object Eq(object right);
+    public abstract object Gt(object right);
+    public abstract object Lt(object right);
+
+    // syntax sugar
+    public virtual long Min() => Values().Min();
+    public virtual long Max() => Values().Max();
+
     public object Op(string op, object rValue)
     {
-        switch (op)
+        return op switch
         {
-            case "+":
-            case "-":
-            case "*":
-            case "/":
-            case "%":
-            case "^":
-            case "&":
-            case "|":
-            case "<<":
-            case ">>":
-            case ">>>":
-                return new UnknownValue();
+            "+" => Add(rValue),
+            "-" => Sub(rValue),
+            "*" => Mul(rValue),
+            "/" => Div(rValue),
+            "%" => Mod(rValue),
+            "^" => Xor(rValue),
 
-            case "!=":
-            case "<":
-            case "<=":
-            case "==":
-            case ">":
-            case ">=":
-                return UnknownValue.Create(typeof(bool));
+            //            "!=" => Eq(rValue),
+            "<" => Lt(rValue),
+            //            "<=" => Eq(rValue),
+            "==" => Eq(rValue),
+            ">" => Gt(rValue),
+            //            ">=" => Eq(rValue),
+            //
+            //            "&" => Xor(rValue),
+            //            "|" => Xor(rValue),
+            //
+            //            "<<" => Xor(rValue),
+            //            ">>" => Xor(rValue),
+            //            ">>>" => Xor(rValue),
 
-            default:
-                throw new NotImplementedException($"{ToString()}: Operator {op} is not implemented");
-        }
+            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
+        };
     }
-
 
     public object InverseOp(string op, object lValue)
     {

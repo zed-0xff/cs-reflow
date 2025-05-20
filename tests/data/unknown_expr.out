@@ -1,0 +1,4 @@
+void case1()
+{
+    should_run();  // InvocationExpressionSyntax is not supported.
+}

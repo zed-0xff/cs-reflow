@@ -38,4 +38,8 @@ public class UnknownValue : UnknownValueBase
     public override UnknownValue Mul(object right) => new UnknownValue();
     public override UnknownValue Sub(object right) => new UnknownValue();
     public override UnknownValue Xor(object right) => new UnknownValue();
+
+    public override object Eq(object right) => UnknownValue.Create("bool");
+    public override object Gt(object right) => UnknownValue.Create("bool");
+    public override object Lt(object right) => UnknownValue.Create("bool");
 }

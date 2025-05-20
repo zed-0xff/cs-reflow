@@ -11,8 +11,13 @@ public class UnknownValueList : UnknownTypedValue
         this.values = values;
     }
 
-    public override UnknownValue Cast(string toType)
+    public override UnknownValueList Cast(string toType)
     {
+        toType = ShortType(toType);
+        if (Type == "uint" && toType == "int")
+        {
+            return new("int", Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
+        }
         throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
     }
 
@@ -21,15 +26,9 @@ public class UnknownValueList : UnknownTypedValue
         return $"UnknownValue<{Type}>[{values.Count}]";
     }
 
-    public override ulong Cardinality()
-    {
-        return (ulong)values.Count;
-    }
-
-    public override IEnumerable<long> Values()
-    {
-        return values;
-    }
+    public override ulong Cardinality() => (ulong)values.Count;
+    public override IEnumerable<long> Values() => values;
+    public override bool Contains(long value) => values.Contains(value);
 
     public override UnknownValueBase Add(object right) =>
         TryConvertToLong(right, out long l)

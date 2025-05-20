@@ -98,4 +98,10 @@ public class ReflowTests
     {
         checkData("logic");
     }
+
+    [Fact]
+    public void unknown_expr()
+    {
+        checkData("unknown_expr");
+    }
 }

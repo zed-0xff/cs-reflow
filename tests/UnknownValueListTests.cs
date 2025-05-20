@@ -21,4 +21,12 @@ public class UnknownValueListTests
         UnknownValueList b = new("int", new List<long> { 1, 2, 3 });
         Assert.Equal(3UL, b.Cardinality());
     }
+
+    [Fact]
+    public void Test_Cast()
+    {
+        UnknownValueList a = new("uint", new List<long> { uint.MaxValue, uint.MaxValue - 1, uint.MaxValue - 2 });
+        a = a.Cast("int");
+        Assert.Equal(new List<long> { -1, -2, -3 }, a.Values().ToList());
+    }
 }

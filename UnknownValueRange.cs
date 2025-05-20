@@ -4,7 +4,7 @@ public class UnknownValueRange : UnknownTypedValue
 
     public UnknownValueRange(string type) : base(type)
     {
-        init();
+        Range = Type2Range(Type);
     }
 
     public UnknownValueRange(string type, LongRange range) : base(type)
@@ -12,38 +12,40 @@ public class UnknownValueRange : UnknownTypedValue
         Range = range;
     }
 
-    void init()
+    public static LongRange Type2Range(string type)
     {
-        switch (Type)
+        return type switch
         {
-            case "bool":
-            case "System.Boolean":
-                Range = new LongRange(0, 1);
-                break;
-            case "byte":
-            case "System.Byte":
-                Range = new LongRange(byte.MinValue, byte.MaxValue);
-                break;
-            case "int":
-            case "System.Int32":
-                Range = new LongRange(int.MinValue, int.MaxValue);
-                break;
-            case "sbyte":
-            case "System.SByte":
-                Range = new LongRange(sbyte.MinValue, sbyte.MaxValue);
-                break;
-            case "uint":
-            case "System.UInt32":
-                Range = new LongRange(uint.MinValue, uint.MaxValue);
-                break;
-            default:
-                throw new NotImplementedException($"UnknownValueRange: {Type} not implemented.");
+            "bool" => new LongRange(0, 1),
+            "byte" => new LongRange(byte.MinValue, byte.MaxValue),
+            "int" => new LongRange(int.MinValue, int.MaxValue),
+            "sbyte" => new LongRange(sbyte.MinValue, sbyte.MaxValue),
+            "uint" => new LongRange(uint.MinValue, uint.MaxValue),
+            _ => throw new NotImplementedException($"UnknownValueRange: {type} not implemented."),
+        };
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is UnknownValueRange r)
+        {
+            return Type == r.Type && Range.Equals(r.Range);
         }
+        return false;
+    }
+
+    public override long Min() => Range.Min;
+    public override long Max() => Range.Max;
+
+    public bool IsFullRange()
+    {
+        return Range.Equals(Type2Range(Type));
     }
 
     public override UnknownValueRange Cast(string toType)
     {
-        if (Type == "uint" && toType == "int" && Range.Max <= 0x7FFFFFFF)
+        toType = ShortType(toType);
+        if (Type == "uint" && toType == "int" && Range.Max <= int.MaxValue)
         {
             return new UnknownValueRange("int", new LongRange(0, Range.Max));
         }
@@ -122,7 +124,17 @@ public class UnknownValueRange : UnknownTypedValue
 
     public override string ToString()
     {
-        return $"UnknownValue<{Type}>{Range}";
+        if (IsFullRange())
+            return $"UnknownValue<{Type}>";
+        else
+            return $"UnknownValue<{Type}>{Range}";
+    }
+
+    public override bool Contains(long value) => Range.Contains(value);
+
+    public override int GetHashCode()
+    {
+        throw new NotImplementedException();
     }
 }
 

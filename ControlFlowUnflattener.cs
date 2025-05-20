@@ -764,7 +764,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     Console.Write(ANSI_COLOR_RESET);
                 Console.WriteLine();
                 if (Verbosity > 1)
-                    Console.WriteLine($"    vars: #{_varProcessor.VariableValues}");
+                    Console.WriteLine($"    vars: {_varProcessor.VariableValues}");
             }
 
             if (!skip)
