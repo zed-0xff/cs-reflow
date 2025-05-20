@@ -10,6 +10,13 @@ public static class SyntaxNodeExtensions
         {
             return labeledStatement.Statement.LineNo();
         }
+
+        var annotation = node.GetAnnotations("OriginalLineNo").FirstOrDefault();
+        if (annotation != null && int.TryParse(annotation.Data, out int originalLine))
+        {
+            return originalLine;
+        }
+
         return node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
     }
 }

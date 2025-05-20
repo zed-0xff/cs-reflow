@@ -104,4 +104,16 @@ public class ReflowTests
     {
         checkData("unknown_expr");
     }
+
+    [Fact]
+    public void rsa_aaf9_0()
+    {
+        checkData("rsa_aaf9_0");
+    }
+
+    [Fact]
+    public void rsa_aaf9_5()
+    {
+        checkData("rsa_aaf9_5");
+    }
 }

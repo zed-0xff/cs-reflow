@@ -127,6 +127,11 @@ public class TraceLog
         // make new if/then/else
         var ifEntry = this.entries[commonStart];
         var ifStmt = ifEntry.stmt as IfStatementSyntax;
+        if (ifStmt.LineNo() != hint_key)
+        {
+            throw new System.Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+        }
+
         if (ifStmt == null)
         {
             for (int i = 0; i <= commonStart; i++)
@@ -181,12 +186,18 @@ public class TraceLog
                     .ToArray()
                 );
 
+        //        Console.WriteLine($"[d] then: {thenBlock}");
+        //        Console.WriteLine($"[d] else: {elseBlock}");
+
         BlockSyntax thenBlock1 = hints[hint_key] ? thenBlock : elseBlock;
         BlockSyntax elseBlock1 = hints[hint_key] ? elseBlock : thenBlock;
 
         var newIfStmt = ifStmt
             .WithStatement(thenBlock1)
-            .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null);
+            .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null)
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("OriginalLineNo", ifStmt.LineNo().ToString())
+                    );
 
         //        Console.WriteLine($"[d] new if: {newIfStmt}");
         //        Console.WriteLine();

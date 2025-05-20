@@ -1020,9 +1020,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     // merge deeper diffs first
                     if (logs[i].CanMergeWith(logs[j]))
                     {
-                        if (logs[i].diff1(logs[j]) > maxDiff)
+                        var diff1 = logs[i].diff1(logs[j]);
+                        if (logs[i].hints.Keys.ToList().IndexOf(diff1) > maxDiff)
                         {
-                            maxDiff = logs[i].diff1(logs[j]);
+                            maxDiff = logs[i].hints.Keys.ToList().IndexOf(diff1);
                             maxIdx = j;
                         }
                     }
@@ -1032,7 +1033,21 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 {
                     if (Verbosity > 0)
                     {
-                        Console.WriteLine($"[d] merging {i} and {maxIdx}");
+                        Console.WriteLine($"[d] merging {i} and {maxIdx} => {i}");
+                        if (Verbosity > 2)
+                        {
+                            foreach (var entry in logs[i].entries)
+                            {
+                                Console.WriteLine($"[d] A{(Verbosity > 3 ? entry.StmtWithLineNo() : entry.TitleWithLineNo())}");
+                            }
+                            Console.WriteLine();
+
+                            foreach (var entry in logs[maxIdx].entries)
+                            {
+                                Console.WriteLine($"[d] B{(Verbosity > 3 ? entry.StmtWithLineNo() : entry.TitleWithLineNo())}");
+                            }
+                            Console.WriteLine();
+                        }
                     }
                     logs[i] = logs[i].Merge(logs[maxIdx]);
                     logs.RemoveAt(maxIdx);

@@ -1,0 +1,49 @@
+	public unsafe static RSACryptoServiceProvider rsa_aaf9(object P_0)
+	{
+		object obj = default(object);
+		object obj2 = default(object);
+		obj = P_0;  // UnknownValue
+		if ((int) /*calli with instance method signature not supportd*/ == 0)
+		{
+			byte[] array;
+			array = dc3cf9129ac04d8c8d54c2324583ff0f(obj);
+			obj2 = array;
+			if (obj2 != null)
+			{
+				return rsa_a143(obj2);
+			}
+			else
+			{
+				return null;
+			}
+		}
+		else if ((int) /*calli with instance method signature not supportd*/ == 0)
+		{
+			byte[] array;
+			array = dc3cf9129ac04d8c8d54c2324583ff0f(obj);
+			obj2 = array;
+			if (obj2 != null)
+			{
+				return rsa_a143(obj2);
+			}
+			else
+			{
+				return null;
+			}
+		}
+		else
+		{
+			byte[] array;
+			array = a7fdf43bc042466bb877ac8b21cf6b0a(obj);
+			obj2 = array;
+			if (obj2 != null)
+			{
+				return aa966298b6f9473baff9d7a8e3b76841(obj2);
+			}
+			else
+			{
+				return null;
+			}
+		}
+	}
+

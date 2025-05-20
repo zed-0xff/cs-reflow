@@ -29,7 +29,12 @@ public class TraceEntry
 
     public string TitleWithLineNo()
     {
-        return $"{stmt.GetLocation().GetLineSpan().StartLinePosition.Line + 1}: {Title()}";
+        return $"{stmt.LineNo()}: {Title()}";
+    }
+
+    public string StmtWithLineNo()
+    {
+        return $"{stmt.LineNo()}: {stmt}";
     }
 
     public override bool Equals(object obj)
