@@ -12,19 +12,6 @@ public class UnknownValueRange : UnknownTypedValue
         Range = range;
     }
 
-    public static LongRange Type2Range(string type)
-    {
-        return type switch
-        {
-            "bool" => new LongRange(0, 1),
-            "byte" => new LongRange(byte.MinValue, byte.MaxValue),
-            "int" => new LongRange(int.MinValue, int.MaxValue),
-            "sbyte" => new LongRange(sbyte.MinValue, sbyte.MaxValue),
-            "uint" => new LongRange(uint.MinValue, uint.MaxValue),
-            _ => throw new NotImplementedException($"UnknownValueRange: {type} not implemented."),
-        };
-    }
-
     public override bool Equals(object obj)
     {
         if (obj is UnknownValueRange r)

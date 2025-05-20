@@ -8,7 +8,14 @@ public class UnknownValue : UnknownValueBase
     }
 
     public static UnknownValueBase Create() => new UnknownValue();
-    public static UnknownValueBase Create(string type) => type == null ? Create() : new UnknownValueRange(type);
+    public static UnknownValueBase Create(string type)
+    {
+        if (string.IsNullOrEmpty(type) || !UnknownTypedValue.IsTypeSupported(type))
+            return new UnknownValue();
+
+        return UnknownTypedValue.Create(type);
+    }
+
     public static UnknownValueBase Create(Type? type) => Create(type?.ToString());
     public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
 
