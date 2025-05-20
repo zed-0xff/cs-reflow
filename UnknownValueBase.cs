@@ -16,6 +16,16 @@ public abstract class UnknownValueBase
     public abstract object Gt(object right);
     public abstract object Lt(object right);
 
+    public virtual object Ne(object right)
+    {
+        return Eq(right) switch
+        {
+            UnknownValueBase other => UnknownValue.Create("bool"),
+            bool b => !b,
+            _ => throw new NotImplementedException($"{ToString()}.Ne(): unexpected type {right?.GetType()}")
+        };
+    }
+
     // syntax sugar
     public virtual long Min() => Values().Min();
     public virtual long Max() => Values().Max();
@@ -31,7 +41,7 @@ public abstract class UnknownValueBase
             "%" => Mod(rValue),
             "^" => Xor(rValue),
 
-            //            "!=" => Eq(rValue),
+            "!=" => Ne(rValue),
             "<" => Lt(rValue),
             //            "<=" => Eq(rValue),
             "==" => Eq(rValue),
