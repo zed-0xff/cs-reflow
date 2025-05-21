@@ -385,11 +385,20 @@ public class VariableProcessor : ICloneable
         object EvaluatePostfixExpression(PostfixUnaryExpressionSyntax expr)
         {
             var retValue = EvaluateExpression(expr.Operand);
-            var newValue = expr.Kind() switch
+            object newValue = retValue switch
             {
-                SyntaxKind.PostIncrementExpression => Convert.ToInt64(retValue) + 1,
-                SyntaxKind.PostDecrementExpression => Convert.ToInt64(retValue) - 1,
-                _ => throw new NotSupportedException($"Postfix operator '{expr.Kind()}' is not supported.")
+                UnknownValueBase u => expr.Kind() switch
+                {
+                    SyntaxKind.PostIncrementExpression => u.Add(1),
+                    SyntaxKind.PostDecrementExpression => u.Sub(1),
+                    _ => throw new NotSupportedException($"Postfix operator '{expr.Kind()}' is not supported.")
+                },
+                _ => expr.Kind() switch
+                {
+                    SyntaxKind.PostIncrementExpression => Convert.ToInt64(retValue) + 1,
+                    SyntaxKind.PostDecrementExpression => Convert.ToInt64(retValue) - 1,
+                    _ => throw new NotSupportedException($"Postfix operator '{expr.Kind()}' is not supported.")
+                }
             };
             if (expr.Operand is IdentifierNameSyntax id)
             {
