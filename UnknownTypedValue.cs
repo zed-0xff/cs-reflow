@@ -1,6 +1,6 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
-    protected string Type;
+    public string Type { get; }
 
     public static UnknownTypedValue Create(string type)
     {

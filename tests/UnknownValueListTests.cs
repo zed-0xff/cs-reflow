@@ -38,12 +38,20 @@ public class UnknownValueListTests
         Assert.True(b is bool);
         Assert.True(b as bool?);
 
+        a = new("int", new List<long> { -1 });
+        b = a.Cast("bool");
+        Assert.True(b is bool);
+        Assert.True(b as bool?);
+
         a = new("int", new List<long> { 0 });
         b = a.Cast("bool");
         Assert.True(b is bool);
         Assert.False(b as bool?);
 
         a = new("int", new List<long> { 0, 5 });
+        Assert.Equal(UnknownValue.Create("bool"), a.Cast("bool"));
+
+        a = new("int", new List<long> { -1, 0 });
         Assert.Equal(UnknownValue.Create("bool"), a.Cast("bool"));
     }
 }

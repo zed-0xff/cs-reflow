@@ -115,6 +115,23 @@ public class VariableProcessor : ICloneable
                 ? UnknownValue.Create(localDeclaration.Declaration.Type)
                 : EvaluateExpression(initializerExpression);
 
+            if (value is UnknownValue && localDeclaration.Declaration.Type is not null)
+            {
+                // if the variable type is known, use it
+                value = UnknownValue.Create(localDeclaration.Declaration.Type);
+            }
+
+            if (value is UnknownValue && variableValues.TryGetValue(varName, out var existingValue))
+            {
+                // if the variable already exists, use its type
+                value = existingValue switch
+                {
+                    UnknownValue => value, // no luck
+                    UnknownTypedValue utv => UnknownValue.Create(utv.Type),
+                    _ => UnknownValue.Create(existingValue.GetType()) // handles null values as well
+                };
+            }
+
             // do not overwrite existing variable values if initializerExpression is null
             if (initializerExpression != null || !variableValues.ContainsKey(varName))
             {
@@ -412,6 +429,23 @@ public class VariableProcessor : ICloneable
             // handle logic expressions bc rValue might not need to be evaluated
             string op = binaryExpr.OperatorToken.Text;
             var lValue = EvaluateExpression(binaryExpr.Left);  // always evaluated
+
+            if (op == "&&" || op == "||")
+            {
+                if (lValue is UnknownValueBase luv0)
+                {
+                    var lb = luv0.Cast("bool");
+                    if (lb is bool)
+                    {
+                        lValue = lb;
+                    }
+                    else
+                    {
+                        lValue = ("op" == "&&"); // tri-state logic
+                    }
+                }
+            }
+
             switch (op)
             {
                 case "&&":
@@ -420,7 +454,6 @@ public class VariableProcessor : ICloneable
                 case "||":
                     return Convert.ToBoolean(lValue) ? true : EvaluateExpression(binaryExpr.Right);
             }
-
 
             // evaluate rValue, handle everything else
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated

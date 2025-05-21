@@ -19,6 +19,16 @@ public class UnknownValueTests
     }
 
     [Fact]
+    public void Test_create_null()
+    {
+        var a = UnknownValue.Create((string)null);
+        Assert.True(a is UnknownValue);
+
+        var b = UnknownValue.Create((Type)null);
+        Assert.True(b is UnknownValue);
+    }
+
+    [Fact]
     public void Test_expr()
     {
         var a = UnknownValue.Create("int");
