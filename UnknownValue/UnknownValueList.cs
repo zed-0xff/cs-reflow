@@ -62,6 +62,8 @@ public class UnknownValueList : UnknownTypedValue
     public override long Cardinality() => values.Count;
     public override IEnumerable<long> Values() => values;
     public override bool Contains(long value) => values.Contains(value);
+    public override long Min() => values.Min(); // TODO: assume values are sorted
+    public override long Max() => values.Max(); // TODO: assume values are sorted
 
     public override bool IntersectsWith(UnknownTypedValue other)
     {

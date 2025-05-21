@@ -85,7 +85,7 @@ public class UnknownValueRange : UnknownTypedValue
 
         long shiftedCardinality = 1L << (type.nbits - (int)l);
         if (shiftedCardinality > MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueRange(type);
+            return new UnknownValueBits(type).ShiftLeft(l);
 
         List<long> values = new List<long>((int)shiftedCardinality);
 

@@ -30,11 +30,11 @@ public class VariableProcessorTests
         processor.VariableValues["num32"] = UnknownValue.Create("int");
         processor.VariableValues["num11"] = UnknownValue.Create("uint");
 
-        if (expr is BinaryExpressionSyntax binaryExpr)
-        {
-            Console.WriteLine($"[d] {processor.EvaluateExpression(binaryExpr.Left)}");
-            Console.WriteLine($"[d] {processor.EvaluateExpression(binaryExpr.Right)}");
-        }
+        //        if (expr is BinaryExpressionSyntax binaryExpr)
+        //        {
+        //            Console.WriteLine($"[d] {processor.EvaluateExpression(binaryExpr.Left)}");
+        //            Console.WriteLine($"[d] {processor.EvaluateExpression(binaryExpr.Right)}");
+        //        }
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(false, result);
     }

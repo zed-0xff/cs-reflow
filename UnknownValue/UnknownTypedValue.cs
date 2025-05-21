@@ -4,9 +4,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public UnknownTypedValue(string typeName) : base()
     {
-        if (!INFOS.TryGetValue(ShortType(typeName), out IntInfo? t))
-            throw new NotImplementedException($"UnknownTypedValue: {typeName} not implemented.");
-        type = t;
+        type = GetType(typeName);
     }
 
     public UnknownTypedValue(IntInfo type) : base()
@@ -32,12 +30,21 @@ public abstract class UnknownTypedValue : UnknownValueBase
         public LongRange Range => new LongRange(MinValue, MaxValue);
 
         public override string ToString() => Name;
+        public override bool Equals(object obj)
+        {
+            return (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
+        }
+
+        public override int GetHashCode()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     static readonly Dictionary<string, IntInfo> INFOS = new()
     {
         ["bool"] = new IntInfo { Name = "bool", nbits = 1, signed = false },
-        ["byte"] = new IntInfo { Name = "byte", nbits = 8, signed = true },
+        ["byte"] = new IntInfo { Name = "byte", nbits = 8, signed = false },
         ["sbyte"] = new IntInfo { Name = "sbyte", nbits = 8, signed = true },
         ["short"] = new IntInfo { Name = "short", nbits = 16, signed = true },
         ["ushort"] = new IntInfo { Name = "ushort", nbits = 16, signed = false },
@@ -59,9 +66,16 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return 1L << type.nbits;
     }
 
-    public static bool IsTypeSupported(string type)
+    public static bool IsTypeSupported(string typeName)
     {
-        return INFOS.ContainsKey(ShortType(type));
+        return INFOS.ContainsKey(ShortType(typeName));
+    }
+
+    public static IntInfo GetType(string typeName)
+    {
+        if (!INFOS.TryGetValue(ShortType(typeName), out IntInfo? t))
+            throw new NotImplementedException($"UnknownTypedValue: {typeName} not implemented.");
+        return t;
     }
 
     protected static string ShortType(string type)
@@ -78,6 +92,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
     }
 
     public abstract bool Contains(long value);
+    public abstract bool IntersectsWith(UnknownTypedValue right);
+    public abstract long Min();
+    public abstract long Max();
 
     public override object Eq(object right)
     {
@@ -102,8 +119,6 @@ public abstract class UnknownTypedValue : UnknownValueBase
             _ => UnknownValue.Create("bool")
         };
     }
-
-    public abstract bool IntersectsWith(UnknownTypedValue right);
 
     public override object Gt(object right)
     {

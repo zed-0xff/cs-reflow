@@ -143,7 +143,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new("uint");
         UnknownValueRange b = a.Div(0x100).Cast("int") as UnknownValueRange;
-        Assert.Equal(new LongRange(0, 16777215), b.Range);
+        Assert.Equal(new LongRange(0, 16777215), b?.Range);
     }
 
     [Fact]
@@ -153,17 +153,17 @@ public class UnknownValueRangeTests
         string dst = "uint";
 
         // trivial if values are within 0..0x7fff_ffff (int.MaxValue)
-        Assert.Equal(new LongRange(0, 100), (new UnknownValueRange(src, new(0, 100)).Cast(dst) as UnknownValueRange).Range);
-        Assert.Equal(new LongRange(200, 300), (new UnknownValueRange(src, new(200, 300)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(0, 100), (new UnknownValueRange(src, new(0, 100)).Cast(dst) as UnknownValueRange)?.Range);
+        Assert.Equal(new LongRange(200, 300), (new UnknownValueRange(src, new(200, 300)).Cast(dst) as UnknownValueRange)?.Range);
 
         // trivial
-        Assert.Equal(new LongRange(4294967096, 4294967196), (new UnknownValueRange(src, new(-200, -100)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(4294967096, 4294967196), (new UnknownValueRange(src, new(-200, -100)).Cast(dst) as UnknownValueRange)?.Range);
 
         // [0, 1, 4294967295]
-        Assert.Equal(new LongRange(uint.MinValue, uint.MaxValue), (new UnknownValueRange(src, new(-1, 1)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(uint.MinValue, uint.MaxValue), (new UnknownValueRange(src, new(-1, 1)).Cast(dst) as UnknownValueRange)?.Range);
 
         // [4294967196..uint.MaxValue, 0..100]
-        Assert.Equal(new LongRange(uint.MinValue, uint.MaxValue), (new UnknownValueRange(src, new(-100, 100)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(uint.MinValue, uint.MaxValue), (new UnknownValueRange(src, new(-100, 100)).Cast(dst) as UnknownValueRange)?.Range);
     }
 
     [Fact]
@@ -173,17 +173,17 @@ public class UnknownValueRangeTests
         string dst = "int";
 
         // trivial if values are within 0..0x7fff_ffff (int.MaxValue)
-        Assert.Equal(new LongRange(0, 100), (new UnknownValueRange(src, new(0, 100)).Cast(dst) as UnknownValueRange).Range);
-        Assert.Equal(new LongRange(200, 300), (new UnknownValueRange(src, new(200, 300)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(0, 100), (new UnknownValueRange(src, new(0, 100)).Cast(dst) as UnknownValueRange)?.Range);
+        Assert.Equal(new LongRange(200, 300), (new UnknownValueRange(src, new(200, 300)).Cast(dst) as UnknownValueRange)?.Range);
 
         // trivial
-        Assert.Equal(new LongRange(-200, -100), (new UnknownValueRange(src, new(4294967096, 4294967196)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(-200, -100), (new UnknownValueRange(src, new(4294967096, 4294967196)).Cast(dst) as UnknownValueRange)?.Range);
 
         // [0, 1, 4294967295]
-        Assert.Equal(new LongRange(int.MinValue, int.MaxValue), (new UnknownValueRange(src, new(int.MaxValue, int.MaxValue + 1L)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(int.MinValue, int.MaxValue), (new UnknownValueRange(src, new(int.MaxValue, int.MaxValue + 1L)).Cast(dst) as UnknownValueRange)?.Range);
 
         // [4294967196..uint.MaxValue, 0..100]
-        Assert.Equal(new LongRange(int.MinValue, int.MaxValue), (new UnknownValueRange(src, new(int.MaxValue - 100L, int.MaxValue + 100L)).Cast(dst) as UnknownValueRange).Range);
+        Assert.Equal(new LongRange(int.MinValue, int.MaxValue), (new UnknownValueRange(src, new(int.MaxValue - 100L, int.MaxValue + 100L)).Cast(dst) as UnknownValueRange)?.Range);
     }
 
     [Fact]
@@ -221,7 +221,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new("uint");
         var b = a.ShiftLeft(1);
-        Assert.Equal(a, b);
+        Assert.Equal("UnknownValueBits<uint>[0]", b.ToString());
 
         b = a.ShiftLeft(30);
         Assert.Equal(4, b.Cardinality());
@@ -234,7 +234,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new("int");
         var b = a.ShiftLeft(1);
-        Assert.Equal(a, b);
+        Assert.Equal("UnknownValueBits<int>[0]", b.ToString());
 
         b = a.ShiftLeft(30);
         Assert.Equal(4, b.Cardinality());
