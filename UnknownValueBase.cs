@@ -12,11 +12,14 @@ public abstract class UnknownValueBase
     public abstract UnknownValueBase Sub(object right);
     public abstract UnknownValueBase Xor(object right);
 
+    public abstract UnknownValueBase BinaryAnd(object right);
+    public abstract UnknownValueBase ShiftLeft(object right);
+
     public abstract object Eq(object right);
     public abstract object Gt(object right);
     public abstract object Lt(object right);
 
-    public static object Or(object left, object right)
+    public static object LogicalOr(object left, object right)
     {
         if (left is bool lb && lb)
             return true;
@@ -27,8 +30,8 @@ public abstract class UnknownValueBase
         return UnknownValue.Create("bool");
     }
 
-    public virtual object Lte(object right) => Or(Lt(right), Eq(right));
-    public virtual object Gte(object right) => Or(Gt(right), Eq(right));
+    public virtual object Lte(object right) => LogicalOr(Lt(right), Eq(right));
+    public virtual object Gte(object right) => LogicalOr(Gt(right), Eq(right));
 
     public virtual object Ne(object right)
     {
@@ -62,10 +65,10 @@ public abstract class UnknownValueBase
             ">" => Gt(rValue),
             ">=" => Gte(rValue),
 
-            //            "&" => Xor(rValue),
+            "&" => BinaryAnd(rValue),
             //            "|" => Xor(rValue),
             //
-            //            "<<" => Xor(rValue),
+            "<<" => ShiftLeft(rValue),
             //            ">>" => Xor(rValue),
             //            ">>>" => Xor(rValue),
 

@@ -1,6 +1,18 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
     public string Type { get; }
+    public int nbits { get; }
+    public bool signed { get; }
+
+    public UnknownTypedValue(string type) : base()
+    {
+        Type = ShortType(type);
+        if (!INFOS.TryGetValue(Type, out IntInfo info))
+            throw new NotImplementedException($"UnknownTypedValue: {Type} not implemented.");
+
+        nbits = info.nbits;
+        signed = info.signed;
+    }
 
     public static UnknownTypedValue Create(string type)
     {
@@ -9,25 +21,41 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public static readonly ulong MAX_DISCRETE_CARDINALITY = 1000000;
 
-    static readonly Dictionary<string, LongRange> RANGES = new()
+    public class IntInfo
     {
-        ["bool"] = new LongRange(0, 1),
-        ["byte"] = new LongRange(byte.MinValue, byte.MaxValue),
-        ["sbyte"] = new LongRange(sbyte.MinValue, sbyte.MaxValue),
-        ["int"] = new LongRange(int.MinValue, int.MaxValue),
-        ["uint"] = new LongRange(uint.MinValue, uint.MaxValue),
-        ["nint"] = new LongRange(nint.MinValue, nint.MaxValue), // TODO: 32/64 bit cmdline switch
+        public int nbits { get; init; }
+        public bool signed { get; init; }
+    }
+
+    static readonly Dictionary<string, IntInfo> INFOS = new()
+    {
+        ["bool"] = new IntInfo { nbits = 1, signed = false },
+        ["byte"] = new IntInfo { nbits = 8, signed = true },
+        ["sbyte"] = new IntInfo { nbits = 8, signed = true },
+        ["short"] = new IntInfo { nbits = 16, signed = true },
+        ["ushort"] = new IntInfo { nbits = 16, signed = false },
+        ["int"] = new IntInfo { nbits = 32, signed = true },
+        ["uint"] = new IntInfo { nbits = 32, signed = false },
+        ["long"] = new IntInfo { nbits = 64, signed = true },
+        ["ulong"] = new IntInfo { nbits = 64, signed = false },
+        ["nint"] = new IntInfo { nbits = 32, signed = true }, // TODO: 32/64 bit cmdline switch
+        ["nuint"] = new IntInfo { nbits = 32, signed = false }, // TODO: 32/64 bit cmdline switch
     };
+
+    public long Mask(long value)
+    {
+        return value & ((1L << nbits) - 1);
+    }
 
     public static bool IsTypeSupported(string type)
     {
-        return RANGES.ContainsKey(ShortType(type));
+        return INFOS.ContainsKey(ShortType(type));
     }
 
     public static LongRange Type2Range(string type)
     {
-        if (RANGES.TryGetValue(ShortType(type), out LongRange range))
-            return range;
+        if (INFOS.TryGetValue(type, out IntInfo info))
+            return new LongRange(info.nbits, info.signed);
         else
             throw new NotImplementedException($"UnknownValueRange: {type} not implemented.");
     }
@@ -45,24 +73,33 @@ public abstract class UnknownTypedValue : UnknownValueBase
         };
     }
 
-    public UnknownTypedValue(string type) : base()
-    {
-        Type = ShortType(type);
-    }
-
     public abstract bool Contains(long value);
 
     public override object Eq(object right)
     {
         if (TryConvertToLong(right, out long l))
-            return Contains(l);
+        {
+            if (Contains(l))
+            {
+                if (Cardinality() == 1)
+                    return true;
+                else
+                    return UnknownValue.Create("bool");
+            }
+            else
+            {
+                return false;
+            }
+        }
 
         return right switch
         {
-            UnknownTypedValue r => r.Contains(l),
+            UnknownTypedValue r => IntersectsWith(r) ? UnknownValue.Create("bool") : false,
             _ => UnknownValue.Create("bool")
         };
     }
+
+    public abstract bool IntersectsWith(UnknownTypedValue right);
 
     public override object Gt(object right)
     {
@@ -108,5 +145,13 @@ public abstract class UnknownTypedValue : UnknownValueBase
             }
         }
         throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
+    }
+
+    public override UnknownValueBase BinaryAnd(object right)
+    {
+        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(Type);
+
+        return new UnknownValueList(Type, Values().Select(v => v & l).Distinct().OrderBy(x => x).ToList());
     }
 }

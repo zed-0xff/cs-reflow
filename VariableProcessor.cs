@@ -121,6 +121,18 @@ public class VariableProcessor : ICloneable
                 value = UnknownValue.Create(localDeclaration.Declaration.Type);
             }
 
+            // do not overwrite existing variable values if initializerExpression is null
+            if (initializerExpression != null || !variableValues.ContainsKey(varName))
+            {
+                setVar(varName, value);
+            }
+
+            // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
+            return variableValues[varName];
+        }
+
+        void setVar(string varName, object value)
+        {
             if (value is UnknownValue && variableValues.TryGetValue(varName, out var existingValue))
             {
                 // if the variable already exists, use its type
@@ -128,18 +140,11 @@ public class VariableProcessor : ICloneable
                 {
                     UnknownValue => value, // no luck
                     UnknownTypedValue utv => UnknownValue.Create(utv.Type),
-                    _ => UnknownValue.Create(existingValue.GetType()) // handles null values as well
+                    _ => UnknownValue.Create(existingValue?.GetType()) // handles null values as well
                 };
             }
 
-            // do not overwrite existing variable values if initializerExpression is null
-            if (initializerExpression != null || !variableValues.ContainsKey(varName))
-            {
-                variableValues[varName] = value;
-            }
-
-            // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
-            return variableValues[varName];
+            variableValues[varName] = value;
         }
 
         object cast_var(object value, string toType)
@@ -206,7 +211,7 @@ public class VariableProcessor : ICloneable
                         switch (assignmentExpr.Kind())
                         {
                             case SyntaxKind.SimpleAssignmentExpression:
-                                variableValues[varName] = rValue;
+                                setVar(varName, rValue);
                                 break;
 
                             default:

@@ -13,6 +13,26 @@ public class LongRange
         Max = max;
     }
 
+    public LongRange(int nbits, bool signed)
+    {
+        if (nbits < 1 || nbits > 64)
+            throw new ArgumentException($"Invalid number of bits: {nbits}");
+
+        if (signed)
+        {
+            if (nbits < 2)
+                throw new ArgumentException($"Invalid number of bits: {nbits}");
+
+            Min = -(1L << (nbits - 1));
+            Max = (1L << (nbits - 1)) - 1;
+        }
+        else
+        {
+            Min = 0;
+            Max = (1L << nbits) - 1;
+        }
+    }
+
     public override string ToString()
     {
         return $"[{Min}..{Max}]";
@@ -63,5 +83,10 @@ public class LongRange
     public override int GetHashCode()
     {
         throw new NotImplementedException();
+    }
+
+    public bool IntersectsWith(LongRange other)
+    {
+        return Min <= other.Max && Max >= other.Min;
     }
 }

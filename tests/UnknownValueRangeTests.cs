@@ -205,4 +205,40 @@ public class UnknownValueRangeTests
         UnknownValueRange c = new("byte");
         Assert.Equal(256UL, c.Cardinality());
     }
+
+    [Fact]
+    public void Test_ShiftLeft_uint()
+    {
+        UnknownValueRange a = new("uint");
+        var b = a.ShiftLeft(1);
+        Assert.Equal(a, b);
+
+        b = a.ShiftLeft(30);
+        Assert.Equal(4UL, b.Cardinality());
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { 0, 1L << 30, 2L << 30, 3L << 30 }, values);
+    }
+
+    [Fact]
+    public void Test_ShiftLeft_int()
+    {
+        UnknownValueRange a = new("int");
+        var b = a.ShiftLeft(1);
+        Assert.Equal(a, b);
+
+        b = a.ShiftLeft(30);
+        Assert.Equal(4UL, b.Cardinality());
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { 2 << 30, 3 << 30, 0, 1073741824 }, values);
+    }
+
+    [Fact]
+    public void Test_ShiftLeft_sbyte()
+    {
+        UnknownValueRange a = new("sbyte");
+        var b = a.ShiftLeft(5);
+        Assert.Equal(8UL, b.Cardinality());
+        List<long> values = b.Values().ToList();
+        Assert.Equal(new List<long> { -128, -96, -64, -32, 0, 32, 64, 96 }, values);
+    }
 }

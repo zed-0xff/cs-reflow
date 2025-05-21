@@ -17,6 +17,30 @@ public class LongRangeTests
     }
 
     [Fact]
+    public void Test_new_nbits()
+    {
+        LongRange a = new LongRange(1, false);
+        Assert.Equal(0, a.Min);
+        Assert.Equal(1, a.Max);
+
+        a = new LongRange(8, false);
+        Assert.Equal(byte.MinValue, a.Min);
+        Assert.Equal(byte.MaxValue, a.Max);
+
+        a = new LongRange(8, true);
+        Assert.Equal(sbyte.MinValue, a.Min);
+        Assert.Equal(sbyte.MaxValue, a.Max);
+
+        a = new LongRange(32, false);
+        Assert.Equal(uint.MinValue, a.Min);
+        Assert.Equal(uint.MaxValue, a.Max);
+
+        a = new LongRange(32, true);
+        Assert.Equal(int.MinValue, a.Min);
+        Assert.Equal(int.MaxValue, a.Max);
+    }
+
+    [Fact]
     public void Test_ToString()
     {
         LongRange a = new LongRange(1, 1000);
@@ -53,5 +77,16 @@ public class LongRangeTests
         LongRange a = new LongRange(10, 1000) - 100;
         Assert.Equal(-90, a.Min);
         Assert.Equal(900, a.Max);
+    }
+
+    [Fact]
+    public void Test_IntersectsWith()
+    {
+        LongRange a = new LongRange(1, 1000);
+        LongRange b = new LongRange(500, 1500);
+        Assert.True(a.IntersectsWith(b));
+
+        b = new LongRange(1001, 2000);
+        Assert.False(a.IntersectsWith(b));
     }
 }

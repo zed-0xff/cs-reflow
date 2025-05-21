@@ -1,6 +1,6 @@
 public class UnknownValueRange : UnknownTypedValue
 {
-    public LongRange Range { get; private set; }
+    public LongRange Range { get; }
 
     public UnknownValueRange(string type) : base(type)
     {
@@ -80,16 +80,51 @@ public class UnknownValueRange : UnknownTypedValue
             : new UnknownValueRange(Type);
     }
 
-    public override UnknownValueBase Mul(object right)
+    public override UnknownValueBase ShiftLeft(object right)
     {
         if (!TryConvertToLong(right, out long l))
+            return new UnknownValueRange(Type);
+
+        if (l >= nbits)
+            throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {Type}");
+
+        ulong shiftedCardinality = 1UL << (nbits - (int)l);
+        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY)
+            return new UnknownValueRange(Type);
+
+        List<long> values = new List<long>((int)shiftedCardinality);
+
+        if (signed && nbits < 64)
+        {
+            long signMask = 1L << (nbits - 1);
+            for (long i = 0; i < (long)shiftedCardinality; i++)
+            {
+                long value = i << (int)l;
+                if ((value & signMask) != 0)
+                    value = -((~value) & (signMask - 1)) - 1;
+                values.Add(value);
+            }
+            values.Sort();
+        }
+        else
+        {
+            // TODO: check with signed/unsigned 64bit
+            for (long i = 0; i < (long)shiftedCardinality; i++)
+            {
+                long value = i << (int)l;
+                values.Add(value);
+            }
+        }
+
+        return new UnknownValueList(Type, values);
+    }
+
+    public override UnknownValueBase Mul(object right)
+    {
+        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(Type);
 
-        if (Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(Type);
-
-        // TODO: apply mask
-        return new UnknownValueList(Type, Values().Select(v => v * l).OrderBy(x => x).ToList());
+        return new UnknownValueList(Type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
     }
 
     public override UnknownValueRange Mod(object right)
@@ -110,10 +145,7 @@ public class UnknownValueRange : UnknownTypedValue
 
     public override UnknownValueBase Xor(object right)
     {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownValue.Create(Type);
-
-        if (Cardinality() > MAX_DISCRETE_CARDINALITY)
+        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(Type);
 
         return new UnknownValueList(Type, Values().Select(v => v ^ l).OrderBy(x => x).ToList());
@@ -142,6 +174,16 @@ public class UnknownValueRange : UnknownTypedValue
     public override int GetHashCode()
     {
         throw new NotImplementedException();
+    }
+
+    public override bool IntersectsWith(UnknownTypedValue right)
+    {
+        return right switch
+        {
+            UnknownValueRange r => Range.IntersectsWith(r.Range),
+            UnknownValueList l => l.Values().Any(v => Range.Contains(v)),
+            _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
+        };
     }
 }
 

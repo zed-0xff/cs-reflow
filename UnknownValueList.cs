@@ -32,17 +32,17 @@ public class UnknownValueList : UnknownTypedValue
 
     public override UnknownValueBase Add(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v + l).ToList())
+            ? new UnknownValueList(Type, values.Select(v => Mask(v + l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(Type);
 
     public override UnknownValueBase Sub(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v - l).ToList())
+            ? new UnknownValueList(Type, values.Select(v => Mask(v - l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(Type);
 
     public override UnknownValueBase Div(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v / l).Distinct().ToList())
+            ? new UnknownValueList(Type, values.Select(v => v / l).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(Type);
 
     public override UnknownValueBase Mod(object right) =>
@@ -52,11 +52,21 @@ public class UnknownValueList : UnknownTypedValue
 
     public override UnknownValueBase Mul(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v * l).Distinct().ToList())
+            ? new UnknownValueList(Type, values.Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(Type);
 
     public override UnknownValueBase Xor(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v ^ l).ToList())
+            ? new UnknownValueList(Type, values.Select(v => v ^ l).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(Type);
+
+    public override UnknownValueBase ShiftLeft(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(Type, values.Select(v => Mask(v << (int)l)).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(Type);
+
+    public override bool IntersectsWith(UnknownTypedValue other)
+    {
+        return values.Any(v => other.Contains(v));
+    }
 }
