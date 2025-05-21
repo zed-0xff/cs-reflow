@@ -85,12 +85,22 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
-    public void Test_int_mul()
+    public void Test_int_mul_int()
     {
         UnknownValueRange a = new("int", new LongRange(1, 3));
         var b = a.Mul(5);
         List<long> values = b.Values().ToList();
         Assert.Equal(new List<long> { 5, 10, 15 }, values);
+    }
+
+    [Fact]
+    public void Test_int_mul_unk()
+    {
+        UnknownValueRange a = new("int", new LongRange(1, 3));
+        UnknownValueRange b = new("int", new LongRange(5, 7));
+        var r = a.Mul(b);
+        List<long> values = r.Values().ToList();
+        Assert.Equal(new List<long> { 5, 6, 7, 10, 12, 14, 15, 18, 21 }, values);
     }
 
     [Fact]

@@ -10,11 +10,6 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public class VariableProcessor : ICloneable
 {
-    //    public class VarNotFoundException : Exception
-    //    {
-    //        public VarNotFoundException(string varName) : base($"Variable '{varName}' not found.") { }
-    //    }
-
     public VarDict VariableValues { get; private set; } = new();
     public static VarDict Constants { get; private set; } = new();
 

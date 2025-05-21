@@ -12,7 +12,7 @@ public abstract class UnknownValueBase
     public abstract UnknownValueBase Sub(object right);
     public abstract UnknownValueBase Xor(object right);
 
-    public abstract UnknownValueBase BinaryAnd(object right);
+    public abstract UnknownValueBase BitwiseAnd(object right);
     public abstract UnknownValueBase ShiftLeft(object right);
 
     public abstract object Eq(object right);
@@ -65,7 +65,7 @@ public abstract class UnknownValueBase
             ">" => Gt(rValue),
             ">=" => Gte(rValue),
 
-            "&" => BinaryAnd(rValue),
+            "&" => BitwiseAnd(rValue),
             //            "|" => Xor(rValue),
             //
             "<<" => ShiftLeft(rValue),

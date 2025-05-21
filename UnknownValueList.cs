@@ -50,11 +50,6 @@ public class UnknownValueList : UnknownTypedValue
             ? new UnknownValueList(Type, values.Select(v => v % l).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(Type);
 
-    public override UnknownValueBase Mul(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
-
     public override UnknownValueBase Xor(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueList(Type, values.Select(v => v ^ l).Distinct().OrderBy(x => x).ToList())

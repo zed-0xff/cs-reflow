@@ -119,14 +119,6 @@ public class UnknownValueRange : UnknownTypedValue
         return new UnknownValueList(Type, values);
     }
 
-    public override UnknownValueBase Mul(object right)
-    {
-        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(Type);
-
-        return new UnknownValueList(Type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
-    }
-
     public override UnknownValueRange Mod(object right)
     {
         if (!TryConvertToLong(right, out long l))

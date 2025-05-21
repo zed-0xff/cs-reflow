@@ -19,7 +19,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return new UnknownValueRange(type);
     }
 
-    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1000000;
+    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1_000_000;
 
     public class IntInfo
     {
@@ -129,6 +129,33 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return UnknownValue.Create("bool");
     }
 
+    public override UnknownValueBase Mul(object right)
+    {
+        if (Cardinality() > MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(Type);
+
+        if (TryConvertToLong(right, out long l))
+            return new UnknownValueList(Type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
+
+        if (right is not UnknownTypedValue ru)
+            return new UnknownValueRange(Type);
+
+        HashSet<long> values = new();
+        foreach (long v in Values())
+        {
+            foreach (long r in ru.Values())
+            {
+                long maskedValue = Mask(v * r);
+                if (values.Count >= (int)MAX_DISCRETE_CARDINALITY)
+                    return UnknownValue.Create(Type);
+
+                values.Add(maskedValue);
+            }
+        }
+
+        return new UnknownValueList(Type, values.OrderBy(x => x).ToList());
+    }
+
     public override object Cast(string toType)
     {
         toType = ShortType(toType);
@@ -147,11 +174,59 @@ public abstract class UnknownTypedValue : UnknownValueBase
         throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
     }
 
-    public override UnknownValueBase BinaryAnd(object right)
+    public override UnknownValueBase BitwiseAnd(object right)
     {
-        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
+        if (!TryConvertToLong(right, out long mask))
             return UnknownValue.Create(Type);
 
-        return new UnknownValueList(Type, Values().Select(v => v & l).Distinct().OrderBy(x => x).ToList());
+        if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
+            return new UnknownValueList(Type, Values().Select(v => v & mask).Distinct().OrderBy(x => x).ToList());
+
+        if (Mask2Cardinality(mask) > MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(Type);
+
+        return new UnknownValueList(Type, Mask2List(mask));
+    }
+
+    public ulong Mask2Cardinality(long mask)
+    {
+        // count nonzero bits in l
+        int bitCount = 0;
+        for (int i = 0; i < nbits; i++)
+        {
+            if ((mask & (1L << i)) != 0)
+                bitCount++;
+        }
+        return 1UL << bitCount;
+    }
+
+    public List<long> Mask2List(long mask)
+    {
+        List<int> bitPositions = new();
+
+        // Collect positions of all set bits
+        for (int i = 0; i < 64; i++)
+        {
+            if ((mask & (1L << i)) != 0)
+                bitPositions.Add(i);
+        }
+
+        int bitCount = bitPositions.Count;
+        ulong total = 1UL << bitCount;
+        List<long> result = new((int)total);
+
+        // Generate all combinations
+        for (ulong i = 0; i < total; i++)
+        {
+            long value = 0;
+            for (int j = 0; j < bitCount; j++)
+            {
+                if (((i >> j) & 1) != 0)
+                    value |= 1L << bitPositions[j];
+            }
+            result.Add(value);
+        }
+
+        return result;
     }
 }
