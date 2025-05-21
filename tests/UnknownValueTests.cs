@@ -22,22 +22,22 @@ public class UnknownValueTests
     public void Test_expr()
     {
         var a = UnknownValue.Create("int");
-        a = a.Cast("uint");
+        a = a.Cast("uint") as UnknownValueBase;
         a = a.Div(1024u);
         Assert.Equal("UnknownValue<uint>[0..4194303]", a.ToString());
-        a = a.Cast("int");
+        a = a.Cast("int") as UnknownValueBase;
         a = a.Sub(67108864);
         Assert.Equal("UnknownValue<int>[−67108864..−62914561]", a.ToString());
 
         var b = UnknownValue.Create("int");
-        b = b.Cast("uint");
+        b = b.Cast("uint") as UnknownValueBase;
         b = b.Mod(1949u);
         Assert.Equal("UnknownValue<uint>[0..1948]", b.ToString());
         b = b.Xor(0x70EF1C76);
         Assert.Equal("UnknownValue<uint>[1949]", b.ToString());
         b = b.Mul(2048);
         Assert.Equal("UnknownValue<uint>[1949]", b.ToString());
-        b = b.Cast("int");
+        b = b.Cast("int") as UnknownValueBase;
         Assert.Equal("UnknownValue<int>[1949]", b.ToString());
         Assert.Equal(2025848832, b.Min());
         Assert.Equal(2030041088, b.Max());

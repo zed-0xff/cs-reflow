@@ -26,7 +26,24 @@ public class UnknownValueListTests
     public void Test_Cast()
     {
         UnknownValueList a = new("uint", new List<long> { uint.MaxValue, uint.MaxValue - 1, uint.MaxValue - 2 });
-        a = a.Cast("int");
+        a = a.Cast("int") as UnknownValueList;
         Assert.Equal(new List<long> { -1, -2, -3 }, a.Values().ToList());
+    }
+
+    [Fact]
+    public void Test_Cast_bool()
+    {
+        UnknownValueList a = new("int", new List<long> { 1, 2, 3 });
+        var b = a.Cast("bool");
+        Assert.True(b is bool);
+        Assert.True(b as bool?);
+
+        a = new("int", new List<long> { 0 });
+        b = a.Cast("bool");
+        Assert.True(b is bool);
+        Assert.False(b as bool?);
+
+        a = new("int", new List<long> { 0, 5 });
+        Assert.Equal(UnknownValue.Create("bool"), a.Cast("bool"));
     }
 }

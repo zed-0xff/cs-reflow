@@ -11,14 +11,14 @@ public class UnknownValueList : UnknownTypedValue
         this.values = values;
     }
 
-    public override UnknownValueList Cast(string toType)
+    public override object Cast(string toType)
     {
         toType = ShortType(toType);
-        if (Type == "uint" && toType == "int")
+        if (Type == "uint" && toType == "int") // uint -> int
         {
-            return new("int", Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
+            return new UnknownValueList("int", Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
         }
-        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
+        return base.Cast(toType);
     }
 
     public override string ToString()

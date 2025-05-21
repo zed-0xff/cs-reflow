@@ -12,6 +12,11 @@ public class UnknownValueRange : UnknownTypedValue
         Range = range;
     }
 
+    public UnknownValueRange(string type, long min, long max) : base(type)
+    {
+        Range = new LongRange(min, max);
+    }
+
     public override bool Equals(object obj)
     {
         if (obj is UnknownValueRange r)
@@ -29,14 +34,29 @@ public class UnknownValueRange : UnknownTypedValue
         return Range.Equals(Type2Range(Type));
     }
 
-    public override UnknownValueRange Cast(string toType)
+    public override object Cast(string toType)
     {
         toType = ShortType(toType);
-        if (Type == "uint" && toType == "int" && Range.Max <= int.MaxValue)
+
+        if (Type == "uint" && toType == "int") // uint -> int
         {
-            return new UnknownValueRange("int", new LongRange(0, Range.Max));
+            if (Range.Min >= 0 && Range.Max <= int.MaxValue)
+                return new UnknownValueRange("int", Range);
+            if (Range.Min > int.MaxValue)
+                return new UnknownValueRange("int", unchecked((int)Range.Min), unchecked((int)Range.Max));
+            return new UnknownValueRange("int");
         }
-        return new(toType);
+
+        if (Type == "int" && toType == "uint") // int -> uint
+        {
+            if (Range.Min >= 0 && Range.Max >= 0)
+                return new UnknownValueRange("uint", Range);
+            if (Range.Max < 0)
+                return new UnknownValueRange("uint", unchecked((uint)Range.Min), unchecked((uint)Range.Max));
+            return new UnknownValueRange("uint");
+        }
+
+        return base.Cast(toType);
     }
 
     public override UnknownValueRange Div(object right)

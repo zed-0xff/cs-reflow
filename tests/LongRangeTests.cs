@@ -11,6 +11,12 @@ public class LongRangeTests
     }
 
     [Fact]
+    public void Test_new_fail()
+    {
+        Assert.Throws<ArgumentException>(() => new LongRange(1, -1));
+    }
+
+    [Fact]
     public void Test_ToString()
     {
         LongRange a = new LongRange(1, 1000);

@@ -6,6 +6,9 @@ public class LongRange
 
     public LongRange(long min, long max)
     {
+        if (min > max)
+            throw new ArgumentException($"Min({min}) cannot be greater than Max({max})");
+
         Min = min;
         Max = max;
     }

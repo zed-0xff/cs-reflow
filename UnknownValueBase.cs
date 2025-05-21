@@ -1,7 +1,7 @@
 public abstract class UnknownValueBase
 {
     public abstract override string ToString();
-    public abstract UnknownValueBase Cast(string toType);
+    public abstract object Cast(string toType);
     public abstract ulong Cardinality();
     public abstract IEnumerable<long> Values();
 

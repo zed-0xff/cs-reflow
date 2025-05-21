@@ -91,4 +91,22 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         return UnknownValue.Create("bool");
     }
+
+    public override object Cast(string toType)
+    {
+        toType = ShortType(toType);
+        if (toType == "bool")
+        {
+            switch (Cardinality())
+            {
+                case 0:
+                    return UnknownValue.Create("bool");
+                case 1:
+                    return !Contains(0);
+                default:
+                    return Contains(0) ? UnknownValue.Create("bool") : true;
+            }
+        }
+        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
+    }
 }
