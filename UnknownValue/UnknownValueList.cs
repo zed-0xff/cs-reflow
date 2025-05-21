@@ -2,19 +2,52 @@ public class UnknownValueList : UnknownTypedValue
 {
     public List<long> values = new();
 
-    public UnknownValueList(string type) : base(type)
+    public UnknownValueList(string type, List<long> values = null) : base(type)
     {
+        if (values != null)
+            this.values = values;
     }
 
-    public UnknownValueList(string type, List<long> values) : base(type)
+    public UnknownValueList(IntInfo type, List<long> values = null) : base(type)
     {
-        this.values = values;
+        if (values != null)
+            this.values = values;
     }
+
+    public override UnknownValueBase Add(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => Mask(v + l)).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
+
+    public override UnknownValueBase Sub(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => Mask(v - l)).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
+
+    public override UnknownValueBase Div(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => v / l).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
+
+    public override UnknownValueBase Mod(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => v % l).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
+
+    public override UnknownValueBase Xor(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => v ^ l).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
+
+    public override UnknownValueBase ShiftLeft(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => Mask(v << (int)l)).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
 
     public override object Cast(string toType)
     {
         toType = ShortType(toType);
-        if (Type == "uint" && toType == "int") // uint -> int
+        if (type.Name == "uint" && toType == "int") // uint -> int
         {
             return new UnknownValueList("int", Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
         }
@@ -23,42 +56,12 @@ public class UnknownValueList : UnknownTypedValue
 
     public override string ToString()
     {
-        return $"UnknownValue<{Type}>[{values.Count}]";
+        return $"UnknownValue<{type}>[{values.Count}]";
     }
 
-    public override ulong Cardinality() => (ulong)values.Count;
+    public override long Cardinality() => values.Count;
     public override IEnumerable<long> Values() => values;
     public override bool Contains(long value) => values.Contains(value);
-
-    public override UnknownValueBase Add(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => Mask(v + l)).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
-
-    public override UnknownValueBase Sub(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => Mask(v - l)).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
-
-    public override UnknownValueBase Div(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v / l).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
-
-    public override UnknownValueBase Mod(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v % l).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
-
-    public override UnknownValueBase Xor(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => v ^ l).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
-
-    public override UnknownValueBase ShiftLeft(object right) =>
-        TryConvertToLong(right, out long l)
-            ? new UnknownValueList(Type, values.Select(v => Mask(v << (int)l)).Distinct().OrderBy(x => x).ToList())
-            : new UnknownValueList(Type);
 
     public override bool IntersectsWith(UnknownTypedValue other)
     {

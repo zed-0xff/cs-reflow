@@ -134,7 +134,7 @@ public class VariableProcessor : ICloneable
                 value = existingValue switch
                 {
                     UnknownValue => value, // no luck
-                    UnknownTypedValue utv => UnknownValue.Create(utv.Type),
+                    UnknownTypedValue utv => UnknownValue.Create(utv.type),
                     _ => UnknownValue.Create(existingValue?.GetType()) // handles null values as well
                 };
             }

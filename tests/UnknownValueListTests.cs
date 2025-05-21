@@ -16,10 +16,10 @@ public class UnknownValueListTests
     public void Test_Cardinality()
     {
         UnknownValueList a = new("uint");
-        Assert.Equal(0UL, a.Cardinality());
+        Assert.Equal(0, a.Cardinality());
 
         UnknownValueList b = new("int", new List<long> { 1, 2, 3 });
-        Assert.Equal(3UL, b.Cardinality());
+        Assert.Equal(3, b.Cardinality());
     }
 
     [Fact]

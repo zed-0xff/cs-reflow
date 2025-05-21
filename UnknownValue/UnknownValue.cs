@@ -18,6 +18,7 @@ public class UnknownValue : UnknownValueBase
 
     public static UnknownValueBase Create(Type? type) => Create(type?.ToString());
     public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
+    public static UnknownValueBase Create(UnknownTypedValue.IntInfo type) => UnknownTypedValue.Create(type);
 
     public override UnknownValueBase Cast(string toType)
     {
@@ -29,7 +30,7 @@ public class UnknownValue : UnknownValueBase
         return "UnknownValue";
     }
 
-    public override ulong Cardinality()
+    public override long Cardinality()
     {
         throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
     }

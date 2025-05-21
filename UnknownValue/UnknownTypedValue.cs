@@ -1,63 +1,67 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
-    public string Type { get; }
-    public int nbits { get; }
-    public bool signed { get; }
+    public IntInfo type { get; }
 
-    public UnknownTypedValue(string type) : base()
+    public UnknownTypedValue(string typeName) : base()
     {
-        Type = ShortType(type);
-        if (!INFOS.TryGetValue(Type, out IntInfo info))
-            throw new NotImplementedException($"UnknownTypedValue: {Type} not implemented.");
-
-        nbits = info.nbits;
-        signed = info.signed;
+        if (!INFOS.TryGetValue(ShortType(typeName), out IntInfo? t))
+            throw new NotImplementedException($"UnknownTypedValue: {typeName} not implemented.");
+        type = t;
     }
 
-    public static UnknownTypedValue Create(string type)
+    public UnknownTypedValue(IntInfo type) : base()
     {
-        return new UnknownValueRange(type);
+        this.type = type;
     }
 
-    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1_000_000;
+    public static UnknownTypedValue Create(string typeName) => new UnknownValueRange(typeName);
+    public static UnknownTypedValue Create(IntInfo type) => new UnknownValueRange(type);
+
+    public static readonly long MAX_DISCRETE_CARDINALITY = 1_000_000L;
 
     public class IntInfo
     {
+        public string Name { get; init; }
         public int nbits { get; init; }
         public bool signed { get; init; }
+
+        public long MinValue => signed ? -(1L << (nbits - 1)) : 0;
+        public long MaxValue => signed ? (1L << (nbits - 1)) - 1 : (1L << nbits) - 1;
+
+        public long Mask => (1L << nbits) - 1;
+        public LongRange Range => new LongRange(MinValue, MaxValue);
+
+        public override string ToString() => Name;
     }
 
     static readonly Dictionary<string, IntInfo> INFOS = new()
     {
-        ["bool"] = new IntInfo { nbits = 1, signed = false },
-        ["byte"] = new IntInfo { nbits = 8, signed = true },
-        ["sbyte"] = new IntInfo { nbits = 8, signed = true },
-        ["short"] = new IntInfo { nbits = 16, signed = true },
-        ["ushort"] = new IntInfo { nbits = 16, signed = false },
-        ["int"] = new IntInfo { nbits = 32, signed = true },
-        ["uint"] = new IntInfo { nbits = 32, signed = false },
-        ["long"] = new IntInfo { nbits = 64, signed = true },
-        ["ulong"] = new IntInfo { nbits = 64, signed = false },
-        ["nint"] = new IntInfo { nbits = 32, signed = true }, // TODO: 32/64 bit cmdline switch
-        ["nuint"] = new IntInfo { nbits = 32, signed = false }, // TODO: 32/64 bit cmdline switch
+        ["bool"] = new IntInfo { Name = "bool", nbits = 1, signed = false },
+        ["byte"] = new IntInfo { Name = "byte", nbits = 8, signed = true },
+        ["sbyte"] = new IntInfo { Name = "sbyte", nbits = 8, signed = true },
+        ["short"] = new IntInfo { Name = "short", nbits = 16, signed = true },
+        ["ushort"] = new IntInfo { Name = "ushort", nbits = 16, signed = false },
+        ["int"] = new IntInfo { Name = "int", nbits = 32, signed = true },
+        ["uint"] = new IntInfo { Name = "uint", nbits = 32, signed = false },
+        ["long"] = new IntInfo { Name = "long", nbits = 64, signed = true },
+        ["ulong"] = new IntInfo { Name = "ulong", nbits = 64, signed = false },
+        ["nint"] = new IntInfo { Name = "nint", nbits = 32, signed = true }, // TODO: 32/64 bit cmdline switch
+        ["nuint"] = new IntInfo { Name = "nuint", nbits = 32, signed = false }, // TODO: 32/64 bit cmdline switch
     };
 
     public long Mask(long value)
     {
-        return value & ((1L << nbits) - 1);
+        return value & type.Mask;
+    }
+
+    public long Capacity()
+    {
+        return 1L << type.nbits;
     }
 
     public static bool IsTypeSupported(string type)
     {
         return INFOS.ContainsKey(ShortType(type));
-    }
-
-    public static LongRange Type2Range(string type)
-    {
-        if (INFOS.TryGetValue(type, out IntInfo info))
-            return new LongRange(info.nbits, info.signed);
-        else
-            throw new NotImplementedException($"UnknownValueRange: {type} not implemented.");
     }
 
     protected static string ShortType(string type)
@@ -132,13 +136,13 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public override UnknownValueBase Mul(object right)
     {
         if (Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(Type);
+            return UnknownValue.Create(type);
 
         if (TryConvertToLong(right, out long l))
-            return new UnknownValueList(Type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
+            return new UnknownValueList(type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
 
         if (right is not UnknownTypedValue ru)
-            return new UnknownValueRange(Type);
+            return new UnknownValueRange(type);
 
         HashSet<long> values = new();
         foreach (long v in Values())
@@ -146,14 +150,14 @@ public abstract class UnknownTypedValue : UnknownValueBase
             foreach (long r in ru.Values())
             {
                 long maskedValue = Mask(v * r);
-                if (values.Count >= (int)MAX_DISCRETE_CARDINALITY)
-                    return UnknownValue.Create(Type);
+                if (values.Count >= MAX_DISCRETE_CARDINALITY)
+                    return UnknownValue.Create(type);
 
                 values.Add(maskedValue);
             }
         }
 
-        return new UnknownValueList(Type, values.OrderBy(x => x).ToList());
+        return new UnknownValueList(type, values.OrderBy(x => x).ToList());
     }
 
     public override object Cast(string toType)
@@ -177,27 +181,27 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public override UnknownValueBase BitwiseAnd(object right)
     {
         if (!TryConvertToLong(right, out long mask))
-            return UnknownValue.Create(Type);
+            return UnknownValue.Create(type);
 
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueList(Type, Values().Select(v => v & mask).Distinct().OrderBy(x => x).ToList());
+            return new UnknownValueList(type, Values().Select(v => v & mask).Distinct().OrderBy(x => x).ToList());
 
         if (Mask2Cardinality(mask) > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(Type);
+            return UnknownValue.Create(type);
 
-        return new UnknownValueList(Type, Mask2List(mask));
+        return new UnknownValueList(type, Mask2List(mask));
     }
 
-    public ulong Mask2Cardinality(long mask)
+    public long Mask2Cardinality(long mask)
     {
         // count nonzero bits in l
         int bitCount = 0;
-        for (int i = 0; i < nbits; i++)
+        for (int i = 0; i < type.nbits; i++)
         {
             if ((mask & (1L << i)) != 0)
                 bitCount++;
         }
-        return 1UL << bitCount;
+        return 1L << bitCount;
     }
 
     public List<long> Mask2List(long mask)

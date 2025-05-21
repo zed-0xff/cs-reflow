@@ -2,26 +2,21 @@ public class UnknownValueRange : UnknownTypedValue
 {
     public LongRange Range { get; }
 
-    public UnknownValueRange(string type) : base(type)
+    public UnknownValueRange(IntInfo type, LongRange? range = null) : base(type)
     {
-        Range = Type2Range(Type);
+        Range = range ?? this.type.Range;
     }
 
-    public UnknownValueRange(string type, LongRange range) : base(type)
+    public UnknownValueRange(string type, LongRange? range = null) : base(type)
     {
-        Range = range;
-    }
-
-    public UnknownValueRange(string type, long min, long max) : base(type)
-    {
-        Range = new LongRange(min, max);
+        Range = range ?? this.type.Range;
     }
 
     public override bool Equals(object obj)
     {
         if (obj is UnknownValueRange r)
         {
-            return Type == r.Type && Range.Equals(r.Range);
+            return type == r.type && Range.Equals(r.Range);
         }
         return false;
     }
@@ -31,28 +26,28 @@ public class UnknownValueRange : UnknownTypedValue
 
     public bool IsFullRange()
     {
-        return Range.Equals(Type2Range(Type));
+        return Range.Equals(type.Range);
     }
 
     public override object Cast(string toType)
     {
         toType = ShortType(toType);
 
-        if (Type == "uint" && toType == "int") // uint -> int
+        if (type.Name == "uint" && toType == "int") // uint -> int
         {
             if (Range.Min >= 0 && Range.Max <= int.MaxValue)
                 return new UnknownValueRange("int", Range);
             if (Range.Min > int.MaxValue)
-                return new UnknownValueRange("int", unchecked((int)Range.Min), unchecked((int)Range.Max));
+                return new UnknownValueRange("int", new LongRange(unchecked((int)Range.Min), unchecked((int)Range.Max)));
             return new UnknownValueRange("int");
         }
 
-        if (Type == "int" && toType == "uint") // int -> uint
+        if (type.Name == "int" && toType == "uint") // int -> uint
         {
             if (Range.Min >= 0 && Range.Max >= 0)
                 return new UnknownValueRange("uint", Range);
             if (Range.Max < 0)
-                return new UnknownValueRange("uint", unchecked((uint)Range.Min), unchecked((uint)Range.Max));
+                return new UnknownValueRange("uint", new LongRange(unchecked((uint)Range.Min), unchecked((uint)Range.Max)));
             return new UnknownValueRange("uint");
         }
 
@@ -62,41 +57,41 @@ public class UnknownValueRange : UnknownTypedValue
     public override UnknownValueRange Div(object right)
     {
         return TryConvertToLong(right, out long l)
-            ? new UnknownValueRange(Type, Range / l)
-            : new UnknownValueRange(Type);
+            ? new UnknownValueRange(type, Range / l)
+            : new UnknownValueRange(type);
     }
 
     public override UnknownValueRange Add(object right)
     {
         return TryConvertToLong(right, out long l)
-            ? new UnknownValueRange(Type, Range + l)
-            : new UnknownValueRange(Type);
+            ? new UnknownValueRange(type, Range + l)
+            : new UnknownValueRange(type);
     }
 
     public override UnknownValueRange Sub(object right)
     {
         return TryConvertToLong(right, out long l)
-            ? new UnknownValueRange(Type, Range - l)
-            : new UnknownValueRange(Type);
+            ? new UnknownValueRange(type, Range - l)
+            : new UnknownValueRange(type);
     }
 
     public override UnknownValueBase ShiftLeft(object right)
     {
         if (!TryConvertToLong(right, out long l))
-            return new UnknownValueRange(Type);
+            return new UnknownValueRange(type);
 
-        if (l >= nbits)
-            throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {Type}");
+        if (l >= type.nbits)
+            throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {type}");
 
-        ulong shiftedCardinality = 1UL << (nbits - (int)l);
+        long shiftedCardinality = 1L << (type.nbits - (int)l);
         if (shiftedCardinality > MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueRange(Type);
+            return new UnknownValueRange(type);
 
         List<long> values = new List<long>((int)shiftedCardinality);
 
-        if (signed && nbits < 64)
+        if (type.signed && type.nbits < 64)
         {
-            long signMask = 1L << (nbits - 1);
+            long signMask = 1L << (type.nbits - 1);
             for (long i = 0; i < (long)shiftedCardinality; i++)
             {
                 long value = i << (int)l;
@@ -116,31 +111,31 @@ public class UnknownValueRange : UnknownTypedValue
             }
         }
 
-        return new UnknownValueList(Type, values);
+        return new UnknownValueList(type, values);
     }
 
     public override UnknownValueRange Mod(object right)
     {
         if (!TryConvertToLong(right, out long l))
-            return new(Type);
+            return new(type);
 
         if (l == 0)
             throw new DivideByZeroException();
 
         // TODO: case when left is not full range
         if (l > 0)
-            return new UnknownValueRange(Type, new LongRange(0, l - 1));
+            return new UnknownValueRange(type, new LongRange(0, l - 1));
         else
-            return new UnknownValueRange(Type, new LongRange(l + 1, 0));
+            return new UnknownValueRange(type, new LongRange(l + 1, 0));
 
     }
 
     public override UnknownValueBase Xor(object right)
     {
-        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(Type);
+        if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(type);
 
-        return new UnknownValueList(Type, Values().Select(v => v ^ l).OrderBy(x => x).ToList());
+        return new UnknownValueList(type, Values().Select(v => v ^ l).OrderBy(x => x).ToList());
     }
 
     public override IEnumerable<long> Values()
@@ -148,17 +143,17 @@ public class UnknownValueRange : UnknownTypedValue
         return Range.Values();
     }
 
-    public override ulong Cardinality()
+    public override long Cardinality()
     {
-        return (ulong)(Range.Max - Range.Min + 1); // because both are inclusive
+        return Range.Max - Range.Min + 1; // because both are inclusive
     }
 
     public override string ToString()
     {
         if (IsFullRange())
-            return $"UnknownValue<{Type}>";
+            return $"UnknownValue<{type}>";
         else
-            return $"UnknownValue<{Type}>{Range}";
+            return $"UnknownValue<{type}>{Range}";
     }
 
     public override bool Contains(long value) => Range.Contains(value);
