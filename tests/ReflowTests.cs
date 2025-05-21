@@ -116,4 +116,10 @@ public class ReflowTests
     {
         checkData("rsa_aaf9_5");
     }
+
+    [Fact]
+    public void rsa_aa96_5()
+    {
+        checkData("rsa_aa96_5");
+    }
 }
