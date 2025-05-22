@@ -469,6 +469,7 @@ public class VariableProcessor : ICloneable
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
             if (lValue is UnknownValueBase luv)
                 return luv.Op(op, rValue);
+
             if (rValue is UnknownValueBase ruv)
                 return ruv.InverseOp(op, lValue);
 

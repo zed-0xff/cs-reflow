@@ -38,4 +38,15 @@ public class VariableProcessorTests
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(false, result);
     }
+
+    [Fact]
+    public void Test_exprC()
+    {
+        string expr_str = "((4 * num252 + num252 * 4) & 4) == 0";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num252"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
 }

@@ -69,4 +69,11 @@ public class UnknownValueList : UnknownTypedValue
     {
         return values.Any(v => other.Contains(v));
     }
+
+    public override bool Equals(object obj) => obj is UnknownValueList other && type == other.type && values.SequenceEqual(other.values);
+
+    public override int GetHashCode()
+    {
+        throw new NotImplementedException();
+    }
 }

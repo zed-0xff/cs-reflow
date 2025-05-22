@@ -252,9 +252,7 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, newBits);
     }
 
-    public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
-
-    private UnknownValueBase calc1(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    private UnknownValueBase calc_asym(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
@@ -263,17 +261,18 @@ public class UnknownValueBits : UnknownTypedValue
             return id_val;
 
         var (minMask, val) = MaskVal(true);
-        return new UnknownValueBits(type, op(val, l), minMask);
+        return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
     }
 
-    private UnknownValueBase calc2(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    private UnknownValueBase calc_symm(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
     {
         switch (right)
         {
             case UnknownValueBits otherBits:
                 var (mask1, val1) = MaskVal(true);
                 var (mask2, val2) = otherBits.MaskVal(true);
-                return new UnknownValueBits(type, op(val1, val2), mask1 & mask2); // actual new mask might be wider
+                var newMask = mask1 & mask2;
+                return new UnknownValueBits(type, op(val1, val2), newMask);
 
             case UnknownValueList otherList:
                 if (Cardinality() > MAX_DISCRETE_CARDINALITY)
@@ -292,15 +291,53 @@ public class UnknownValueBits : UnknownTypedValue
                 return new UnknownValueList(type, newValues.OrderBy(x => x).ToList());
         }
 
-        return calc1(op, right, identity, id_val);
+        return calc_asym(op, right, identity, id_val);
     }
 
-    public override UnknownValueBase Add(object right) => calc2((a, b) => a + b, right, 0, this);
-    public override UnknownValueBase Div(object right) => calc1((a, b) => a / b, right, 1, this);
-    public override UnknownValueBase Mod(object right) => calc1((a, b) => a % b, right, 1, new UnknownValueList(type, new List<long> { 0 }));
-    public override UnknownValueBase Mul(object right) => calc2((a, b) => a * b, right, 1, this);
-    public override UnknownValueBase Sub(object right) => calc1((a, b) => a - b, right, 0, this);
-    public override UnknownValueBase Xor(object right) => calc2((a, b) => a ^ b, right, 0, this);
+    public override UnknownValueBase Add(object right)
+    {
+        if (right == this) // '==' and not 'equals' because we want to use the same instance
+            return ShiftLeft(1);
+
+        return calc_symm((a, b) => a + b, right, 0, this);
+    }
+
+    public override UnknownValueBase Xor(object right)
+    {
+        if (right == this) // '==' and not 'equals' because we want to use the same instance
+            return new UnknownValueList(type, new List<long> { 0 });
+
+        return calc_symm((a, b) => a ^ b, right, 0, this);
+    }
+
+    public override UnknownValueBase Mul(object right)
+    {
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0) return new UnknownValueList(type, new List<long> { 0 });
+            if (l == 1) return this;
+
+            var (minMask, val) = MaskVal(true);
+            val *= l;
+            var newMask = minMask;
+
+            l >>= 1;
+            while (l > 0)
+            {
+                newMask = (newMask << 1) | 1;
+                l >>= 1;
+            }
+            return new UnknownValueBits(type, val, newMask);
+        }
+
+        return calc_symm((a, b) => a * b, right, 1, this);
+    }
+
+    public override UnknownValueBase Div(object right) => calc_asym((a, b) => a / b, right, 1, this);
+    public override UnknownValueBase Mod(object right) => calc_asym((a, b) => a % b, right, 1, new UnknownValueList(type, new List<long> { 0 }));
+    public override UnknownValueBase Sub(object right) => calc_asym((a, b) => a - b, right, 0, this);
+
+    public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
 
     public override int GetHashCode()
     {
