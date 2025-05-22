@@ -125,54 +125,75 @@ public class TraceLog
             result.add_with_labels(this, other, 0, 0, commonStart);
 
         // make new if/then/else
-        var ifEntry = this.entries[commonStart];
-        var ifStmt = ifEntry.stmt as IfStatementSyntax;
-        if (ifStmt.LineNo() != hint_key)
+        List<TraceEntry> ifEntries = new();
+        ifEntries.Add(this.entries[commonStart]);
+        ifEntries.Add(other.entries[commonStart]);
+
+        TraceEntry? ifEntry = null;
+        IfStatementSyntax? ifStmt = null;
+        LabeledStatementSyntax? labelStmt = null;
+        foreach (var entry in ifEntries)
         {
-            throw new System.Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+            //            if (entry.stmt is IfStatementSyntax if1)
+            //            {
+            //                ifStmt = if1;
+            //                ifEntry = entry;
+            //                break;
+            //            }
+            if (entry.stmt is LabeledStatementSyntax labeledStmt && labeledStmt.Statement is IfStatementSyntax if2)
+            {
+                ifStmt = if2;
+                ifEntry = entry;
+                labelStmt = labeledStmt;
+                break;
+            }
         }
 
         if (ifStmt == null)
         {
-            for (int i = 0; i <= commonStart; i++)
+            foreach (var entry in ifEntries)
+            {
+                if (entry.stmt is IfStatementSyntax if1)
+                {
+                    ifStmt = if1;
+                    ifEntry = entry;
+                    break;
+                }
+            }
+        }
+
+        if (ifStmt == null)
+        {
+            for (int i = Math.Max(commonStart - 10, 0); i <= commonStart; i++)
             {
                 if (i >= this.entries.Count)
                     break;
 
                 if (i == commonStart)
-                    Console.WriteLine($"A{i}: {this.entries[i].stmt}");
-                else
-                    Console.WriteLine($"A{i}: {this.entries[i].TitleWithLineNo()}");
+                    Console.WriteLine("--- commonStart");
+                Console.WriteLine($"A{i}: {this.entries[i].TitleWithLineNo()}");
             }
             Console.WriteLine();
 
-            for (int j = 0; j <= commonStart; j++)
+            for (int j = Math.Max(commonStart - 10, 0); j <= commonStart; j++)
             {
                 if (j >= other.entries.Count)
                     break;
 
                 if (j == commonStart)
-                    Console.WriteLine($"B{j}: {other.entries[j].stmt}");
-                else
-                    Console.WriteLine($"B{j}: {other.entries[j].TitleWithLineNo()}");
+                    Console.WriteLine("--- commonStart");
+                Console.WriteLine($"B{j}: {other.entries[j].TitleWithLineNo()}");
             }
             Console.WriteLine();
 
-            //            Console.WriteLine($"[d] {this.entries[commonStart - 1].stmt} vs {other.entries[commonStart - 1].stmt}");
-            //            Console.WriteLine($"[d] {this.entries[commonStart - 1].stmt == other.entries[commonStart - 1].stmt}");
-            //            Console.WriteLine();
-            //
-            //            Console.WriteLine($"[d] {this.entries[commonStart].stmt == other.entries[commonStart].stmt}");
-            //            Console.WriteLine($"[d] {this.entries[commonStart].stmt.ToString() == other.entries[commonStart].stmt.ToString()}");
-            //            Console.WriteLine();
-            //
-            //            System.IO.File.WriteAllText("a.txt", this.entries[commonStart].stmt.ToString());
-            //            System.IO.File.WriteAllText("b.txt", other.entries[commonStart].stmt.ToString());
-
-            throw new System.Exception($"Expected if statement at {commonStart - 1}, got {ifEntry.stmt}");
+            throw new System.Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
         }
 
-        //        Console.WriteLine($"[d] old if: {ifStmt}");
+        if (ifStmt.LineNo() != hint_key)
+        {
+            Console.WriteLine($"[d] if statement: {ifStmt.LineNo()}: {ifStmt}");
+            throw new System.Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+        }
 
         BlockSyntax thenBlock = Block(
                 this.entries.GetRange(commonStart + 1, this.entries.Count - commonEnd - commonStart - 1)
@@ -186,21 +207,21 @@ public class TraceLog
                     .ToArray()
                 );
 
-        //        Console.WriteLine($"[d] then: {thenBlock}");
-        //        Console.WriteLine($"[d] else: {elseBlock}");
-
         BlockSyntax thenBlock1 = hints[hint_key] ? thenBlock : elseBlock;
         BlockSyntax elseBlock1 = hints[hint_key] ? elseBlock : thenBlock;
 
-        var newIfStmt = ifStmt
+        StatementSyntax newIfStmt = ifStmt
             .WithStatement(thenBlock1)
             .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null)
             .WithAdditionalAnnotations(
                     new SyntaxAnnotation("OriginalLineNo", ifStmt.LineNo().ToString())
                     );
 
-        //        Console.WriteLine($"[d] new if: {newIfStmt}");
-        //        Console.WriteLine();
+        if (labelStmt != null)
+        {
+            newIfStmt = labelStmt
+                .WithStatement(newIfStmt);
+        }
 
         result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry.vars));
 
@@ -213,5 +234,14 @@ public class TraceLog
         result.hints.Remove(hint_key);
 
         return result;
+    }
+
+    public void Print(string prefix = "")
+    {
+        Console.WriteLine($"TraceLog: {entries.Count} entries, {hints.Count} hints");
+        foreach (var entry in entries)
+        {
+            Console.WriteLine(prefix + entry.TitleWithLineNo());
+        }
     }
 }

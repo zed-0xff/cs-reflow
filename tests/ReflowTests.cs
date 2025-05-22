@@ -123,4 +123,10 @@ public class ReflowTests
     {
         checkData("rsa_aa96_5");
     }
+
+    [Fact]
+    public void labels()
+    {
+        checkData("labels");
+    }
 }

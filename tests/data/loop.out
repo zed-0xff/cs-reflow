@@ -12,7 +12,7 @@
 		if (num8 > 0)
 		{
 			num10 = 0;
-			l101:
+			lbl_101:
 				if (num10 >= num8)
 				{
 					return list2;
@@ -21,7 +21,7 @@
 				{
 					list2.Add(IO.Path.GetFileNameWithoutExtension((string)((object[])obj)[num10]));
 					num10++;
-					goto l101;
+					goto lbl_101;
 				}
 		}
 		else

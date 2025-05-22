@@ -164,7 +164,7 @@ public class VariableProcessor : ICloneable
                         case uint u:
                             return u;
                         default:
-                            throw new NotSupportedException($"Cast from '{value.GetType()}' to '{toType}' is not supported.");
+                            throw new NotSupportedException($"Cast from '{value?.GetType()}' to '{toType}' is not supported.");
                     }
                 case "int":
                 case "nint": // TODO: 32/64 bit cmdline switch
@@ -181,10 +181,18 @@ public class VariableProcessor : ICloneable
                         case uint u:
                             return unchecked((int)u);
                         default:
-                            throw new NotSupportedException($"Cast from '{value.GetType()}' to '{toType}' is not supported.");
+                            throw new NotSupportedException($"Cast from '{value?.GetType()}' to '{toType}' is not supported.");
                     }
+
+                case "string":
+                    if (value is string)
+                        return value;
+                    else
+                        throw new NotSupportedException($"Cast from '{value?.GetType()}' to '{toType}' is not supported.");
+                    break;
+
                 default:
-                    throw new NotSupportedException($"Cast from to '{toType}' is not supported.");
+                    throw new NotSupportedException($"Cast from '{value?.GetType()}' to '{toType}' is not supported.");
             }
         }
 

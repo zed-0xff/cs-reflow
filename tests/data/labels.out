@@ -1,0 +1,131 @@
+	public unsafe static void labels(object object_0md, object object_1me, object object_2mf)
+	{
+		string empty = string.Empty;
+		object string_0a = empty;
+		object string_1b = default(object);
+		List<string> list = default(List<string>);  // Default expression 'default(List<string>)' is not supported.
+		object string_2c = default(object);
+		object obj = default(object);
+		object collection = default(object);
+		object obj3;  // UnknownValue
+		string_1b = string.Empty;
+		string_2c = string.Empty;
+		list = new List<string>();  // ObjectCreationExpressionSyntax is not supported.
+		lbl_68:
+			if (String.get_Length(((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_ac86) > 2)
+			{
+				obj = string.Empty;
+				try
+				{
+					obj = Text.Encoding.get_UTF8().GetString(Convert.FromBase64String(((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_ac86));  // InvocationExpressionSyntax is not supported.
+				}
+				catch
+				{
+				}
+	
+				obj3 = obj;
+				lbl_88:
+					if (!String.Contains(obj3, Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd))
+					{
+						a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+						try
+						{
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+						}
+						catch
+						{
+						}
+	
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+						try
+						{
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+						}
+						catch
+						{
+						}
+	
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						goto lbl_88;
+					}
+					else
+					{
+						object obj5 = obj;
+						string[] obj6 = new string[1]
+						{
+							Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+						};
+						collection = String.Split(obj5, obj6, 0);
+						list.AddRange((IEnumerable<string>)collection);
+						lbl_131:
+							a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+						try
+						{
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+						}
+						catch
+						{
+						}
+	
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+						try
+						{
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+						}
+						catch
+						{
+						}
+	
+						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+						goto lbl_131;
+					}
+			}
+			else
+			{
+				a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+				try
+				{
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+				}
+				catch
+				{
+				}
+	
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+				try
+				{
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+				}
+				catch
+				{
+				}
+	
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				goto lbl_68;
+			}
+	}
+

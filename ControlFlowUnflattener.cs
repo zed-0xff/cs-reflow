@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -217,6 +218,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     {
         var clone = new ControlFlowUnflattener();
         clone.isClone = true;
+        clone.PostProcess = false;
         clone._flowHints = new(_flowHints);
         clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
 
@@ -903,6 +905,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
         List<TraceLog> logs = new();
+        Stopwatch sw = Stopwatch.StartNew();
 
         while (queue.Count > 0)
         {
@@ -913,14 +916,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 ControlFlowUnflattener clone = CloneWithHints(hints);
                 if (Verbosity > -1)
                 {
+                    string msg = $"[{sw.Elapsed.ToString(@"mm\:ss")}] tracing branches: {logs.Count}/{logs.Count + queue.Count}";
                     if (Verbosity == 0)
                     {
                         if (!isClone)
-                            Console.Error.Write($"[%] tracing branches: {logs.Count}/{logs.Count + queue.Count}\r");
+                            Console.Error.Write(msg + "\r");
                     }
                     else
                     {
-                        Console.WriteLine($"[%] tracing branches: {logs.Count}/{logs.Count + queue.Count} @ line {block.LineNo()} with {hints.Count} hints");
+                        Console.WriteLine($"{msg} @ line {block.LineNo()} with {hints.Count} hints");
                     }
                 }
 
@@ -952,9 +956,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
                 catch (LoopException l)
                 {
-                    if (Verbosity > 0)
-                        Console.WriteLine($"[.] loop at line {l.lineno} (idx={l.idx}, log_len={clone._traceLog.entries.Count})");
-
                     int idx = l.idx;
                     VarDict varValues = clone._varProcessor.VariableValues;
                     while (idx > 0 && clone._traceLog.entries.Last().stmt == clone._traceLog.entries[idx].stmt)
@@ -964,6 +965,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         idx--;
                     }
 
+                    var targetStmt = clone._traceLog.entries[idx].stmt;
+                    if (Verbosity > 0)
+                        Console.WriteLine($"[.] loop at line {l.lineno} -> lbl_{targetStmt.LineNo()} (idx={l.idx}, log_len={clone._traceLog.entries.Count})");
+
+
                     SyntaxToken labelId;
                     if (clone._traceLog.entries[idx].stmt is LabeledStatementSyntax labelStmt)
                     {
@@ -971,13 +977,20 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     }
                     else
                     {
-                        int label_lineno = clone._traceLog.entries[idx].stmt.LineNo();
+                        int label_lineno = targetStmt.LineNo();
                         if (label_lineno == 1 && idx > 0)
                         {
                             label_lineno = clone._traceLog.entries[idx - 1].stmt.LineNo() + 1;
                         }
-                        labelId = SyntaxFactory.Identifier($"l{label_lineno}");
-                        clone._traceLog.entries[idx].stmt = LabeledStatement(labelId, clone._traceLog.entries[idx].stmt);
+                        labelId = SyntaxFactory.Identifier($"lbl_{label_lineno}");
+                        targetStmt = targetStmt
+                            .WithAdditionalAnnotations(
+                                    new SyntaxAnnotation("OriginalLineNo", label_lineno.ToString())
+                                    );
+                        clone._traceLog.entries[idx].stmt = LabeledStatement(labelId, targetStmt)
+                            .WithAdditionalAnnotations(
+                                    new SyntaxAnnotation("OriginalLineNo", label_lineno.ToString())
+                                    );
                     }
 
                     clone._traceLog.entries.Add(
@@ -1047,13 +1060,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
         int nIter = 0;
         var nLogs = logs.Count;
-        while (logs.Count > 1)
+        int nPrevLogs = logs.Count + 1;
+        while (logs.Count < nPrevLogs)
         {
+            nPrevLogs = logs.Count;
             nIter++;
-            if (nIter > 1000)
-            {
-                throw new Exception($"Too many iterations ({nIter}) while merging logs");
-            }
 
             if (Verbosity >= 0)
             {
@@ -1118,7 +1129,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                             Console.WriteLine();
                         }
                     }
+
+                    //                    logs[maxIdx].Print("A");
+                    //                    Console.WriteLine();
+                    //
+                    //                    logs[i].Print("B");
+                    //                    Console.WriteLine();
+
                     logs[i] = logs[i].Merge(logs[maxIdx]);
+
+                    //                    logs[i].Print("C");
+                    //                    Console.WriteLine();
+
                     logs.RemoveAt(maxIdx);
                     break;
                 }
@@ -1127,6 +1149,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
         if (Verbosity == 0 && !isClone)
             Console.Error.WriteLine();
+
+        if (logs.Count != 1)
+            throw new Exception($"Cannot merge logs: {logs.Count} logs left");
 
         return logs[0];
     }

@@ -88,7 +88,8 @@ class Program
             printTreeOpt,
             addCommentsOpt,
             removeSwitchVarsOpt,
-            postProcessOpt
+            postProcessOpt,
+            quietOpt
         };
 
         // --- Set the handler ---
