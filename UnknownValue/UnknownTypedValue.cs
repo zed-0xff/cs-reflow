@@ -148,16 +148,41 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return UnknownValue.Create("bool");
     }
 
+    bool TryGetTailPow2(long value, out int pow2)
+    {
+        pow2 = 0;
+        if (value == 0) return false;
+
+        while ((value & 1) == 0)
+        {
+            value >>= 1;
+            pow2++;
+        }
+
+        return (pow2 > 0);
+    }
+
     public override UnknownValueBase Mul(object right)
     {
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0) return new UnknownValueList(type, new List<long> { 0 });
+            if (l == 1) return this;
+
+            if (Cardinality() > MAX_DISCRETE_CARDINALITY && TryGetTailPow2(l, out int pow2))
+            {
+                return new UnknownValueBits(type, 0, (1 << pow2) - 1);
+            }
+        }
+
         if (Cardinality() > MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
-        if (TryConvertToLong(right, out long l))
+        if (TryConvertToLong(right, out l))
             return new UnknownValueList(type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
 
         if (right is not UnknownTypedValue ru)
-            return new UnknownValueRange(type);
+            return UnknownValue.Create(type);
 
         HashSet<long> values = new();
         foreach (long v in Values())

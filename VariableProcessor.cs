@@ -415,6 +415,73 @@ public class VariableProcessor : ICloneable
             return retValue;
         }
 
+        BinaryExpressionSyntax? extract_common_factors(ExpressionSyntax left, ExpressionSyntax right)
+        {
+            if (
+                left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
+                right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.MultiplyExpression)
+            )
+            {
+                // Case 1: (lit1 * id1) + (lit2 * id2)
+                if (lb.Left is LiteralExpressionSyntax lc1 && lb.Right is IdentifierNameSyntax lv1 &&
+                    rb.Left is LiteralExpressionSyntax rc1 && rb.Right is IdentifierNameSyntax rv1 &&
+                    lv1.Identifier.Text == rv1.Identifier.Text)
+                {
+                    return BinaryExpression(
+                        SyntaxKind.MultiplyExpression,
+                        lv1,
+                        ParenthesizedExpression(
+                            BinaryExpression(SyntaxKind.AddExpression, lc1, rc1)
+                        )
+                    );
+                }
+
+                // Case 2: (id1 * lit1) + (lit2 * id2)
+                if (lb.Left is IdentifierNameSyntax lv2 && lb.Right is LiteralExpressionSyntax lc2 &&
+                    rb.Left is LiteralExpressionSyntax rc2 && rb.Right is IdentifierNameSyntax rv2 &&
+                    lv2.Identifier.Text == rv2.Identifier.Text)
+                {
+                    return BinaryExpression(
+                        SyntaxKind.MultiplyExpression,
+                        lv2,
+                        ParenthesizedExpression(
+                            BinaryExpression(SyntaxKind.AddExpression, lc2, rc2)
+                        )
+                    );
+                }
+
+                // Case 3: (lit1 * id1) + (id2 * lit2)
+                if (lb.Left is LiteralExpressionSyntax lc3 && lb.Right is IdentifierNameSyntax lv3 &&
+                    rb.Left is IdentifierNameSyntax rv3 && rb.Right is LiteralExpressionSyntax rc3 &&
+                    lv3.Identifier.Text == rv3.Identifier.Text)
+                {
+                    return BinaryExpression(
+                        SyntaxKind.MultiplyExpression,
+                        lv3,
+                        ParenthesizedExpression(
+                            BinaryExpression(SyntaxKind.AddExpression, lc3, rc3)
+                        )
+                    );
+                }
+
+                // Case 4: (id1 * lit1) + (id2 * lit2)
+                if (lb.Left is IdentifierNameSyntax lv4 && lb.Right is LiteralExpressionSyntax lc4 &&
+                    rb.Left is IdentifierNameSyntax rv4 && rb.Right is LiteralExpressionSyntax rc4 &&
+                    lv4.Identifier.Text == rv4.Identifier.Text)
+                {
+                    return BinaryExpression(
+                        SyntaxKind.MultiplyExpression,
+                        lv4,
+                        ParenthesizedExpression(
+                            BinaryExpression(SyntaxKind.AddExpression, lc4, rc4)
+                        )
+                    );
+                }
+            }
+
+            return null;
+        }
+
         object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
         {
             // handle falsely misinterpreted "(nint)-17648"
@@ -436,10 +503,24 @@ public class VariableProcessor : ICloneable
                 }
             }
 
-            // handle logic expressions bc rValue might not need to be evaluated
             string op = binaryExpr.OperatorToken.Text;
-            var lValue = EvaluateExpression(binaryExpr.Left);  // always evaluated
 
+            // convert (4 * x + x * 4) => (4 + 4) * x
+            // bc its easier then to evaluate when checking unknown values
+            if (op == "+")
+            {
+                var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
+                if (factoredExpr != null)
+                {
+                    //Console.WriteLine($"[d] {factoredExpr}");
+                    return EvaluateBinaryExpression(factoredExpr);
+                }
+            }
+
+            var lValue = EvaluateExpression(binaryExpr.Left); // always evaluated
+            // Console.WriteLine($"[d] {binaryExpr.Left} => {lValue}");
+
+            // handle logic expressions bc rValue might not need to be evaluated
             if (op == "&&" || op == "||")
             {
                 if (lValue is UnknownValueBase luv0)
@@ -467,6 +548,8 @@ public class VariableProcessor : ICloneable
 
             // evaluate rValue, handle everything else
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
+            // Console.WriteLine($"[d] {binaryExpr.Right} => {rValue}");
+
             if (lValue is UnknownValueBase luv)
                 return luv.Op(op, rValue);
 

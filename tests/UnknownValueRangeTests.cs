@@ -104,6 +104,37 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
+    public void Test_int_mul_zero()
+    {
+        UnknownValueRange a = new("int");
+        Assert.Equal(new UnknownValueList("int", new List<long> { 0 }), a.Mul(0));
+    }
+
+    [Fact]
+    public void Test_int_mul_one()
+    {
+        UnknownValueRange a = new("int");
+        Assert.Equal(a, a.Mul(1));
+    }
+
+    [Fact]
+    public void Test_int_mul_pow2()
+    {
+        UnknownValueRange a = new("int");
+        Assert.Equal("UnknownValueBits<int>[0]", a.Mul(2).ToString());
+        Assert.Equal(a, a.Mul(3));
+        Assert.Equal("UnknownValueBits<int>[00]", a.Mul(4).ToString());
+        Assert.Equal(a, a.Mul(5));
+        Assert.Equal("UnknownValueBits<int>[0]", a.Mul(6).ToString());
+        Assert.Equal(a, a.Mul(7));
+        Assert.Equal("UnknownValueBits<int>[000]", a.Mul(8).ToString());
+        Assert.Equal(a, a.Mul(0x0f));
+        Assert.Equal("UnknownValueBits<int>[0000]", a.Mul(0x10).ToString());
+        Assert.Equal(a, a.Mul(0x11));
+        Assert.Equal("UnknownValueBits<int>[0000]", a.Mul(0xab0).ToString());
+    }
+
+    [Fact]
     public void Test_int_lt()
     {
         UnknownValueRange a = new("int");
