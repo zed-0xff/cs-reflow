@@ -41,6 +41,12 @@ class Program
             AllowMultipleArgumentsPerToken = true
         };
 
+        var quietOpt = new Option<bool>(
+            aliases: new[] { "--quiet", "-q" },
+            getDefaultValue: () => false,
+            description: "Suppress all debug/status output."
+        );
+
         var processAllOpt = new Option<bool>(
             aliases: new[] { "--all", "-a" },
             getDefaultValue: () => false,
@@ -92,7 +98,7 @@ class Program
                 filename: context.ParseResult.GetValueForArgument(filenameArg),
                 methods: context.ParseResult.GetValueForArgument(methodsArg),
                 hintList: context.ParseResult.GetValueForOption(hintOpt),
-                verbosity: context.ParseResult.Tokens.Count(t => t.Value == "-v"),
+                verbosity: context.ParseResult.GetValueForOption(quietOpt) ? -1 : context.ParseResult.Tokens.Count(t => t.Value == "-v"),
                 processAll: context.ParseResult.GetValueForOption(processAllOpt),
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),

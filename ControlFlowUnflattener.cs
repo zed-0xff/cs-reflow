@@ -45,8 +45,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     public class State
     {
-        readonly int lineno;
-        readonly VarDict vars;
+        public readonly int lineno;
+        public readonly VarDict vars;
 
         public State(int lineno, VarDict vars)
         {
@@ -68,54 +68,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         public override string ToString()
         {
             return $"<State lineno={lineno}, vars={vars}>";
-        }
-
-        public List<string> find_loop_vars(State other)
-        {
-            if (lineno != other.lineno)
-                return new();
-
-            if (vars.Equals(other.vars))
-                return new();
-
-            if (vars.Count != other.vars.Count)
-                return new();
-
-            VarDict d1 = vars;
-            VarDict d2 = other.vars;
-
-            foreach (var kv in vars)
-            {
-                if (other.vars.TryGetValue(kv.Key, out var otherValue))
-                {
-                    if (
-                            kv.Value is UnknownValueBase ||
-                            otherValue is UnknownValueBase ||
-                            kv.Value is null ||
-                            otherValue is null ||
-                            kv.Value.Equals(otherValue) ||
-                            kv.Key == "_" // ignore discard var '_'
-                       )
-                    {
-                        d1.Remove(kv.Key);
-                        d2.Remove(kv.Key);
-                    }
-                }
-            }
-
-            if (d1.Count != d2.Count)
-                return new();
-
-            if (d1.Values.Distinct().Count() != 1)
-                return new();
-
-            if (d2.Values.Distinct().Count() != 1)
-                return new();
-
-            if (!d1.Keys.ToHashSet().SetEquals(d2.Keys))
-                return new();
-
-            return d1.Keys.ToList();
         }
     };
 
@@ -898,6 +850,53 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
+    public static List<string> find_loop_vars(List<State> states)
+    {
+        if (states.Count < 2)
+            return new();
+
+        // Ensure all states have the same lineno
+        var lineno = states[0].lineno;
+        if (states.Any(s => s.lineno != lineno))
+            return new();
+
+        // Initialize the common variable set from the first state
+        var baseVars = new Dictionary<string, object>(states[0].vars);
+
+        foreach (var state in states.Skip(1))
+        {
+            foreach (var key in baseVars.Keys.ToList())
+            {
+                if (!state.vars.TryGetValue(key, out var val))
+                {
+                    baseVars.Remove(key);
+                    continue;
+                }
+
+                var baseVal = baseVars[key];
+
+                if (
+                    baseVal is UnknownValueBase || val is UnknownValueBase ||
+                    baseVal is null || val is null ||
+                    baseVal.Equals(val) || key == "_"
+                )
+                {
+                    baseVars.Remove(key);
+                }
+            }
+        }
+
+        // At this point baseVars contains candidates that differ
+        if (baseVars.Count == 0)
+            return new();
+
+        // Get distinct values for each key from all states
+        var grouped = baseVars.Keys.ToDictionary(k => k, k => states.Select(s => s.vars[k]).Distinct().Count());
+
+        // select only vars that have eactly count(states) distinct values
+        return grouped.Where(kv => kv.Value == states.Count).Select(kv => kv.Key).ToList();
+    }
+
     public TraceLog TraceBlock(BlockSyntax block)
     {
         Queue<HintsDictionary> queue = new();
@@ -911,21 +910,27 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             while (true)
             {
                 ControlFlowUnflattener clone = CloneWithHints(hints);
-                if (Verbosity > 0)
-                    Console.WriteLine($"[d] >>> start tracing {block.LineNo()} with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+                if (Verbosity > -1)
+                {
+                    string msg = $">>> start tracing {block.LineNo()} with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}";
+                    if (Verbosity > 0)
+                        Console.WriteLine(msg);
+                    else
+                        Console.Error.WriteLine(msg);
+                }
 
                 try
                 {
                     clone.trace_block(block);
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
-                        Console.WriteLine($"[d] <<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}");
+                        Console.WriteLine($"<<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}");
                 }
                 catch (ReturnException)
                 {
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
-                        Console.WriteLine($"[d] <<< return at line {clone._traceLog.entries.Last().stmt.LineNo()}");
+                        Console.WriteLine($"<<< return at line {clone._traceLog.entries.Last().stmt.LineNo()}");
                 }
                 catch (UndeterministicIfException e)
                 {
@@ -982,9 +987,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
                 catch (ConditionalLoopException e)
                 {
-                    List<string> loopVars = clone._condStates[e.lineno].Last().find_loop_vars(clone._condStates[e.lineno][^2]);
+                    List<string> loopVars = find_loop_vars(clone._condStates[e.lineno][^3..]);
                     if (loopVars.Count == 0)
                     {
+                        Console.WriteLine(clone._condStates[e.lineno][^3].ToString());
                         Console.WriteLine(clone._condStates[e.lineno][^2].ToString());
                         Console.WriteLine(clone._condStates[e.lineno].Last().ToString());
                         throw new Exception($"Loop var not found at line {e.lineno}");
