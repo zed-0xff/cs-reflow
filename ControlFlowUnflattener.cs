@@ -86,7 +86,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             {
                 if (other.vars.TryGetValue(kv.Key, out var otherValue))
                 {
-                    if (kv.Value is UnknownValueBase || otherValue is UnknownValueBase || kv.Value is null || otherValue is null || kv.Value.Equals(otherValue))
+                    if (
+                            kv.Value is UnknownValueBase ||
+                            otherValue is UnknownValueBase ||
+                            kv.Value is null ||
+                            otherValue is null ||
+                            kv.Value.Equals(otherValue) ||
+                            kv.Key == "_" // ignore discard var '_'
+                       )
                     {
                         d1.Remove(kv.Key);
                         d2.Remove(kv.Key);
