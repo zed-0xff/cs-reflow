@@ -146,6 +146,8 @@ public class UnknownValueRange : UnknownTypedValue
         return new UnknownValueList(type, Values().Select(v => v ^ l).OrderBy(x => x).ToList());
     }
 
+    public override UnknownValueBase Negate() => new UnknownValueRange(type, new LongRange(-Range.Max, -Range.Min));
+
     public override IEnumerable<long> Values()
     {
         return Range.Values();
@@ -166,10 +168,7 @@ public class UnknownValueRange : UnknownTypedValue
 
     public override bool Contains(long value) => Range.Contains(value);
 
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
-    }
+    public override int GetHashCode() => HashCode.Combine(type, Range);
 
     public override bool IntersectsWith(UnknownTypedValue right)
     {

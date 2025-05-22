@@ -266,6 +266,14 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, newBits);
     }
 
+    public UnknownValueBase BitwiseNot()
+    {
+        var (mask, val) = MaskVal();
+        return new UnknownValueBits(type, ~val, mask);
+    }
+
+    public override UnknownValueBase Negate() => BitwiseNot().Add(1);
+
     private UnknownValueBase calc_asym(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
     {
         if (!TryConvertToLong(right, out long l))
@@ -310,8 +318,31 @@ public class UnknownValueBits : UnknownTypedValue
 
     public override UnknownValueBase Add(object right)
     {
-        if (right == this) // '==' and not 'equals' because we want to use the same instance
+        if (right == this) // '==' and not 'equals' because it needs to be the same instance
             return ShiftLeft(1);
+
+        if (TryConvertToLong(right, out long l))
+        {
+            // bitwise add until carry to unknown bit
+            var newBits = Enumerable.Repeat<sbyte>(-1, type.nbits).ToList();
+            sbyte carry = 0;
+            for (int i = 0; i < type.nbits; i++, l >>= 1)
+            {
+                var add = carry + (l & 1);
+                if (bits[i] == -1)
+                {
+                    if (add != 0)
+                        break;
+                }
+                else
+                {
+                    var sum = bits[i] + add;
+                    newBits[i] = (sbyte)(sum & 1);
+                    carry = (sbyte)(sum >> 1);
+                }
+            }
+            return new UnknownValueBits(type, newBits);
+        }
 
         return calc_symm((a, b) => a + b, right, 0, this);
     }
@@ -320,6 +351,23 @@ public class UnknownValueBits : UnknownTypedValue
     {
         if (right == this) // '==' and not 'equals' because we want to use the same instance
             return new UnknownValueList(type, new List<long> { 0 });
+
+        if (TryConvertToLong(right, out long l))
+        {
+            // just do a bit-by-bit xor on known bits, no carry involved
+            var newBits = new List<sbyte>(bits);
+            int i = 0;
+            while (l != 0 && i < type.nbits)
+            {
+                if (newBits[i] != -1)
+                {
+                    newBits[i] ^= (sbyte)(l & 1);
+                }
+                l >>= 1;
+                i++;
+            }
+            return new UnknownValueBits(type, newBits);
+        }
 
         return calc_symm((a, b) => a ^ b, right, 0, this);
     }

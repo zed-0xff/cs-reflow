@@ -42,6 +42,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
     public bool PostProcess = true;
+    public bool isClone = false;
 
     public class State
     {
@@ -215,6 +216,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public object Clone()
     {
         var clone = new ControlFlowUnflattener();
+        clone.isClone = true;
         clone._flowHints = new(_flowHints);
         clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
 
@@ -876,7 +878,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 var baseVal = baseVars[key];
 
                 if (
-                    baseVal is UnknownValueBase || val is UnknownValueBase ||
                     baseVal is null || val is null ||
                     baseVal.Equals(val) || key == "_"
                 )
@@ -912,11 +913,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 ControlFlowUnflattener clone = CloneWithHints(hints);
                 if (Verbosity > -1)
                 {
-                    string msg = $">>> start tracing {block.LineNo()} with hints: {String.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}";
-                    if (Verbosity > 0)
-                        Console.WriteLine(msg);
+                    if (Verbosity == 0)
+                    {
+                        if (!isClone)
+                            Console.Error.Write($"[%] tracing branches: {logs.Count}/{logs.Count + queue.Count}\r");
+                    }
                     else
-                        Console.Error.WriteLine(msg);
+                    {
+                        Console.WriteLine($"[%] tracing branches: {logs.Count}/{logs.Count + queue.Count} @ line {block.LineNo()} with {hints.Count} hints");
+                    }
                 }
 
                 try
@@ -990,9 +995,30 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     List<string> loopVars = find_loop_vars(clone._condStates[e.lineno][^3..]);
                     if (loopVars.Count == 0)
                     {
-                        Console.WriteLine(clone._condStates[e.lineno][^3].ToString());
-                        Console.WriteLine(clone._condStates[e.lineno][^2].ToString());
-                        Console.WriteLine(clone._condStates[e.lineno].Last().ToString());
+                        var states = clone._condStates[e.lineno][^3..];
+                        VarDict diffVars = (VarDict)clone._condStates[e.lineno][^3].vars.Clone();
+                        foreach (var state in states.Skip(1))
+                        {
+                            foreach (var kv in state.vars)
+                            {
+                                if (diffVars.TryGetValue(kv.Key, out var val))
+                                {
+                                    if (val == null || kv.Value == null || val.Equals(kv.Value))
+                                        diffVars.Remove(kv.Key);
+                                }
+                            }
+                        }
+                        var emptyObject = default(object);
+                        foreach (var kv in diffVars)
+                        {
+                            if (kv.Value == null || (kv.Value != null && kv.Equals(emptyObject)))
+                                diffVars.Remove(kv.Key);
+                        }
+                        foreach (var state in states)
+                        {
+                            var stateDiffVars = state.vars.Where(kv => diffVars.ContainsKey(kv.Key)).ToList();
+                            Console.WriteLine($"[d] {state.lineno}: {String.Join(", ", stateDiffVars.Select(kv => $"{kv.Key}={kv.Value}"))}");
+                        }
                         throw new Exception($"Loop var not found at line {e.lineno}");
                     }
                     foreach (var loopVar in loopVars)
@@ -1020,6 +1046,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             Console.WriteLine($"[=] got {logs.Count} traces: {String.Join(", ", logs.Select(l => l.entries.Count.ToString()))}");
 
         int nIter = 0;
+        var nLogs = logs.Count;
         while (logs.Count > 1)
         {
             nIter++;
@@ -1028,12 +1055,21 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 throw new Exception($"Too many iterations ({nIter}) while merging logs");
             }
 
-            if (Verbosity > 0)
+            if (Verbosity >= 0)
             {
-                Console.WriteLine($"[d] logs:");
-                for (int i = 0; i < logs.Count; i++)
+                string msg = $"[%] merging logs: {nIter}/{nLogs}          ";
+                if (Verbosity == 0)
                 {
-                    Console.WriteLine($"[d] - {i}: {logs[i].entries.Count} entries, hints: {String.Join(", ", logs[i].hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+                    if (!isClone)
+                        Console.Error.Write(msg + "\r");
+                }
+                else
+                {
+                    Console.WriteLine($"[d] logs:");
+                    for (int i = 0; i < logs.Count; i++)
+                    {
+                        Console.WriteLine($"[d] - {i}: {logs[i].entries.Count} entries, hints: {String.Join(", ", logs[i].hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+                    }
                 }
             }
 
@@ -1088,6 +1124,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 }
             }
         }
+
+        if (Verbosity == 0 && !isClone)
+            Console.Error.WriteLine();
 
         return logs[0];
     }

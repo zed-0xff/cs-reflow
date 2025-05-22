@@ -52,6 +52,7 @@ public class UnknownValue : UnknownValueBase
     public override UnknownValue BitwiseOr(object right) => new UnknownValue();
     public override UnknownValue ShiftLeft(object right) => new UnknownValue();
     public override UnknownValue UnsignedShiftRight(object right) => new UnknownValue();
+    public override UnknownValue Negate() => new UnknownValue();
 
     public override object Eq(object right) => UnknownValue.Create("bool");
     public override object Gt(object right) => UnknownValue.Create("bool");

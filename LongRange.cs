@@ -88,10 +88,7 @@ public class LongRange
         return new LongRange(left.Min >>> right, left.Max >>> right);
     }
 
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
-    }
+    public override int GetHashCode() => HashCode.Combine(Min, Max);
 
     public bool IntersectsWith(LongRange other)
     {

@@ -16,6 +16,7 @@ public abstract class UnknownValueBase
     public abstract UnknownValueBase BitwiseOr(object right);
     public abstract UnknownValueBase ShiftLeft(object right);
     public abstract UnknownValueBase UnsignedShiftRight(object right);
+    public abstract UnknownValueBase Negate();
 
     public abstract object Eq(object right);
     public abstract object Gt(object right);
@@ -83,6 +84,7 @@ public abstract class UnknownValueBase
         return op switch
         {
             "+" => Op(op, lValue),
+            "-" => Negate().Add(lValue), // N - unk = (-unk) + N
             "*" => Op(op, lValue),
             "^" => Op(op, lValue),
             "&" => Op(op, lValue),

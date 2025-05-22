@@ -169,10 +169,17 @@ public class UnknownValueBitsTest
 
         a = new UnknownValueBits("byte", new sbyte[] { 0, 1, -1, -1, 1, 0, 1, -1 });
         Assert.Equal(a, a.Add(0));
-        Assert.Equal("UnknownValueBits<byte>[11]", a.Add(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[101__11]", a.Add(1).ToString());
         Assert.Equal("UnknownValueBits<byte>[00]", a.Add(2).ToString());
         Assert.Equal("UnknownValueBits<byte>[01]", a.Add(3).ToString());
         Assert.Equal("UnknownValueBits<byte>[01]", a.Add(7).ToString());
+
+        // no-unknown-carry add
+        a = new UnknownValueBits("byte", new sbyte[] { 0, 0, -1, -1, 1, 0, 1, -1 });
+        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Add(1).ToString());
+
+        a = new UnknownValueBits("byte", new sbyte[] { -1, -1, 0, 0, 0, 0, 0, 0 });
+        Assert.Equal("UnknownValueBits<byte>[000011__]", a.Add(0b1100).ToString());
     }
 
     [Fact]
@@ -185,6 +192,29 @@ public class UnknownValueBitsTest
         // not self but same
         var b = new UnknownValueBits("byte", new sbyte[] { 0, 0, -1, -1, -1, -1, -1, -1 });
         Assert.Equal(a, a.Add(b));
+    }
+
+    [Fact]
+    public void Test_Xor()
+    {
+        var a = new UnknownValueBits("byte");
+        Assert.Equal(a, a.Xor(0));
+        Assert.Equal(a, a.Xor(7));
+        Assert.Equal(a, a.Xor(255));
+
+        a = new UnknownValueBits("byte", new sbyte[] { 0, 1, -1, -1, 1, 0, 1, -1 });
+        Assert.Equal(a, a.Xor(0));
+        Assert.Equal("UnknownValueBits<byte>[101__11]", a.Xor(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[101__00]", a.Xor(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Xor(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Xor(7).ToString());
+
+        a = new UnknownValueBits("byte", new sbyte[] { 0, 0, -1, -1, 1, 0, 1, -1 });
+        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Xor(1).ToString());
+
+        a = new UnknownValueBits("byte", new sbyte[] { -1, -1, 0, 0, 0, 0, 0, 0 });
+        Assert.Equal("UnknownValueBits<byte>[000011__]", a.Xor(0b1100).ToString());
+        Assert.Equal("UnknownValueBits<byte>[000011__]", a.Xor(0b1111).ToString());
     }
 
     [Fact]

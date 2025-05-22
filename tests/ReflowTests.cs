@@ -30,6 +30,7 @@ public class ReflowTests
 
         // Act
         var controlFlowUnflattener = new ControlFlowUnflattener(input);
+        controlFlowUnflattener.Verbosity = -2;
 
         string actualOutput = "";
         foreach (var kv in controlFlowUnflattener.Methods)

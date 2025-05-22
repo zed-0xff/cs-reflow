@@ -30,15 +30,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         public LongRange Range => new LongRange(MinValue, MaxValue);
 
         public override string ToString() => Name;
-        public override bool Equals(object obj)
-        {
-            return (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
-        }
+        public override bool Equals(object obj) => (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
 
-        public override int GetHashCode()
-        {
-            throw new NotImplementedException();
-        }
+        public override int GetHashCode() => HashCode.Combine(nbits, signed);
     }
 
     static readonly Dictionary<string, IntInfo> INFOS = new()

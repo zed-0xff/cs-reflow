@@ -49,6 +49,8 @@ public class UnknownValueList : UnknownTypedValue
             ? new UnknownValueList(type, values.Select(v => Mask(v >>> (int)l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(type);
 
+    public override UnknownValueBase Negate() => new UnknownValueList(type, values.Select(v => Mask(-v)).OrderBy(x => x).ToList());
+
     public override object Cast(string toType)
     {
         toType = ShortType(toType);
