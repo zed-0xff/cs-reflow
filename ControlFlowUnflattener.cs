@@ -9,6 +9,7 @@ using System;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
+using ReturnsDictionary = System.Collections.Generic.Dictionary<string, int>;
 
 public class AutoDefaultIntDict : Dictionary<int, int>
 {
@@ -35,6 +36,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     Dictionary<State, int> _states = new();
     Dictionary<int, List<State>> _condStates = new();
     AutoDefaultIntDict _visitedLines = new();
+    ReturnsDictionary _parentReturns = new();
 
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
@@ -269,6 +271,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         clone.AddComments = AddComments;
 
         clone._tree = _tree;     // shared, r/o
+        clone._parentReturns = _parentReturns; // shared, r/o
 
         return clone;
     }
@@ -512,15 +515,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    TryStatementSyntax convert_try(TryStatementSyntax tryStmt)
+    TryStatementSyntax convert_try(TryStatementSyntax tryStmt, ReturnsDictionary retLabels)
     {
         var clone = (ControlFlowUnflattener)Clone();
-        var newBlock = clone.ReflowBlock(tryStmt.Block);
+        clone._parentReturns = retLabels;
 
+        var newBlock = clone.ReflowBlock(tryStmt.Block);
         var newCatches = SyntaxFactory.List(
                 tryStmt.Catches.Select(c =>
                     {
                         clone = (ControlFlowUnflattener)Clone();
+                        clone._parentReturns = retLabels;
                         return c.WithBlock(clone.ReflowBlock(c.Block));
                     })
                 );
@@ -593,11 +598,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     public void trace_block(SyntaxList<StatementSyntax> statements, int start_idx = 0)
     {
         Dictionary<string, int> labels = new();
+        ReturnsDictionary retLabels = new();
 
         foreach (var stmt in statements.OfType<LabeledStatementSyntax>())
         {
             var labelName = stmt.Identifier.Text;
             labels[stmt.Identifier.Text] = statements.IndexOf(stmt) - 1;
+            if (stmt.Statement is ReturnStatementSyntax)
+            {
+                retLabels[labelName] = statements.IndexOf(stmt) - 1;
+            }
         }
 
         // Console.WriteLine($"[d] {statements.First().LineNo()}: labels: {String.Join(", ", labels.Keys)}");
@@ -712,7 +722,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         break;
 
                     case TryStatementSyntax tryStmt:
-                        stmt = convert_try(tryStmt);
+                        stmt = convert_try(tryStmt, retLabels);
                         break;
                 }
             }
@@ -815,6 +825,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                                         // local block goto
                                         continue;
                                     }
+                                    else if (_parentReturns.TryGetValue(labelId.Identifier.Text, out i))
+                                    {
+                                        // return label
+                                        continue;
+                                    }
                                     else
                                     {
                                         // jump to outer block
@@ -867,6 +882,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 if (labels.TryGetValue(e.label, out i))
                 {
                     // local block goto
+                    continue;
+                }
+                else if (_parentReturns.TryGetValue(e.label, out i))
+                {
+                    // return label
                     continue;
                 }
                 else
