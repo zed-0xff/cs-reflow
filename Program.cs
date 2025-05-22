@@ -12,6 +12,7 @@ class Program
         List<string> hintList,
         int verbosity,
         bool processAll,
+        bool listMethods,
         bool printTree,
         bool addComments,
         bool removeSwitchVars,
@@ -49,8 +50,14 @@ class Program
 
         var processAllOpt = new Option<bool>(
             aliases: new[] { "--all", "-a" },
+            getDefaultValue: () => true,
+            description: "Process all methods (default)."
+        );
+
+        var listMethodsOpt = new Option<bool>(
+            aliases: new[] { "--list", "-l" },
             getDefaultValue: () => false,
-            description: "Process all methods (default if processing STDIN)."
+            description: "List methods."
         );
 
         var printTreeOpt = new Option<bool>(
@@ -89,7 +96,8 @@ class Program
             addCommentsOpt,
             removeSwitchVarsOpt,
             postProcessOpt,
-            quietOpt
+            quietOpt,
+            listMethodsOpt
         };
 
         // --- Set the handler ---
@@ -104,7 +112,8 @@ class Program
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
-                postProcess: context.ParseResult.GetValueForOption(postProcessOpt)
+                postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
+                listMethods: context.ParseResult.GetValueForOption(listMethodsOpt)
             );
 
             var hints = new Dictionary<int, bool>();
@@ -125,7 +134,6 @@ class Program
             }
 
             string code;
-            bool processAll = opts.processAll;
 
             if (string.IsNullOrEmpty(opts.filename))
             {
@@ -135,7 +143,6 @@ class Program
                     return;
                 }
                 code = Console.In.ReadToEnd();
-                processAll = true;
             }
             else
             {
@@ -166,7 +173,11 @@ class Program
                     return;
                 }
 
-                if (processAll)
+                if (opts.listMethods)
+                {
+                    Console.WriteLine("methods:\n - " + string.Join("\n - ", methodDict.Select(kv => $"{kv.Key}: {kv.Value}")));
+                }
+                else
                 {
                     if (opts.printTree)
                     {
@@ -180,10 +191,6 @@ class Program
                             Console.WriteLine();
                         }
                     }
-                }
-                else
-                {
-                    Console.WriteLine("methods:\n - " + string.Join("\n - ", methodDict.Select(kv => $"{kv.Key}: {kv.Value}")));
                 }
             }
             else
