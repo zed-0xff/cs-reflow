@@ -244,7 +244,7 @@ public class UnknownValueBits : UnknownTypedValue
         List<sbyte> newBits = new(bits);
         for (int i = 0; i < type.nbits; i++)
         {
-            if ((l & (1L << i)) == 1)
+            if ((l & (1L << i)) != 0)
             {
                 newBits[i] = 1;
             }

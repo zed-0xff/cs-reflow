@@ -174,4 +174,14 @@ public class UnknownValueBitsTest
         Assert.Equal("UnknownValueBits<byte>[01]", a.Add(3).ToString());
         Assert.Equal("UnknownValueBits<byte>[01]", a.Add(7).ToString());
     }
+
+    [Fact]
+    public void Test_And_Or()
+    {
+        var a = UnknownValueBits.CreateFromAnd(UnknownTypedValue.GetType("int"), -265);
+        Assert.Equal("UnknownValueBits<int>[0____0___]", a.ToString());
+
+        var b = a.BitwiseOr(0x82);
+        Assert.Equal("UnknownValueBits<int>[01___0_1_]", b.ToString());
+    }
 }
