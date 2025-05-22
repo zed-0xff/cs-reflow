@@ -24,6 +24,22 @@ public class UnknownValueBits : UnknownTypedValue
         init(bits);
     }
 
+    public static UnknownValueBits CreateFromAnd(IntInfo type, long mask)
+    {
+        var bits = new sbyte[type.nbits];
+        for (int i = 0; i < type.nbits; i++)
+            bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? -1 : 0);
+        return new UnknownValueBits(type, bits);
+    }
+
+    public static UnknownValueBits CreateFromOr(IntInfo type, long mask)
+    {
+        var bits = new sbyte[type.nbits];
+        for (int i = 0; i < type.nbits; i++)
+            bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? 1 : -1);
+        return new UnknownValueBits(type, bits);
+    }
+
     void init(IEnumerable<sbyte>? bits)
     {
         if (bits == null)
@@ -124,12 +140,27 @@ public class UnknownValueBits : UnknownTypedValue
     {
         var (mask, val) = MaskVal();
 
-        for (long i = type.MinValue; i <= type.MaxValue; i++)
+        // Determine the bit positions that are "any" (i.e., mask bit = 1)
+        List<int> floatingBits = new();
+        for (int i = 0; i < bits.Count; i++)
         {
-            if ((i & mask) == val)
+            if (bits[i] == -1)
+                floatingBits.Add(i);
+        }
+
+        int floatingCount = floatingBits.Count;
+        long combinations = 1L << floatingCount;
+
+        for (long i = 0; i < combinations; i++)
+        {
+            long dynamicPart = 0;
+            for (int j = 0; j < floatingCount; j++)
             {
-                yield return i;
+                if (((i >> j) & 1) != 0)
+                    dynamicPart |= (1L << floatingBits[j]);
             }
+
+            yield return (val & ~mask) | (dynamicPart & mask);
         }
     }
 
@@ -205,9 +236,25 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, newBits);
     }
 
+    public override UnknownValueBase BitwiseOr(object right)
+    {
+        if (!TryConvertToLong(right, out long l))
+            return UnknownTypedValue.Create(type);
+
+        List<sbyte> newBits = new(bits);
+        for (int i = 0; i < type.nbits; i++)
+        {
+            if ((l & (1L << i)) == 1)
+            {
+                newBits[i] = 1;
+            }
+        }
+        return new UnknownValueBits(type, newBits);
+    }
+
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
 
-    private UnknownValueBase calc(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    private UnknownValueBase calc1(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
@@ -215,16 +262,45 @@ public class UnknownValueBits : UnknownTypedValue
         if (l == identity)
             return id_val;
 
-        var (mask, val) = MaskVal(true);
-        return new UnknownValueBits(type, op(val, l), mask);
+        var (minMask, val) = MaskVal(true);
+        return new UnknownValueBits(type, op(val, l), minMask);
     }
 
-    public override UnknownValueBase Add(object right) => calc((a, b) => a + b, right, 0, this);
-    public override UnknownValueBase Div(object right) => calc((a, b) => a / b, right, 1, this);
-    public override UnknownValueBase Mod(object right) => calc((a, b) => a % b, right, 1, new UnknownValueList(type, new List<long> { 0 }));
-    public override UnknownValueBase Mul(object right) => calc((a, b) => a * b, right, 1, this);
-    public override UnknownValueBase Sub(object right) => calc((a, b) => a - b, right, 0, this);
-    public override UnknownValueBase Xor(object right) => calc((a, b) => a ^ b, right, 0, this);
+    private UnknownValueBase calc2(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    {
+        switch (right)
+        {
+            case UnknownValueBits otherBits:
+                var (mask1, val1) = MaskVal(true);
+                var (mask2, val2) = otherBits.MaskVal(true);
+                return new UnknownValueBits(type, op(val1, val2), mask1 & mask2); // actual new mask might be wider
+
+            case UnknownValueList otherList:
+                if (Cardinality() > MAX_DISCRETE_CARDINALITY)
+                    return UnknownValue.Create(type);
+
+                var newValues = new HashSet<long>();
+                foreach (var v1 in Values())
+                {
+                    foreach (var v2 in otherList.Values())
+                    {
+                        newValues.Add(Mask(op(v1, v2)));
+                        if (newValues.Count > MAX_DISCRETE_CARDINALITY)
+                            return UnknownValue.Create(type);
+                    }
+                }
+                return new UnknownValueList(type, newValues.OrderBy(x => x).ToList());
+        }
+
+        return calc1(op, right, identity, id_val);
+    }
+
+    public override UnknownValueBase Add(object right) => calc2((a, b) => a + b, right, 0, this);
+    public override UnknownValueBase Div(object right) => calc1((a, b) => a / b, right, 1, this);
+    public override UnknownValueBase Mod(object right) => calc1((a, b) => a % b, right, 1, new UnknownValueList(type, new List<long> { 0 }));
+    public override UnknownValueBase Mul(object right) => calc2((a, b) => a * b, right, 1, this);
+    public override UnknownValueBase Sub(object right) => calc1((a, b) => a - b, right, 0, this);
+    public override UnknownValueBase Xor(object right) => calc2((a, b) => a ^ b, right, 0, this);
 
     public override int GetHashCode()
     {

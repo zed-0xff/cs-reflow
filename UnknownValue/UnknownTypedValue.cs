@@ -201,51 +201,17 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
             return new UnknownValueList(type, Values().Select(v => v & mask).Distinct().OrderBy(x => x).ToList());
 
-        if (Mask2Cardinality(mask) > MAX_DISCRETE_CARDINALITY)
+        return UnknownValueBits.CreateFromAnd(type, mask);
+    }
+
+    public override UnknownValueBase BitwiseOr(object right)
+    {
+        if (!TryConvertToLong(right, out long mask))
             return UnknownValue.Create(type);
 
-        return new UnknownValueList(type, Mask2List(mask));
-    }
+        if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
+            return new UnknownValueList(type, Values().Select(v => v | mask).Distinct().OrderBy(x => x).ToList());
 
-    public long Mask2Cardinality(long mask)
-    {
-        // count nonzero bits in l
-        int bitCount = 0;
-        for (int i = 0; i < type.nbits; i++)
-        {
-            if ((mask & (1L << i)) != 0)
-                bitCount++;
-        }
-        return 1L << bitCount;
-    }
-
-    public List<long> Mask2List(long mask)
-    {
-        List<int> bitPositions = new();
-
-        // Collect positions of all set bits
-        for (int i = 0; i < 64; i++)
-        {
-            if ((mask & (1L << i)) != 0)
-                bitPositions.Add(i);
-        }
-
-        int bitCount = bitPositions.Count;
-        ulong total = 1UL << bitCount;
-        List<long> result = new((int)total);
-
-        // Generate all combinations
-        for (ulong i = 0; i < total; i++)
-        {
-            long value = 0;
-            for (int j = 0; j < bitCount; j++)
-            {
-                if (((i >> j) & 1) != 0)
-                    value |= 1L << bitPositions[j];
-            }
-            result.Add(value);
-        }
-
-        return result;
+        return UnknownValueBits.CreateFromOr(type, mask);
     }
 }
