@@ -259,6 +259,7 @@ public class VariableProcessor : ICloneable
                     {
                         // Handle default values for common types
                         "default(bool)" => default(bool),
+                        "default(char)" => default(char),
                         "default(byte)" => default(byte),
                         "default(double)" => default(double),
                         "default(float)" => default(float),
