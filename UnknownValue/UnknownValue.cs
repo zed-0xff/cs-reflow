@@ -47,9 +47,11 @@ public class UnknownValue : UnknownValueBase
     public override UnknownValue Sub(object right) => new UnknownValue();
     public override UnknownValue Xor(object right) => new UnknownValue();
 
-    public override UnknownValue BitwiseAnd(object right) => new UnknownValue(); // narrows the scope, but the type is still unknown
-    public override UnknownValue BitwiseOr(object right) => new UnknownValue(); // narrows the scope, but the type is still unknown
-    public override UnknownValue ShiftLeft(object right) => new UnknownValue(); // narrows the scope, but the type is still unknown
+    // narrows the scope, but the type is still unknown
+    public override UnknownValue BitwiseAnd(object right) => new UnknownValue();
+    public override UnknownValue BitwiseOr(object right) => new UnknownValue();
+    public override UnknownValue ShiftLeft(object right) => new UnknownValue();
+    public override UnknownValue UnsignedShiftRight(object right) => new UnknownValue();
 
     public override object Eq(object right) => UnknownValue.Create("bool");
     public override object Gt(object right) => UnknownValue.Create("bool");

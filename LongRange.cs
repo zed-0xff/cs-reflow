@@ -80,6 +80,14 @@ public class LongRange
         return new LongRange(left.Min - right, left.Max - right);
     }
 
+    static public LongRange operator >>>(LongRange left, int right)
+    {
+        if (right < 0)
+            throw new ArgumentException($"Shift count cannot be negative: {right}");
+
+        return new LongRange(left.Min >>> right, left.Max >>> right);
+    }
+
     public override int GetHashCode()
     {
         throw new NotImplementedException();

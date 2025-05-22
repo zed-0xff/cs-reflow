@@ -220,6 +220,20 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, newBits);
     }
 
+    public override UnknownTypedValue UnsignedShiftRight(object right)
+    {
+        if (!TryConvertToLong(right, out long l))
+            return UnknownTypedValue.Create(type);
+
+        List<sbyte> newBits = new(bits);
+        for (int i = 0; i < l; i++)
+        {
+            newBits.RemoveAt(0);
+            newBits.Add(0);
+        }
+        return new UnknownValueBits(type, newBits);
+    }
+
     public override UnknownValueBase BitwiseAnd(object right)
     {
         if (!TryConvertToLong(right, out long l))

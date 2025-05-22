@@ -44,6 +44,11 @@ public class UnknownValueList : UnknownTypedValue
             ? new UnknownValueList(type, values.Select(v => Mask(v << (int)l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(type);
 
+    public override UnknownValueBase UnsignedShiftRight(object right) =>
+        TryConvertToLong(right, out long l)
+            ? new UnknownValueList(type, values.Select(v => Mask(v >>> (int)l)).Distinct().OrderBy(x => x).ToList())
+            : new UnknownValueList(type);
+
     public override object Cast(string toType)
     {
         toType = ShortType(toType);

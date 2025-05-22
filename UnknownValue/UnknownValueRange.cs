@@ -114,6 +114,14 @@ public class UnknownValueRange : UnknownTypedValue
         return new UnknownValueList(type, values);
     }
 
+    public override UnknownValueRange UnsignedShiftRight(object right)
+    {
+        if (!TryConvertToLong(right, out long l))
+            return new(type);
+
+        return new UnknownValueRange(type, Range >>> (int)l);
+    }
+
     public override UnknownValueRange Mod(object right)
     {
         if (!TryConvertToLong(right, out long l))
