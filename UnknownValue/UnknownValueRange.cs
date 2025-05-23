@@ -179,5 +179,14 @@ public class UnknownValueRange : UnknownTypedValue
             _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
         };
     }
+
+    public override UnknownValueBase BitwiseAnd(object right)
+    {
+        if (right is UnknownValueBits b && IsFullRange())
+        {
+            return new UnknownValueBits(type, b.Bits);
+        }
+        return base.BitwiseAnd(right);
+    }
 }
 

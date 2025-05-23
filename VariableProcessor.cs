@@ -12,6 +12,7 @@ public class VariableProcessor : ICloneable
 {
     public VarDict VariableValues { get; private set; } = new();
     public static VarDict Constants { get; private set; } = new();
+    public int Verbosity = 0;
 
     static VariableProcessor()
     {
@@ -44,6 +45,7 @@ public class VariableProcessor : ICloneable
     {
         var clonedProcessor = new VariableProcessor();
         clonedProcessor.VariableValues = (VarDict)this.VariableValues.Clone();
+        clonedProcessor.Verbosity = this.Verbosity;
         return clonedProcessor;
     }
 
@@ -52,6 +54,7 @@ public class VariableProcessor : ICloneable
         StatementSyntax? stmt = null;
         ExpressionSyntax? expr = null;
         VarDict variableValues;
+        public int Verbosity = 0;
 
         public List<string> VarsWritten { get; } = new();
         public List<string> VarsRead { get; } = new();
@@ -69,6 +72,12 @@ public class VariableProcessor : ICloneable
         {
             this.expr = expr;
             this.variableValues = variableValues;
+        }
+
+        public Expression SetVerbosity(int verbosity)
+        {
+            Verbosity = verbosity;
+            return this;
         }
 
         public object Evaluate()
@@ -197,6 +206,14 @@ public class VariableProcessor : ICloneable
         }
 
         object EvaluateExpression(ExpressionSyntax expression)
+        {
+            object result = EvaluateExpression_(expression);
+            if (Verbosity > 0)
+                Console.WriteLine($"[d] {expression} => {result}");
+            return result;
+        }
+
+        object EvaluateExpression_(ExpressionSyntax expression)
         {
             switch (expression)
             {
@@ -605,17 +622,22 @@ public class VariableProcessor : ICloneable
 
     public object EvaluateExpression(ExpressionSyntax expression)
     {
-        return new Expression(expression, VariableValues).Evaluate();
+        return new Expression(expression, VariableValues)
+            .SetVerbosity(Verbosity)
+            .Evaluate();
     }
 
     public object ProcessLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
     {
-        return new Expression(localDeclaration, VariableValues).Evaluate();
+        return new Expression(localDeclaration, VariableValues)
+            .SetVerbosity(Verbosity)
+            .Evaluate();
     }
 
     public Expression EvaluateExpressionEx(StatementSyntax expression)
     {
         var e = new Expression(expression, VariableValues);
+        e.SetVerbosity(Verbosity);
         e.Evaluate();
         return e;
     }
@@ -623,6 +645,7 @@ public class VariableProcessor : ICloneable
     public Expression EvaluateExpressionEx(ExpressionSyntax expression)
     {
         var e = new Expression(expression, VariableValues);
+        e.SetVerbosity(Verbosity);
         e.Evaluate();
         return e;
     }

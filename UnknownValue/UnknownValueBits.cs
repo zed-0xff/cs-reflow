@@ -2,6 +2,8 @@ public class UnknownValueBits : UnknownTypedValue
 {
     private List<sbyte> bits;
 
+    public List<sbyte> Bits => bits;
+
     public UnknownValueBits(IntInfo type, IEnumerable<sbyte>? bits = null) : base(type)
     {
         init(bits);
@@ -236,6 +238,13 @@ public class UnknownValueBits : UnknownTypedValue
 
     public override UnknownValueBase BitwiseAnd(object right)
     {
+        if (right is UnknownValueBits otherBits)
+        {
+            var (mask1, val1) = MaskVal();
+            var (mask2, val2) = otherBits.MaskVal();
+            return new UnknownValueBits(type, val1 & val2, mask1 & mask2);
+        }
+
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
 

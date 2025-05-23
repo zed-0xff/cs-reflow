@@ -29,12 +29,6 @@ public class VariableProcessorTests
         VariableProcessor processor = new();
         processor.VariableValues["num32"] = UnknownValue.Create("int");
         processor.VariableValues["num11"] = UnknownValue.Create("uint");
-
-        //        if (expr is BinaryExpressionSyntax binaryExpr)
-        //        {
-        //            Console.WriteLine($"[d] {processor.EvaluateExpression(binaryExpr.Left)}");
-        //            Console.WriteLine($"[d] {processor.EvaluateExpression(binaryExpr.Right)}");
-        //        }
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(false, result);
     }
@@ -46,6 +40,17 @@ public class VariableProcessorTests
         ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
         VariableProcessor processor = new();
         processor.VariableValues["num252"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprD()
+    {
+        string expr_str = "0 == ((4 * (num10 & (num10 << 2))) & 4)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num10"] = UnknownValue.Create("int");
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(true, result);
     }
