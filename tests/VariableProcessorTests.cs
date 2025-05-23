@@ -111,4 +111,16 @@ public class VariableProcessorTests
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(false, result);
     }
+
+    [Fact]
+    public void Test_exprG()
+    {
+        string expr_str = "(((-(num12 + num12) << 1) ^ (10792 * num3 - 8444)) & 2) == 0";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num3"] = UnknownValue.Create("int");
+        processor.VariableValues["num12"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
 }

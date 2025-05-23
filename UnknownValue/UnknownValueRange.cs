@@ -71,8 +71,11 @@ public class UnknownValueRange : UnknownTypedValue
             : new UnknownValueRange(type);
     }
 
-    public override UnknownValueRange Add(object right)
+    public override UnknownValueBase Add(object right)
     {
+        if (right as UnknownValueRange == this)
+            return ShiftLeft(1);
+
         return TryConvertToLong(right, out long l)
             ? new UnknownValueRange(type, Range + l)
             : new UnknownValueRange(type);
