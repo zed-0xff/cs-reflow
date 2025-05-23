@@ -24,4 +24,5 @@ void case3()
 {
     bool a = true;
     var c = a ? 123 : (b ? 456 : 789); // b is unknown but it should not be evaluated
+    stub(c); // prevent 'c' to be dropped by post-processor
 }

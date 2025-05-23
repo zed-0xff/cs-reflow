@@ -35,6 +35,7 @@ public class ReflowTests
         string actualOutput = "";
         foreach (var kv in controlFlowUnflattener.Methods)
         {
+            controlFlowUnflattener.Reset();
             actualOutput += controlFlowUnflattener.ReflowMethod(kv.Value);
             if (!actualOutput.EndsWith("\n"))
                 actualOutput += "\n";
@@ -53,19 +54,19 @@ public class ReflowTests
     }
 
     [Fact]
-    public void ProcessData0()
+    public void Bytes_afff()
     {
         checkData("Bytes_afff");
     }
 
     [Fact]
-    public void ProcessData1()
+    public void get_icon_a661()
     {
         checkData("get_icon_a661");
     }
 
     [Fact]
-    public void ProcessData2()
+    public void goto_default_case()
     {
         checkData("goto_default_case");
     }
@@ -77,7 +78,7 @@ public class ReflowTests
     }
 
     [Fact]
-    public void ProcessData4()
+    public void try_catch()
     {
         checkData("try_catch");
     }
@@ -128,5 +129,11 @@ public class ReflowTests
     public void labels()
     {
         checkData("labels");
+    }
+
+    [Fact]
+    public void big()
+    {
+        checkData("big");
     }
 }

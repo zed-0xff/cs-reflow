@@ -12,6 +12,11 @@ public class TraceLog
     public List<TraceEntry> entries = new();
     public HintsDictionary hints = new();
 
+    public override string ToString()
+    {
+        return $"<TraceLog: {entries.Count} entries, {hints.Count} hints>";
+    }
+
     // returns element key if only one difference, -1 otherwise
     public static int hints_diff1(HintsDictionary hints1, HintsDictionary hints2)
     {
@@ -94,11 +99,11 @@ public class TraceLog
         }
     }
 
-    public TraceLog Merge(TraceLog other)
+    public TraceLog Merge(TraceLog other, int verbosity = 0)
     {
         int hint_key = hints_diff1(hints, other.hints);
         if (hint_key == -1)
-            throw new System.Exception($"Cannot merge TraceLogs with different hints: {hints2str(hints)} vs {hints2str(other.hints)}");
+            throw new Exception($"Cannot merge TraceLogs with different hints: {hints2str(hints)} vs {hints2str(other.hints)}");
 
         int commonStart = 0;
         while (commonStart < this.entries.Count &&
@@ -117,6 +122,9 @@ public class TraceLog
             while (eq_stmt(this.entries[this.entries.Count - commonEnd - 1].stmt, other.entries[other.entries.Count - commonEnd - 1].stmt))
                 commonEnd++;
         }
+
+        if (verbosity > 0)
+            Console.WriteLine($"[d] TraceLog.Merge: commonStart = {commonStart}, commonEnd = {commonEnd}");
 
         TraceLog result = new();
 
@@ -186,13 +194,13 @@ public class TraceLog
             }
             Console.WriteLine();
 
-            throw new System.Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
+            throw new Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
         }
 
         if (ifStmt.LineNo() != hint_key)
         {
             Console.WriteLine($"[d] if statement: {ifStmt.LineNo()}: {ifStmt}");
-            throw new System.Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+            throw new Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
         }
 
         BlockSyntax thenBlock = Block(

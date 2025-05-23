@@ -38,12 +38,25 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     Dictionary<int, List<State>> _condStates = new();
     AutoDefaultIntDict _visitedLines = new();
     ReturnsDictionary _parentReturns = new();
+    Stopwatch _stopWatch = Stopwatch.StartNew();
 
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
     public bool PostProcess = true;
     public bool isClone = false;
+
+    public void Reset()
+    {
+        _varProcessor = new();
+        _flowHints = new();
+        _traceLog = new();
+        _states = new();
+        _condStates = new();
+        _visitedLines = new();
+        _parentReturns = new();
+        _stopWatch = Stopwatch.StartNew();
+    }
 
     public class State
     {
@@ -230,6 +243,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         clone._parentReturns = _parentReturns; // shared, r/o
 
         return clone;
+    }
+
+    public void SetHints(HintsDictionary flowHints)
+    {
+        _flowHints = new(flowHints);
     }
 
     public ControlFlowUnflattener CloneWithHints(HintsDictionary flowHints)
@@ -900,12 +918,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return grouped.Where(kv => kv.Value == states.Count).Select(kv => kv.Key).ToList();
     }
 
+    public string ElapsedTime()
+    {
+        return _stopWatch.Elapsed.ToString(@"mm\:ss");
+    }
+
     public TraceLog TraceBlock(BlockSyntax block)
     {
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
         List<TraceLog> logs = new();
-        Stopwatch sw = Stopwatch.StartNew();
 
         while (queue.Count > 0)
         {
@@ -916,7 +938,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                 ControlFlowUnflattener clone = CloneWithHints(hints);
                 if (Verbosity > -1)
                 {
-                    string msg = $"[{sw.Elapsed.ToString(@"mm\:ss")}] tracing branches: {logs.Count}/{logs.Count + queue.Count}";
+                    string msg = $"[{ElapsedTime()}] tracing branches: {logs.Count}/{logs.Count + queue.Count}";
                     if (Verbosity == 0)
                     {
                         if (!isClone)
@@ -1045,15 +1067,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
                 break;
             }
-
-            //            // have successful trace
-            //            foreach (var entry in log)
-            //            {
-            //                var stmt = entry.stmt;
-            //                var value = entry.value;
-            //                Console.WriteLine($"{stmt.LineNo().ToString().PadLeft(6)}: {stmt} => {value}");
-            //            }
         }
+
+        if (Verbosity == 0)
+            Console.Error.WriteLine();
 
         if (Verbosity > 0)
             Console.WriteLine($"[=] got {logs.Count} traces: {String.Join(", ", logs.Select(l => l.entries.Count.ToString()))}");
@@ -1068,7 +1085,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
             if (Verbosity >= 0)
             {
-                string msg = $"[%] merging logs: {nIter}/{nLogs}          ";
+                string msg = $"[{ElapsedTime()}] merging trace logs: {nIter}/{nLogs}          ";
                 if (Verbosity == 0)
                 {
                     if (!isClone)
@@ -1079,7 +1096,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     Console.WriteLine($"[d] logs:");
                     for (int i = 0; i < logs.Count; i++)
                     {
-                        Console.WriteLine($"[d] - {i}: {logs[i].entries.Count} entries, hints: {String.Join(", ", logs[i].hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}");
+                        Console.WriteLine($"[d] - {i}: {logs[i].entries.Count} entries, hints: [{String.Join(", ", logs[i].hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}]");
                     }
                 }
             }
@@ -1136,7 +1153,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     //                    logs[i].Print("B");
                     //                    Console.WriteLine();
 
-                    logs[i] = logs[i].Merge(logs[maxIdx]);
+                    logs[i] = logs[i].Merge(logs[maxIdx], Verbosity);
 
                     //                    logs[i].Print("C");
                     //                    Console.WriteLine();
@@ -1152,6 +1169,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
         if (logs.Count != 1)
             throw new Exception($"Cannot merge logs: {logs.Count} logs left");
+
+        if (Verbosity > 0)
+            Console.WriteLine($"[=] final log: {logs[0]}");
 
         return logs[0];
     }
@@ -1201,6 +1221,19 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         BlockSyntax result = SyntaxFactory.Block(statements);
         if (PostProcess)
         {
+            if (Verbosity >= 0)
+            {
+                string msg = $"[{ElapsedTime()}] post-processing ..";
+                if (Verbosity == 0)
+                {
+                    if (!isClone)
+                        Console.Error.WriteLine(msg);
+                }
+                else
+                {
+                    Console.WriteLine(msg);
+                }
+            }
             PostProcessor postProcessor = new(_varProcessor);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
             result = postProcessor.PostProcessAll(result);

@@ -79,8 +79,5 @@ public class UnknownValueList : UnknownTypedValue
 
     public override bool Equals(object obj) => obj is UnknownValueList other && type == other.type && values.SequenceEqual(other.values);
 
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
-    }
+    public override int GetHashCode() => HashCode.Combine(type, values);
 }

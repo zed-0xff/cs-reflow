@@ -11,6 +11,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
     private SyntaxTree tree;
     private SyntaxNode root;
+    public int Verbosity;
 
     class ReturnException : Exception
     {
@@ -81,84 +82,12 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
             Console.Write(ANSI_COLOR_RESET);
         }
 
-        switch (node)
+        if (node is ExpressionStatementSyntax && Verbosity < 1)
+            return; // Skip printing child nodes for expression statements if verbosity is low
+
+        foreach (var child in node.ChildNodes())
         {
-            case BlockSyntax block:
-                EnumerateStatements(block.Statements, indent + 1);
-                break;
-
-            case SwitchSectionSyntax switchSection:
-                EnumerateStatements(switchSection.Statements, indent + 1);
-                break;
-
-            case StatementSyntax statement:
-                if (statement is ExpressionStatementSyntax exprStmt)
-                {
-                    // Console.WriteLine($"{indent_str}  Expression: {exprStmt.Expression}");
-                }
-                else if (statement is IfStatementSyntax ifStmt)
-                {
-                    Print(ifStmt.Condition, indent + 1);  // Print if condition
-                    Print(ifStmt.Statement, indent + 1);  // Print if body
-                    if (ifStmt.Else != null)
-                    {
-                        Print(ifStmt.Else.Statement, indent + 1);  // Print else block
-                    }
-                }
-                else if (statement is SwitchStatementSyntax switchStmt)
-                {
-                    EnumerateStatements(switchStmt.Sections, indent + 1);
-                }
-                else if (statement is TryStatementSyntax tryStmt)
-                {
-                    Print(tryStmt.Block, indent + 1);  // Print try block
-                    foreach (var catchClause in tryStmt.Catches)
-                    {
-                        Print(catchClause.Block, indent + 1);  // Print catch block
-                    }
-                    if (tryStmt.Finally != null)
-                    {
-                        Print(tryStmt.Finally.Block, indent + 1);  // Print finally block
-                    }
-                }
-                else if (statement is WhileStatementSyntax whileStmt)
-                {
-                    Print(whileStmt.Statement, indent + 1);  // Print body of while loop
-                }
-                else if (statement is DoStatementSyntax doStmt)
-                {
-                    Print(doStmt.Statement, indent + 1);  // Print body of do-while loop
-                }
-                else if (statement is ForStatementSyntax forStmt)
-                {
-                    Print(forStmt.Statement, indent + 1);  // Print body of for loop
-                }
-                else if (statement is ForEachStatementSyntax forEachStmt)
-                {
-                    Print(forEachStmt.Statement, indent + 1);  // Print body of foreach loop
-                }
-                else if (statement is LabeledStatementSyntax labeledStmt)
-                {
-                    // Check if the statement inside the label is a block (compound statement)
-                    if (labeledStmt.Statement is BlockSyntax block2)
-                    {
-                        // If it's a block, enumerate its statements
-                        EnumerateStatements(block2.Statements, indent + 1);
-                    }
-                    else
-                    {
-                        // If it's not a block, print the single statement inside the label
-                        Print(labeledStmt.Statement, indent + 1);
-                    }
-                }
-                break;
-
-            default:
-                foreach (var child in node.ChildNodes())
-                {
-                    Print(child, indent + 1);
-                }
-                break;
+            Print(child, indent + 1);
         }
     }
 

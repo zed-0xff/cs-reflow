@@ -19,6 +19,17 @@ class Program
         bool postProcess
     );
 
+    static ControlFlowUnflattener createUnflattener(string code, Options opts, Dictionary<int, bool> hints)
+    {
+        return new ControlFlowUnflattener(code, hints)
+        {
+            Verbosity = opts.verbosity,
+            RemoveSwitchVars = opts.removeSwitchVars,
+            AddComments = opts.addComments,
+            PostProcess = opts.postProcess
+        };
+    }
+
     public static int Main(string[] args)
     {
         // --- Define arguments and options ---
@@ -154,19 +165,14 @@ class Program
                 code = File.ReadAllText(opts.filename);
             }
 
-            var controlFlowUnflattener = new ControlFlowUnflattener(code, hints)
-            {
-                Verbosity = opts.verbosity,
-                RemoveSwitchVars = opts.removeSwitchVars,
-                AddComments = opts.addComments,
-                PostProcess = opts.postProcess
-            };
-
             var printer = new SyntaxTreePrinter(code);
+            printer.Verbosity = opts.verbosity;
+
+            var unflattener = createUnflattener(code, opts, hints);
 
             if (opts.methods == null || opts.methods.Count == 0)
             {
-                var methodDict = controlFlowUnflattener.Methods;
+                var methodDict = unflattener.Methods;
                 if (methodDict.Count == 0)
                 {
                     Console.WriteLine("[?] No methods found.");
@@ -187,7 +193,9 @@ class Program
                     {
                         foreach (var method in methodDict)
                         {
-                            Console.WriteLine(controlFlowUnflattener.ReflowMethod(method.Key));
+                            unflattener.Reset();
+                            unflattener.SetHints(hints);
+                            Console.WriteLine(unflattener.ReflowMethod(method.Key));
                             Console.WriteLine();
                         }
                     }
@@ -203,7 +211,9 @@ class Program
                     }
                     else
                     {
-                        Console.WriteLine(controlFlowUnflattener.ReflowMethod(methodName));
+                        unflattener.Reset();
+                        unflattener.SetHints(hints);
+                        Console.WriteLine(unflattener.ReflowMethod(methodName));
                         Console.WriteLine();
                     }
                 }

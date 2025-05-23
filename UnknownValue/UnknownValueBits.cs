@@ -295,13 +295,13 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
     }
 
-    private UnknownValueBase calc_symm(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    private UnknownValueBase calc_symm(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val, bool useMinMask = true)
     {
         switch (right)
         {
             case UnknownValueBits otherBits:
-                var (mask1, val1) = MaskVal(true);
-                var (mask2, val2) = otherBits.MaskVal(true);
+                var (mask1, val1) = MaskVal(useMinMask);
+                var (mask2, val2) = otherBits.MaskVal(useMinMask);
                 var newMask = mask1 & mask2;
                 return new UnknownValueBits(type, op(val1, val2), newMask);
 
@@ -378,7 +378,7 @@ public class UnknownValueBits : UnknownTypedValue
             return new UnknownValueBits(type, newBits);
         }
 
-        return calc_symm((a, b) => a ^ b, right, 0, this);
+        return calc_symm((a, b) => a ^ b, right, 0, this, false);
     }
 
     public override UnknownValueBase Mul(object right)
@@ -410,8 +410,5 @@ public class UnknownValueBits : UnknownTypedValue
 
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
 
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
-    }
+    public override int GetHashCode() => HashCode.Combine(type.GetHashCode(), bits.GetHashCode());
 }

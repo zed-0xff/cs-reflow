@@ -12,6 +12,7 @@ public class PostProcessor
 {
     public bool RemoveSwitchVars = true;
     VariableProcessor _varProcessor;
+    public int Verbosity = 0;
 
     public PostProcessor(VariableProcessor varProcessor)
     {
@@ -44,26 +45,123 @@ public class PostProcessor
 
     static readonly string[] assignmentOperators = { "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=" };
     static readonly string[] simpleTypes = { "int", "uint", "nint", "nuint", "long", "ulong", "bool", "float", "double", "char", "string", "object", "byte", "sbyte" };
+    static readonly Regex defaultsRE = new Regex($@"default\(\s*({String.Join("|", simpleTypes.Select(type => type))})\s*\)", RegexOptions.Compiled);
+
+    Dictionary<int, string[]> _blockStrCache = new();
+
+    bool has_var(SyntaxNode node, string varName)
+    {
+        return node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(id => id.Identifier.Text == varName);
+    }
+
+    // TODO: better name
+    bool is_var_used_(SyntaxNode child, string varName, BlockSyntax root)
+    {
+        var parent = child.Parent;
+
+        // note: check semanticModel.GetSymbolInfo(id1).Symbol for more precise comparison
+        while (parent != null && parent != root)
+        {
+            if (Verbosity > 1)
+                // Console.Error.WriteLine($"[d] parent: [{parent.Kind()}] [{parent.GetType()}] {parent.Title()}");
+                Console.Error.WriteLine($"[d] parent: [{parent.Kind()}] {parent.Title()}");
+
+            switch (parent)
+            {
+                case AssignmentExpressionSyntax assignExpr:
+                    // … = … func() … - keep them all
+                    if (assignExpr.Right.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any())
+                        return true;
+
+                    // x = … needle … [where x is not needle]
+                    // obj.y = … needle …
+                    if (
+                            assignExpr.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(id => id.Identifier.Text != varName) &&
+                            has_var(assignExpr.Right, varName)
+                       )
+                    {
+                        return true;
+                    }
+                    break;
+
+                case ArgumentSyntax arg:
+                    // func(… needle …) [where x is not needle]
+                    if (has_var(arg, varName))
+                        return true;
+                    break;
+
+                case ConditionalExpressionSyntax condExpr:
+                    if (has_var(condExpr.Condition, varName)) // (… needle …) ? … : …
+                        return true;
+                    break;
+
+                case DoStatementSyntax doStmt:
+                    if (has_var(doStmt.Condition, varName)) // do { … } while (… needle …)
+                        return true;
+                    break;
+
+                case ElementAccessExpressionSyntax elemAccessExpr:
+                    if (has_var(elemAccessExpr.Expression, varName)) // arr[… needle …], but not needle[…]
+                        return true;
+                    break;
+
+                case ForStatementSyntax forStmt:
+                    if (has_var(forStmt.Condition, varName)) // for (… needle …) { … }
+                        return true;
+                    break;
+
+                case IfStatementSyntax ifStmt:
+                    if (has_var(ifStmt.Condition, varName)) // if (… needle …) { … }
+                        return true;
+                    break;
+
+                case InvocationExpressionSyntax invocExpr:
+                    if (has_var(invocExpr, varName)) // func(… needle …)
+                        return true;
+                    break;
+
+                case LambdaExpressionSyntax lambdaExpr:
+                    if (has_var(lambdaExpr, varName)) // () => { … needle … } XXX maybe too wide
+                        return true;
+                    break;
+
+                case VariableDeclarationSyntax varDecl:
+                    // int needle = … func() … - keep all bc function call might be important
+                    if (varDecl.Variables.Any(v => v.Identifier.Text == varName) && varDecl.DescendantNodes().OfType<InvocationExpressionSyntax>().Any())
+                        return true;
+
+                    // note: Any(!=) is not an else case for Any(==)
+
+                    // int x = … needle … [where x is not needle]
+                    if (varDecl.Variables.Any(v => v.Identifier.Text != varName) && has_var(varDecl, varName))
+                        return true;
+
+                    break;
+
+                case ReturnStatementSyntax returnStmt:
+                    if (has_var(returnStmt.Expression, varName)) // return needle …
+                        return true;
+                    break;
+
+                case WhileStatementSyntax whileStmt:
+                    if (has_var(whileStmt.Condition, varName)) // while (… needle …) { … }
+                        return true;
+                    break;
+            }
+            parent = parent.Parent;
+        }
+
+        return false;
+    }
 
     bool is_var_used(BlockSyntax block, string varName)
     {
-        string blockStr = RemoveAllComments(block).NormalizeWhitespace().ToFullString();
-        foreach (string line in blockStr.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var id in block.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
-            string trimmed = line.Trim();
-            if (simpleTypes.Any(type => trimmed == ($"{type} {varName};")))
+            if (id.Identifier.Text != varName)
                 continue;
 
-            if (simpleTypes.Any(type => trimmed == ($"{type}[] {varName};")))
-                continue;
-
-            if (trimmed.StartsWith($"int {varName} = "))
-                continue;
-
-            if (assignmentOperators.Any(op => trimmed.StartsWith($"{varName} {op}"))) // TODO: spaces
-                continue;
-
-            if (Regex.IsMatch(trimmed, $@"\b{Regex.Escape(varName)}\b"))
+            if (is_var_used_(id, varName, block))
                 return true;
         }
 
@@ -163,14 +261,14 @@ public class PostProcessor
 
     IfStatementSyntax postprocess_if(IfStatementSyntax ifStmt)
     {
-        //      if (!bool_0aw) {} else ...
+        //      if (!bool_0aw) {} else …
         if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
             ifStmt = ifStmt
                 .WithCondition(invert_condition(ifStmt.Condition))
                 .WithStatement(ifStmt.Else.Statement)
                 .WithElse(null);
 
-        //      if (...) {} else { if (...) {} }
+        //      if (…) {} else { if (…) {} }
         if (ifStmt.Else != null
                 && ifStmt.Else.Statement is BlockSyntax block2
                 && block2.Statements.Count == 1
@@ -201,9 +299,12 @@ public class PostProcessor
                 case LocalDeclarationStatementSyntax localDecl:
                     var decl = localDecl.Declaration.Variables.First();
                     string varName = decl.Identifier.Text;
-                    if (!isSwitchVar(varName) && !is_var_used(block, varName))
-                        setSwitchVar(varName); // XXX not actually a switch var, but an useless var
-                    if (RemoveSwitchVars && isSwitchVar(varName))
+                    if (!isSwitchVar(varName))
+                    {
+                        if (!is_var_used(block, varName) && !is_var_used_(decl, varName, block))
+                            setSwitchVar(varName); // XXX not actually a switch var, but an useless var
+                    }
+                    if (RemoveSwitchVars && localDecl.Declaration.Variables.All(v => isSwitchVar(v.Identifier.Text)))
                         continue;
                     break;
 

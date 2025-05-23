@@ -44,9 +44,6 @@ public class TraceEntry
         return stmt.Equals(other.stmt) && vars.Equals(other.vars);
     }
 
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
-    }
+    public override int GetHashCode() => HashCode.Combine(stmt, vars, value);
 }
 

@@ -60,8 +60,5 @@ public class UnknownValue : UnknownValueBase
 
     public override bool Equals(object? obj) => obj is UnknownValue;
 
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
-    }
+    public override int GetHashCode() => typeof(UnknownValue).GetHashCode();
 }

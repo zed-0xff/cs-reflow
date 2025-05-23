@@ -215,6 +215,11 @@ public class UnknownValueBitsTest
         a = new UnknownValueBits("byte", new sbyte[] { -1, -1, 0, 0, 0, 0, 0, 0 });
         Assert.Equal("UnknownValueBits<byte>[000011__]", a.Xor(0b1100).ToString());
         Assert.Equal("UnknownValueBits<byte>[000011__]", a.Xor(0b1111).ToString());
+
+        var b = new UnknownValueBits("byte", new sbyte[] { -1, -1, 1, 0, 0, 0, 0, 0 });
+        Assert.Equal("UnknownValueBits<byte>[000001__]", a.Xor(b).ToString());
+        b = new UnknownValueBits("byte", new sbyte[] { 0, 1, 1, 0, 0, 0, 0, 0 });
+        Assert.Equal("UnknownValueBits<byte>[000001__]", a.Xor(b).ToString());
     }
 
     [Fact]

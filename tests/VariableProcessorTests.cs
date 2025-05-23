@@ -54,4 +54,17 @@ public class VariableProcessorTests
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(true, result);
     }
+
+    [Fact]
+    public void Test_exprE()
+    {
+        string expr_str = "(((0x300 & ((num13 * 1939 + 109 * num13) ^ ((0xC86 & num12) >>> 5))) == 0) ? (-5579) : ((num14 << 5) - -48224 != 32 * (16402 * idat2 - (num14 & 0x1A85)))";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num12"] = UnknownValue.Create("int");
+        processor.VariableValues["num13"] = UnknownValue.Create("int");
+        processor.VariableValues["num14"] = 0;
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(-5579, result);
+    }
 }
