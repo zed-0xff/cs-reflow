@@ -123,4 +123,16 @@ public class VariableProcessorTests
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(true, result);
     }
+
+    [Fact]
+    public void Test_exprH()
+    {
+        string expr_str = "~(num116 + num116) != num117 * 3 + num117 - 708559999 >>> 1";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num116"] = UnknownValue.Create("int");
+        processor.VariableValues["num117"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
 }

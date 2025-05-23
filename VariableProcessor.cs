@@ -443,65 +443,135 @@ public class VariableProcessor : ICloneable
 
         BinaryExpressionSyntax? extract_common_factors(ExpressionSyntax left, ExpressionSyntax right)
         {
-            if (
-                left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
-                right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.MultiplyExpression)
-            )
             {
-                // Case 1: (lit1 * id1) + (lit2 * id2)
-                if (lb.Left is LiteralExpressionSyntax lc1 && lb.Right is IdentifierNameSyntax lv1 &&
-                    rb.Left is LiteralExpressionSyntax rc1 && rb.Right is IdentifierNameSyntax rv1 &&
-                    lv1.Identifier.Text == rv1.Identifier.Text)
+                if (
+                        left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
+                        right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.MultiplyExpression)
+                   )
                 {
-                    return BinaryExpression(
-                        SyntaxKind.MultiplyExpression,
-                        lv1,
-                        ParenthesizedExpression(
-                            BinaryExpression(SyntaxKind.AddExpression, lc1, rc1)
-                        )
-                    );
-                }
+                    // Case A1: (lit1 * id) + (lit2 * id)
+                    if (lb.Left is LiteralExpressionSyntax lc1 && lb.Right is IdentifierNameSyntax lv1 &&
+                            rb.Left is LiteralExpressionSyntax rc1 && rb.Right is IdentifierNameSyntax rv1 &&
+                            lv1.Identifier.Text == rv1.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                lv1,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, lc1, rc1)
+                                    )
+                                );
+                    }
 
-                // Case 2: (id1 * lit1) + (lit2 * id2)
-                if (lb.Left is IdentifierNameSyntax lv2 && lb.Right is LiteralExpressionSyntax lc2 &&
-                    rb.Left is LiteralExpressionSyntax rc2 && rb.Right is IdentifierNameSyntax rv2 &&
-                    lv2.Identifier.Text == rv2.Identifier.Text)
-                {
-                    return BinaryExpression(
-                        SyntaxKind.MultiplyExpression,
-                        lv2,
-                        ParenthesizedExpression(
-                            BinaryExpression(SyntaxKind.AddExpression, lc2, rc2)
-                        )
-                    );
-                }
+                    // Case A2: (id * lit1) + (lit2 * id)
+                    if (lb.Left is IdentifierNameSyntax lv2 && lb.Right is LiteralExpressionSyntax lc2 &&
+                            rb.Left is LiteralExpressionSyntax rc2 && rb.Right is IdentifierNameSyntax rv2 &&
+                            lv2.Identifier.Text == rv2.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                lv2,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, lc2, rc2)
+                                    )
+                                );
+                    }
 
-                // Case 3: (lit1 * id1) + (id2 * lit2)
-                if (lb.Left is LiteralExpressionSyntax lc3 && lb.Right is IdentifierNameSyntax lv3 &&
-                    rb.Left is IdentifierNameSyntax rv3 && rb.Right is LiteralExpressionSyntax rc3 &&
-                    lv3.Identifier.Text == rv3.Identifier.Text)
-                {
-                    return BinaryExpression(
-                        SyntaxKind.MultiplyExpression,
-                        lv3,
-                        ParenthesizedExpression(
-                            BinaryExpression(SyntaxKind.AddExpression, lc3, rc3)
-                        )
-                    );
-                }
+                    // Case A3: (lit1 * id) + (id * lit2)
+                    if (lb.Left is LiteralExpressionSyntax lc3 && lb.Right is IdentifierNameSyntax lv3 &&
+                            rb.Left is IdentifierNameSyntax rv3 && rb.Right is LiteralExpressionSyntax rc3 &&
+                            lv3.Identifier.Text == rv3.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                lv3,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, lc3, rc3)
+                                    )
+                                );
+                    }
 
-                // Case 4: (id1 * lit1) + (id2 * lit2)
-                if (lb.Left is IdentifierNameSyntax lv4 && lb.Right is LiteralExpressionSyntax lc4 &&
-                    rb.Left is IdentifierNameSyntax rv4 && rb.Right is LiteralExpressionSyntax rc4 &&
-                    lv4.Identifier.Text == rv4.Identifier.Text)
+                    // Case A4: (id * lit1) + (id * lit2)
+                    if (lb.Left is IdentifierNameSyntax lv4 && lb.Right is LiteralExpressionSyntax lc4 &&
+                            rb.Left is IdentifierNameSyntax rv4 && rb.Right is LiteralExpressionSyntax rc4 &&
+                            lv4.Identifier.Text == rv4.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                lv4,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, lc4, rc4)
+                                    )
+                                );
+                    }
+                }
+            }
+
+            {
+                if (
+                        left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
+                        right is IdentifierNameSyntax rid
+                   )
                 {
-                    return BinaryExpression(
-                        SyntaxKind.MultiplyExpression,
-                        lv4,
-                        ParenthesizedExpression(
-                            BinaryExpression(SyntaxKind.AddExpression, lc4, rc4)
-                        )
-                    );
+                    // Case B1: (lit1 * id) + id
+                    if (lb.Left is LiteralExpressionSyntax lc1 && lb.Right is IdentifierNameSyntax lv1 &&
+                            lv1.Identifier.Text == rid.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                lv1,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, lc1, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    )
+                                );
+                    }
+
+                    // Case A2: (id * lit1) + id
+                    if (lb.Left is IdentifierNameSyntax lv2 && lb.Right is LiteralExpressionSyntax lc2 &&
+                            lv2.Identifier.Text == rid.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                lv2,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, lc2, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    )
+                                );
+                    }
+                }
+            }
+
+            {
+                if (
+                        left is IdentifierNameSyntax lid &&
+                        right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.MultiplyExpression)
+                   )
+                {
+                    // Case C1: id + (lit1 * id)
+                    if (rb.Left is LiteralExpressionSyntax rc1 && rb.Right is IdentifierNameSyntax rv1 &&
+                            rv1.Identifier.Text == lid.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                rv1,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, rc1, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    )
+                                );
+                    }
+
+                    // Case C2: id + (id * lit1)
+                    if (rb.Left is IdentifierNameSyntax rv2 && rb.Right is LiteralExpressionSyntax rc2 &&
+                            rv2.Identifier.Text == lid.Identifier.Text)
+                    {
+                        return BinaryExpression(
+                                SyntaxKind.MultiplyExpression,
+                                rv2,
+                                ParenthesizedExpression(
+                                    BinaryExpression(SyntaxKind.AddExpression, rc2, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    )
+                                );
+                    }
                 }
             }
 

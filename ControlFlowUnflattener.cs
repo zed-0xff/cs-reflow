@@ -713,6 +713,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     case TryStatementSyntax tryStmt:
                         stmt = convert_try(tryStmt, retLabels);
                         break;
+
+                    case ForEachStatementSyntax forEachStmt:
+                        stmt = forEachStmt.WithStatement(
+                                TypedClone()
+                                    .ReflowBlock(forEachStmt.Statement as BlockSyntax)
+                                );
+                        break;
                 }
             }
             catch (NotSupportedException e)
@@ -792,6 +799,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     case TryStatementSyntax tryStmt:      // already handled above
                     case LocalDeclarationStatementSyntax: // already handled above
                     case ExpressionStatementSyntax:       // already handled above
+                    case ForEachStatementSyntax:          // already handled above
                     case EmptyStatementSyntax:            // do nothing
                     case ForStatementSyntax:              // TODO: trace, copy as-is for now
                         break;
@@ -1084,7 +1092,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             }
         }
 
-        if (Verbosity == 0)
+        if (Verbosity == 0 && !isClone)
             Console.Error.WriteLine();
 
         if (Verbosity > 0)
