@@ -511,14 +511,14 @@ public class VariableProcessor : ICloneable
         bool is_always_false(BinaryExpressionSyntax binaryExpr)
         {
             {
-                if ( binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                if (binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax lid && binaryExpr.Right is IdentifierNameSyntax rid &&
                         lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "==")
                     return true; // ~x == x
             }
 
             {
-                if ( binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                if (binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax rid && binaryExpr.Left is IdentifierNameSyntax lid &&
                         lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "==")
                     return true; // x == ~x
@@ -530,14 +530,14 @@ public class VariableProcessor : ICloneable
         bool is_always_true(BinaryExpressionSyntax binaryExpr)
         {
             {
-                if ( binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                if (binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax lid && binaryExpr.Right is IdentifierNameSyntax rid &&
                         lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "!=")
                     return true; // ~x != x
             }
 
             {
-                if ( binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                if (binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax rid && binaryExpr.Left is IdentifierNameSyntax lid &&
                         lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "!=")
                     return true; // x != ~x
@@ -569,7 +569,7 @@ public class VariableProcessor : ICloneable
 
             if (is_always_false(binaryExpr))
                 return false;
-            
+
             if (is_always_true(binaryExpr))
                 return true;
 

@@ -159,6 +159,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
+    public void DropVars(List<string> vars)
+    {
+        foreach (var varName in vars)
+        {
+            setSwitchVar(varName, true);
+        }
+    }
+
     public CSharpSyntaxNode GetMethod(string methodName)
     {
         var methods = _tree.GetRoot().DescendantNodes()

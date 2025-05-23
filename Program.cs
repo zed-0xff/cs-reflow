@@ -16,7 +16,8 @@ class Program
         bool printTree,
         bool addComments,
         bool removeSwitchVars,
-        bool postProcess
+        bool postProcess,
+        List<string> dropVars
     );
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, Dictionary<int, bool> hints)
@@ -95,6 +96,12 @@ class Program
             description: "Post-process the code."
         );
 
+        var dropVarsOpt = new Option<List<string>>(
+            name: "--drop-var",
+            getDefaultValue: () => new List<string>(),
+            description: "Drop specified variable(s)."
+        );
+
         // --- Define the root command ---
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
@@ -108,7 +115,8 @@ class Program
             removeSwitchVarsOpt,
             postProcessOpt,
             quietOpt,
-            listMethodsOpt
+            listMethodsOpt,
+            dropVarsOpt
         };
 
         // --- Set the handler ---
@@ -124,7 +132,8 @@ class Program
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
                 postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
-                listMethods: context.ParseResult.GetValueForOption(listMethodsOpt)
+                listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
+                dropVars: context.ParseResult.GetValueForOption(dropVarsOpt)
             );
 
             var hints = new Dictionary<int, bool>();
@@ -195,6 +204,7 @@ class Program
                         {
                             unflattener.Reset();
                             unflattener.SetHints(hints);
+                            unflattener.DropVars(opts.dropVars);
                             Console.WriteLine(unflattener.ReflowMethod(method.Key));
                             Console.WriteLine();
                         }
@@ -213,6 +223,7 @@ class Program
                     {
                         unflattener.Reset();
                         unflattener.SetHints(hints);
+                        unflattener.DropVars(opts.dropVars);
                         Console.WriteLine(unflattener.ReflowMethod(methodName));
                         Console.WriteLine();
                     }
