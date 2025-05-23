@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis.CSharp;
+
 public abstract class UnknownValueBase
 {
     public abstract override string ToString();
@@ -14,6 +16,7 @@ public abstract class UnknownValueBase
 
     public abstract UnknownValueBase BitwiseAnd(object right);
     public abstract UnknownValueBase BitwiseOr(object right);
+    public abstract UnknownValueBase BitwiseNot();
     public abstract UnknownValueBase ShiftLeft(object right);
     public abstract UnknownValueBase UnsignedShiftRight(object right);
     public abstract UnknownValueBase Negate();
@@ -50,7 +53,19 @@ public abstract class UnknownValueBase
     public virtual long Min() => Values().Min();
     public virtual long Max() => Values().Max();
 
-    public object Op(string op, object rValue)
+    public object Op(SyntaxKind op) // unary op
+    {
+        return op switch
+        {
+            SyntaxKind.BitwiseNotExpression => BitwiseNot(),
+            SyntaxKind.UnaryPlusExpression => this,
+            SyntaxKind.UnaryMinusExpression => Negate(),
+            SyntaxKind.LogicalNotExpression => Eq(0),
+            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
+        };
+    }
+
+    public object Op(string op, object rValue) // binary op
     {
         return op switch
         {
@@ -70,9 +85,9 @@ public abstract class UnknownValueBase
 
             "&" => BitwiseAnd(rValue),
             "|" => BitwiseOr(rValue),
-            //
+
             "<<" => ShiftLeft(rValue),
-            //            ">>" => Xor(rValue),
+            // ">>" => SignedShiftRight(rValue), // TODO
             ">>>" => UnsignedShiftRight(rValue),
 
             _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),

@@ -67,4 +67,48 @@ public class VariableProcessorTests
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(-5579, result);
     }
+
+    [Fact]
+    public void Test_exprF1()
+    {
+        string expr_str = "!(~num11 == num11)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num11"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprF2()
+    {
+        string expr_str = "!(~num11 != num11)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num11"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
+    public void Test_exprF3()
+    {
+        string expr_str = "!(num11 == ~num11)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num11"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprF4()
+    {
+        string expr_str = "!(num11 != ~num11)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["num11"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(false, result);
+    }
 }

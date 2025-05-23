@@ -50,9 +50,19 @@ public abstract class UnknownTypedValue : UnknownValueBase
         ["nuint"] = new IntInfo { Name = "nuint", nbits = 32, signed = false }, // TODO: 32/64 bit cmdline switch
     };
 
-    public long Mask(long value)
+    public long MaskNoSign(long value)
     {
         return value & type.Mask;
+    }
+
+    public long MaskWithSign(long value)
+    {
+        value = MaskNoSign(value);
+        if (type.signed && (value & (1L << (type.nbits - 1))) != 0)
+        {
+            value |= ~type.Mask;
+        }
+        return value;
     }
 
     public long Capacity()
@@ -173,7 +183,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (TryConvertToLong(right, out l))
-            return new UnknownValueList(type, Values().Select(v => Mask(v * l)).Distinct().OrderBy(x => x).ToList());
+            return new UnknownValueList(type, Values().Select(v => MaskWithSign(v * l)).Distinct().OrderBy(x => x).ToList());
 
         if (right is not UnknownTypedValue ru)
             return UnknownValue.Create(type);
@@ -183,7 +193,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             foreach (long r in ru.Values())
             {
-                long maskedValue = Mask(v * r);
+                long maskedValue = MaskWithSign(v * r);
                 if (values.Count >= MAX_DISCRETE_CARDINALITY)
                     return UnknownValue.Create(type);
 

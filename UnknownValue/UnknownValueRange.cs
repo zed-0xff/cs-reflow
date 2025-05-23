@@ -12,6 +12,16 @@ public class UnknownValueRange : UnknownTypedValue
         Range = range ?? this.type.Range;
     }
 
+    public UnknownValueRange(string type, long min, long max) : base(type)
+    {
+        Range = new LongRange(min, max);
+    }
+
+    public UnknownValueRange(IntInfo type, long min, long max) : base(type)
+    {
+        Range = new LongRange(min, max);
+    }
+
     public override bool Equals(object obj)
     {
         if (obj is UnknownValueRange r)
@@ -187,6 +197,15 @@ public class UnknownValueRange : UnknownTypedValue
             return new UnknownValueBits(type, b.Bits);
         }
         return base.BitwiseAnd(right);
+    }
+
+    public override UnknownValueBase BitwiseNot()
+    {
+        long min = MaskWithSign(~Range.Min);
+        long max = MaskWithSign(~Range.Max);
+        if (max < min)
+            (min, max) = (max, min);
+        return new UnknownValueRange(type, new LongRange(min, max));
     }
 }
 

@@ -282,4 +282,26 @@ public class UnknownValueRangeTests
         List<long> values = b.Values().ToList();
         Assert.Equal(new List<long> { -128, -96, -64, -32, 0, 32, 64, 96 }, values);
     }
+
+    [Fact]
+    public void Test_Negate_int()
+    {
+        UnknownValueRange a = new("int", -50, 100);
+        var b = a.Negate();
+        Assert.NotEqual(a, b);
+        Assert.Equal(new UnknownValueRange("int", -100, 50), b);
+        var c = b.Negate();
+        Assert.Equal(a, c);
+    }
+
+    [Fact]
+    public void Test_BitwiseNot_int()
+    {
+        UnknownValueRange a = new("int", -50, 100);
+        var b = a.BitwiseNot();
+        Assert.NotEqual(a, b);
+        Assert.Equal(new UnknownValueRange("int", -101, 49), b);
+        var c = b.BitwiseNot();
+        Assert.Equal(a, c);
+    }
 }

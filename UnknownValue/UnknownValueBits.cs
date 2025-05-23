@@ -275,7 +275,7 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, newBits);
     }
 
-    public UnknownValueBase BitwiseNot()
+    public override UnknownValueBase BitwiseNot()
     {
         var (mask, val) = MaskVal();
         return new UnknownValueBits(type, ~val, mask);
@@ -314,7 +314,7 @@ public class UnknownValueBits : UnknownTypedValue
                 {
                     foreach (var v2 in otherList.Values())
                     {
-                        newValues.Add(Mask(op(v1, v2)));
+                        newValues.Add(MaskWithSign(op(v1, v2)));
                         if (newValues.Count > MAX_DISCRETE_CARDINALITY)
                             return UnknownValue.Create(type);
                     }

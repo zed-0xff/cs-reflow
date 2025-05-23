@@ -16,12 +16,12 @@ public class UnknownValueList : UnknownTypedValue
 
     public override UnknownValueBase Add(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(type, values.Select(v => Mask(v + l)).Distinct().OrderBy(x => x).ToList())
+            ? new UnknownValueList(type, values.Select(v => MaskWithSign(v + l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(type);
 
     public override UnknownValueBase Sub(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(type, values.Select(v => Mask(v - l)).Distinct().OrderBy(x => x).ToList())
+            ? new UnknownValueList(type, values.Select(v => MaskWithSign(v - l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(type);
 
     public override UnknownValueBase Div(object right) =>
@@ -41,15 +41,16 @@ public class UnknownValueList : UnknownTypedValue
 
     public override UnknownValueBase ShiftLeft(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(type, values.Select(v => Mask(v << (int)l)).Distinct().OrderBy(x => x).ToList())
+            ? new UnknownValueList(type, values.Select(v => MaskWithSign(v << (int)l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(type);
 
     public override UnknownValueBase UnsignedShiftRight(object right) =>
         TryConvertToLong(right, out long l)
-            ? new UnknownValueList(type, values.Select(v => Mask(v >>> (int)l)).Distinct().OrderBy(x => x).ToList())
+            ? new UnknownValueList(type, values.Select(v => MaskWithSign(v >>> (int)l)).Distinct().OrderBy(x => x).ToList())
             : new UnknownValueList(type);
 
-    public override UnknownValueBase Negate() => new UnknownValueList(type, values.Select(v => Mask(-v)).OrderBy(x => x).ToList());
+    public override UnknownValueBase Negate() => new UnknownValueList(type, values.Select(v => MaskWithSign(-v)).OrderBy(x => x).ToList());
+    public override UnknownValueBase BitwiseNot() => new UnknownValueList(type, values.Select(v => MaskWithSign(~v)).OrderBy(x => x).ToList());
 
     public override object Cast(string toType)
     {

@@ -50,6 +50,7 @@ public class UnknownValue : UnknownValueBase
     // narrows the scope, but the type is still unknown
     public override UnknownValue BitwiseAnd(object right) => new UnknownValue();
     public override UnknownValue BitwiseOr(object right) => new UnknownValue();
+    public override UnknownValue BitwiseNot() => new UnknownValue();
     public override UnknownValue ShiftLeft(object right) => new UnknownValue();
     public override UnknownValue UnsignedShiftRight(object right) => new UnknownValue();
     public override UnknownValue Negate() => new UnknownValue();

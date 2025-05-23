@@ -373,6 +373,7 @@ public class VariableProcessor : ICloneable
                 uint u => eval_prefix(u, kind),
                 ulong ul => eval_prefix(ul, kind),
                 ushort us => eval_prefix(us, kind),
+                UnknownValueBase unk => unk.Op(kind),
                 _ => throw new NotSupportedException($"Unary operator '{kind}' is not supported for {value.GetType()}.")
             };
         }
@@ -507,6 +508,44 @@ public class VariableProcessor : ICloneable
             return null;
         }
 
+        bool is_always_false(BinaryExpressionSyntax binaryExpr)
+        {
+            {
+                if ( binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                        unaryExpr.Operand is IdentifierNameSyntax lid && binaryExpr.Right is IdentifierNameSyntax rid &&
+                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "==")
+                    return true; // ~x == x
+            }
+
+            {
+                if ( binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                        unaryExpr.Operand is IdentifierNameSyntax rid && binaryExpr.Left is IdentifierNameSyntax lid &&
+                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "==")
+                    return true; // x == ~x
+            }
+
+            return false;
+        }
+
+        bool is_always_true(BinaryExpressionSyntax binaryExpr)
+        {
+            {
+                if ( binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                        unaryExpr.Operand is IdentifierNameSyntax lid && binaryExpr.Right is IdentifierNameSyntax rid &&
+                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "!=")
+                    return true; // ~x != x
+            }
+
+            {
+                if ( binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
+                        unaryExpr.Operand is IdentifierNameSyntax rid && binaryExpr.Left is IdentifierNameSyntax lid &&
+                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "!=")
+                    return true; // x != ~x
+            }
+
+            return false;
+        }
+
         object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
         {
             // handle falsely misinterpreted "(nint)-17648"
@@ -528,6 +567,12 @@ public class VariableProcessor : ICloneable
                 }
             }
 
+            if (is_always_false(binaryExpr))
+                return false;
+            
+            if (is_always_true(binaryExpr))
+                return true;
+
             string op = binaryExpr.OperatorToken.Text;
 
             // convert (4 * x + x * 4) => (4 + 4) * x
@@ -537,7 +582,6 @@ public class VariableProcessor : ICloneable
                 var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
                 if (factoredExpr != null)
                 {
-                    //Console.WriteLine($"[d] {factoredExpr}");
                     return EvaluateBinaryExpression(factoredExpr);
                 }
             }
