@@ -497,24 +497,31 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
+    ControlFlowUnflattener TypedClone()
+    {
+        return (ControlFlowUnflattener)Clone();
+    }
+
+    ControlFlowUnflattener WithParentReturns(ReturnsDictionary retLabels)
+    {
+        _parentReturns = retLabels;
+        return this;
+    }
+
     TryStatementSyntax convert_try(TryStatementSyntax tryStmt, ReturnsDictionary retLabels)
     {
-        var clone = (ControlFlowUnflattener)Clone();
-        clone._parentReturns = retLabels;
-
-        var newBlock = clone.ReflowBlock(tryStmt.Block);
+        var newBlock = TypedClone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Block);
         var newCatches = SyntaxFactory.List(
                 tryStmt.Catches.Select(c =>
                     {
-                        clone = (ControlFlowUnflattener)Clone();
-                        clone._parentReturns = retLabels;
-                        return c.WithBlock(clone.ReflowBlock(c.Block));
+                        return c.WithBlock(TypedClone().WithParentReturns(retLabels).ReflowBlock(c.Block));
                     })
                 );
 
         return tryStmt
             .WithBlock(newBlock)
-            .WithCatches(newCatches);
+            .WithCatches(newCatches)
+            .WithFinally(tryStmt.Finally?.WithBlock(TypedClone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Finally.Block)));
     }
 
     public object EvaluateExpression(ExpressionSyntax expression)

@@ -198,7 +198,8 @@ public class PostProcessor
             case TryStatementSyntax tryStmt:
                 return tryStmt
                     .WithBlock(PostProcess(tryStmt.Block))
-                    .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })));
+                    .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })))
+                    .WithFinally(tryStmt.Finally?.WithBlock(PostProcess(tryStmt.Finally.Block)));
                 break;
 
             case BlockSyntax blockStmt:
