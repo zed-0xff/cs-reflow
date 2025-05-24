@@ -890,6 +890,39 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
+    public List<string> find_loop_vars(int lineno)
+    {
+        List<string> loopVars = find_loop_vars(_condStates[lineno][^3..]);
+        if (loopVars.Count != 0)
+            return loopVars;
+
+        var states = _condStates[lineno][^3..];
+        VarDict diffVars = (VarDict)_condStates[lineno][^3].vars.Clone();
+        foreach (var state in states.Skip(1))
+        {
+            foreach (var kv in state.vars)
+            {
+                if (diffVars.TryGetValue(kv.Key, out var val))
+                {
+                    if (val == null || kv.Value == null || val.Equals(kv.Value))
+                        diffVars.Remove(kv.Key);
+                }
+            }
+        }
+        var emptyObject = default(object);
+        foreach (var kv in diffVars)
+        {
+            if (kv.Value == null || (kv.Value != null && kv.Equals(emptyObject)))
+                diffVars.Remove(kv.Key);
+        }
+        foreach (var state in states)
+        {
+            var stateDiffVars = state.vars.Where(kv => diffVars.ContainsKey(kv.Key)).ToList();
+            Console.WriteLine($"[d] {state.lineno}: {String.Join(", ", stateDiffVars.Select(kv => $"{kv.Key}={kv.Value}"))}");
+        }
+        throw new Exception($"Loop var not found at line {lineno}");
+    }
+
     public static List<string> find_loop_vars(List<State> states)
     {
         if (states.Count < 2)
@@ -1045,35 +1078,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 }
                 catch (ConditionalLoopException e)
                 {
-                    List<string> loopVars = find_loop_vars(clone._condStates[e.lineno][^3..]);
-                    if (loopVars.Count == 0)
-                    {
-                        var states = clone._condStates[e.lineno][^3..];
-                        VarDict diffVars = (VarDict)clone._condStates[e.lineno][^3].vars.Clone();
-                        foreach (var state in states.Skip(1))
-                        {
-                            foreach (var kv in state.vars)
-                            {
-                                if (diffVars.TryGetValue(kv.Key, out var val))
-                                {
-                                    if (val == null || kv.Value == null || val.Equals(kv.Value))
-                                        diffVars.Remove(kv.Key);
-                                }
-                            }
-                        }
-                        var emptyObject = default(object);
-                        foreach (var kv in diffVars)
-                        {
-                            if (kv.Value == null || (kv.Value != null && kv.Equals(emptyObject)))
-                                diffVars.Remove(kv.Key);
-                        }
-                        foreach (var state in states)
-                        {
-                            var stateDiffVars = state.vars.Where(kv => diffVars.ContainsKey(kv.Key)).ToList();
-                            Console.WriteLine($"[d] {state.lineno}: {String.Join(", ", stateDiffVars.Select(kv => $"{kv.Key}={kv.Value}"))}");
-                        }
-                        throw new Exception($"Loop var not found at line {e.lineno}");
-                    }
+                    List<string> loopVars = clone.find_loop_vars(e.lineno);
                     foreach (var loopVar in loopVars)
                     {
                         if (Verbosity > 0)
