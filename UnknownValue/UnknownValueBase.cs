@@ -18,6 +18,7 @@ public abstract class UnknownValueBase
     public abstract UnknownValueBase BitwiseOr(object right);
     public abstract UnknownValueBase BitwiseNot();
     public abstract UnknownValueBase ShiftLeft(object right);
+    public abstract UnknownValueBase SignedShiftRight(object right);
     public abstract UnknownValueBase UnsignedShiftRight(object right);
     public abstract UnknownValueBase Negate();
 
@@ -87,7 +88,7 @@ public abstract class UnknownValueBase
             "|" => BitwiseOr(rValue),
 
             "<<" => ShiftLeft(rValue),
-            // ">>" => SignedShiftRight(rValue), // TODO
+            ">>" => SignedShiftRight(rValue), // TODO
             ">>>" => UnsignedShiftRight(rValue),
 
             _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),

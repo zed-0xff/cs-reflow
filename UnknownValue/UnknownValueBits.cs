@@ -222,6 +222,21 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, newBits);
     }
 
+    public override UnknownTypedValue SignedShiftRight(object right)
+    {
+        if (!TryConvertToLong(right, out long l))
+            return UnknownTypedValue.Create(type);
+
+        sbyte sign = bits[type.nbits - 1];
+        List<sbyte> newBits = new(bits);
+        for (int i = 0; i < l; i++)
+        {
+            newBits.RemoveAt(0);
+            newBits.Add(sign);
+        }
+        return new UnknownValueBits(type, newBits);
+    }
+
     public override UnknownTypedValue UnsignedShiftRight(object right)
     {
         if (!TryConvertToLong(right, out long l))
