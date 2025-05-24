@@ -127,12 +127,36 @@ public class UnknownValueRange : UnknownTypedValue
         return new UnknownValueList(type, values);
     }
 
-    public override UnknownValueRange UnsignedShiftRight(object right)
+    public override UnknownValueRange UnsignedShiftRight(object right) // '>>>'
     {
         if (!TryConvertToLong(right, out long l))
             return new(type);
 
-        return new UnknownValueRange(type, Range >>> (int)l);
+        if (l == 0)
+            return this;
+
+        if (l < 0)
+            throw new ArgumentOutOfRangeException($"Shift right {l} is out of range for {type}");
+
+        int shift = (int)l;
+
+        if (Range.Min < 0 && Range.Max >= 0)
+            return new UnknownValueRange(type, 0, Range.Max >>> shift);
+
+        long min, max;
+        (min, max) = type.Name switch
+        {
+            "int" => ((long)((int)Range.Min >>> shift), (long)((int)Range.Max >>> shift)),
+            "nint" => ((long)((int)Range.Min >>> shift), (long)((int)Range.Max >>> shift)), // TODO: 32/64 bit cmdline switch
+            "sbyte" => ((long)((sbyte)Range.Min >>> shift), (long)((sbyte)Range.Max >>> shift)),
+            "short" => ((long)((short)Range.Min >>> shift), (long)((short)Range.Max >>> shift)),
+            _ => (Range.Min >>> shift, Range.Max >>> shift)
+        };
+
+        if (min > max)
+            (min, max) = (max, min);
+
+        return new UnknownValueRange(type, min, max);
     }
 
     public override UnknownValueRange Mod(object right)

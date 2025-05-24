@@ -14,6 +14,11 @@ public class VariableProcessor : ICloneable
     public static VarDict Constants { get; private set; } = new();
     public int Verbosity = 0;
 
+    public VariableProcessor(int verbosity = 0)
+    {
+        Verbosity = verbosity;
+    }
+
     static VariableProcessor()
     {
         Constants["string.Empty"] = string.Empty;

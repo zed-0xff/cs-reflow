@@ -135,4 +135,40 @@ public class VariableProcessorTests
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(true, result);
     }
+
+    [Fact]
+    public void Test_exprI1()
+    {
+        string expr_str = "QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["QRR2"] = UnknownValue.Create("int");
+        processor.VariableValues["QRR3"] = UnknownValue.Create("int");
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprI2()
+    {
+        string expr_str = "QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["QRR2"] = UnknownValue.Create("int");
+        processor.VariableValues["QRR3"] = 0;
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprJ()
+    {
+        string expr_str = "342177280 + (x >>> 11 >>> 1) != QRR11 >>> 4";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["x"] = UnknownValue.Create("int");
+        processor.VariableValues["QRR11"] = 0;
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
 }
