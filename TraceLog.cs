@@ -83,16 +83,10 @@ public class TraceLog
         // case: label was added when a loop was detected
 
         if (stmt1 is LabeledStatementSyntax l1)
-        {
-            if (l1.Statement.ToString().Trim() == stmt2.ToString().Trim())
-                return true;
+            return eq_stmt(l1.Statement, stmt2);
 
-            if (stmt2 is LabeledStatementSyntax l2_ && l2_.ToString().Trim() == l1.ToString().Trim())
-                return true;
-        }
-
-        if (stmt2 is LabeledStatementSyntax l2 && l2.Statement.ToString().Trim() == stmt1.ToString().Trim())
-            return true;
+        if (stmt2 is LabeledStatementSyntax l2)
+            return eq_stmt(stmt1, l2.Statement);
 
         return false;
     }
