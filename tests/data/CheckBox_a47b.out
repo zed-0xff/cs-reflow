@@ -8,5 +8,6 @@
 			}
 		}
 	
-		((ButtonBase)this).Dispose(bool_0ah);  // InvocationExpressionSyntax is not supported.
+		((ButtonBase)this).Dispose(bool_0ah);  // InvocationExpression is not supported.
 	}
+

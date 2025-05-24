@@ -77,7 +77,10 @@ public class TraceLog
         if (stmt1.Equals(stmt2))
             return true;
 
-        if (stmt1.ToString().Trim() == stmt2.ToString().Trim()) // converted blocks like try{}
+        // converted blocks like try{}
+        string s1 = PostProcessor.RemoveAllComments(stmt1).NormalizeWhitespace().ToString().Trim();
+        string s2 = PostProcessor.RemoveAllComments(stmt2).NormalizeWhitespace().ToString().Trim();
+        if (s1 == s2)
             return true;
 
         // case: label was added when a loop was detected

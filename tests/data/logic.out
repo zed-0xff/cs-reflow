@@ -1,17 +1,17 @@
 void case1()
 {
-    should_run1();  // InvocationExpressionSyntax is not supported.
+    should_run1();  // InvocationExpression is not supported.
 }
 
 void case2()
 {
-    should_run2();  // InvocationExpressionSyntax is not supported.
+    should_run2();  // InvocationExpression is not supported.
 }
 
 void case3()
 {
     bool a = true;  // true
     var c = a ? 123 : (b ? 456 : 789);  // 123
-    stub(c);  // InvocationExpressionSyntax is not supported.
+    stub(c);  // InvocationExpression is not supported.
 }
 

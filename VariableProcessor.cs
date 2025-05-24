@@ -337,7 +337,7 @@ public class VariableProcessor : ICloneable
                     return EvaluatePostfixExpression(postfixExpr);
 
                 default:
-                    throw new NotSupportedException($"{expression.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")} is not supported.");
+                    throw new NotSupportedException($"{expression.Kind()} is not supported.");
             }
         }
 
