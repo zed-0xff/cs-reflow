@@ -12,7 +12,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
 using ReturnsDictionary = System.Collections.Generic.Dictionary<string, int>;
 
-public class AutoDefaultIntDict : Dictionary<int, int>
+public class DefaultIntDict : Dictionary<int, int>
 {
     public new int this[int key]
     {
@@ -36,7 +36,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     TraceLog _traceLog = new();
     Dictionary<State, int> _states = new();
     Dictionary<int, List<State>> _condStates = new();
-    AutoDefaultIntDict _visitedLines = new();
+    DefaultIntDict _visitedLines = new();
     ReturnsDictionary _parentReturns = new();
     Stopwatch _stopWatch = Stopwatch.StartNew();
 
@@ -213,7 +213,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     {
         try
         {
-            trace_block(GetMethodBody(methodName));
+            trace_block_inline(GetMethodBody(methodName));
         }
         catch (ReturnException)
         {
@@ -295,7 +295,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                     {
                         try
                         {
-                            trace_block(body as BlockSyntax); // TODO: single-statement body
+                            trace_block_inline(body as BlockSyntax); // TODO: single-statement body
                         }
                         catch (BreakException)
                         {
@@ -329,7 +329,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             try
             {
-                trace_block(body);
+                trace_block_inline(body);
             }
             catch (BreakException)
             {
@@ -420,7 +420,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         {
             try
             {
-                trace_block(section.Statements, start_idx); // TODO: fallthrough
+                trace_block_inline(section.Statements, start_idx); // TODO: fallthrough
                 break;
 
             }
@@ -483,7 +483,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             case bool b:
                 if (b)
                 {
-                    trace_block(ifStmt.Statement as BlockSyntax); // TODO: single-statement body
+                    trace_block_inline(ifStmt.Statement as BlockSyntax); // TODO: single-statement body
                 }
                 else
                 {
@@ -492,7 +492,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         switch (ifStmt.Else.Statement)
                         {
                             case BlockSyntax block:
-                                trace_block(block);
+                                trace_block_inline(block);
                                 break;
 
                             case IfStatementSyntax ifStmt2:
@@ -596,12 +596,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         _varProcessor.VariableValues.SetSwitchVar(varName, isSwitch);
     }
 
-    public void trace_block(BlockSyntax block, int start_idx = 0)
+    public void trace_block_inline(BlockSyntax block, int start_idx = 0)
     {
-        trace_block(block.Statements, start_idx);
+        trace_block_inline(block.Statements, start_idx);
     }
 
-    public void trace_block(SyntaxList<StatementSyntax> statements, int start_idx = 0)
+    // trace block as main flow
+    public void trace_block_inline(SyntaxList<StatementSyntax> statements, int start_idx = 0)
     {
         Dictionary<string, int> labels = new();
         ReturnsDictionary retLabels = new();
@@ -874,11 +875,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
                         break;
 
                     case BlockSyntax block:
-                        trace_block(block); // TODO: local vars
+                        trace_block_inline(block); // TODO: local vars
                         break;
 
                     case UsingStatementSyntax usingStmt:
-                        trace_block(usingStmt.Statement as BlockSyntax);
+                        trace_block_inline(usingStmt.Statement as BlockSyntax);
                         break;
 
                     case BreakStatementSyntax: throw new BreakException();
@@ -992,7 +993,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
                 try
                 {
-                    clone.trace_block(block);
+                    clone.trace_block_inline(block);
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
                         Console.WriteLine($"<<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}");
@@ -1232,6 +1233,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         return ReflowMethod(GetMethod(methodName));
     }
 
+    // trace block and reflow it, returning a new BlockSyntax
+    // does not alter _traceLog
     public BlockSyntax ReflowBlock(BlockSyntax block, TraceLog? log = null, bool isMethod = false)
     {
         if (block.Statements.Count == 0) // i.e. empty catch {}
