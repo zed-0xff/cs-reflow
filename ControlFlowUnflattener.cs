@@ -12,24 +12,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
 using ReturnsDictionary = System.Collections.Generic.Dictionary<string, int>;
 
-public class DefaultIntDict : Dictionary<int, int>
-{
-    public new int this[int key]
-    {
-        get
-        {
-            if (!TryGetValue(key, out var value))
-            {
-                value = 0;
-                base[key] = value;
-            }
-            return value;
-        }
-        set => base[key] = value;
-    }
-}
-
-public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
+public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
@@ -235,7 +218,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
     // private empty constructor for cloning exclusively
     private ControlFlowUnflattener() { }
 
-    public object Clone()
+    public ControlFlowUnflattener Clone()
     {
         var clone = new ControlFlowUnflattener();
         clone.isClone = true;
@@ -258,15 +241,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         _flowHints = new(flowHints);
     }
 
-    public ControlFlowUnflattener CloneWithHints(HintsDictionary flowHints)
+    public ControlFlowUnflattener WithHints(HintsDictionary flowHints)
     {
-        var clone = (ControlFlowUnflattener)Clone();
         foreach (var hint in flowHints)
         {
-            clone._flowHints[hint.Key] = hint.Value;
+            _flowHints[hint.Key] = hint.Value;
         }
-        clone._traceLog.hints = new(clone._flowHints);
-        return clone;
+        _traceLog.hints = new(_flowHints);
+        return this;
     }
 
     public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
@@ -514,11 +496,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
         }
     }
 
-    ControlFlowUnflattener TypedClone()
-    {
-        return (ControlFlowUnflattener)Clone();
-    }
-
     ControlFlowUnflattener WithParentReturns(ReturnsDictionary retLabels)
     {
         _parentReturns = retLabels;
@@ -527,18 +504,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
     TryStatementSyntax convert_try(TryStatementSyntax tryStmt, ReturnsDictionary retLabels)
     {
-        var newBlock = TypedClone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Block);
+        var newBlock = Clone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Block);
         var newCatches = SyntaxFactory.List(
                 tryStmt.Catches.Select(c =>
                     {
-                        return c.WithBlock(TypedClone().WithParentReturns(retLabels).ReflowBlock(c.Block));
+                        return c.WithBlock(Clone().WithParentReturns(retLabels).ReflowBlock(c.Block));
                     })
                 );
 
         return tryStmt
             .WithBlock(newBlock)
             .WithCatches(newCatches)
-            .WithFinally(tryStmt.Finally?.WithBlock(TypedClone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Finally.Block)));
+            .WithFinally(tryStmt.Finally?.WithBlock(Clone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Finally.Block)));
     }
 
     public object EvaluateExpression(ExpressionSyntax expression)
@@ -976,7 +953,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
 
             while (true)
             {
-                ControlFlowUnflattener clone = CloneWithHints(hints);
+                ControlFlowUnflattener clone = Clone().WithHints(hints);
                 if (Verbosity > -1)
                 {
                     string msg = $"[{ElapsedTime()}] tracing branches: {logs.Count}/{logs.Count + queue.Count}";
@@ -1215,12 +1192,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor, ICloneable
             Console.WriteLine($"[=] final log: {logs[0]}");
 
         return logs[0];
-    }
-
-    string indent(string line, int level)
-    {
-        string indent = new(' ', level * 4);
-        return indent + line;
     }
 
     public string ReflowMethod(int lineno)

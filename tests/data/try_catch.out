@@ -8,9 +8,12 @@
 			}
 	
 			ab5dbb20393b4538b9a05d9405e644d5(paintEventArgs_0a);  // InvocationExpressionSyntax is not supported.
+			return;
 		}
 		catch
 		{
 			Control.Invalidate(this);  // InvocationExpressionSyntax is not supported.
+			return;
 		}
 	}
+

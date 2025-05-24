@@ -35,9 +35,11 @@
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+							return;
 						}
 						catch
 						{
+							return;
 						}
 	
 						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
@@ -48,9 +50,11 @@
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+							return;
 						}
 						catch
 						{
+							return;
 						}
 	
 						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
@@ -74,9 +78,11 @@
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+							return;
 						}
 						catch
 						{
+							return;
 						}
 	
 						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
@@ -87,9 +93,11 @@
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
 							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+							return;
 						}
 						catch
 						{
+							return;
 						}
 	
 						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
@@ -106,9 +114,11 @@
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+					return;
 				}
 				catch
 				{
+					return;
 				}
 	
 				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
@@ -119,9 +129,11 @@
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;  // MemberAccessExpressionSyntax is not supported.
+					return;
 				}
 				catch
 				{
+					return;
 				}
 	
 				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
