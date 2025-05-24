@@ -17,6 +17,18 @@ public class TraceLog
         return $"<TraceLog: {entries.Count} entries, {hints.Count} hints>";
     }
 
+    public TraceLog CutFrom(int start)
+    {
+        if (start < 0 || start >= entries.Count)
+            throw new ArgumentOutOfRangeException(nameof(start), "Start index is out of range");
+
+        TraceLog result = new();
+        result.hints = new(hints);
+        result.entries.AddRange(entries.GetRange(start, entries.Count - start));
+        entries.RemoveRange(start, entries.Count - start);
+        return result;
+    }
+
     // returns element key if only one difference, -1 otherwise
     public static int hints_diff1(HintsDictionary hints1, HintsDictionary hints2)
     {
@@ -65,7 +77,7 @@ public class TraceLog
         if (stmt1.Equals(stmt2))
             return true;
 
-        if (stmt1.ToString().Trim() == stmt2.ToString().Trim()) // converted try{} blocks
+        if (stmt1.ToString().Trim() == stmt2.ToString().Trim()) // converted blocks like try{}
             return true;
 
         // case: label was added when a loop was detected
@@ -142,12 +154,6 @@ public class TraceLog
         LabeledStatementSyntax? labelStmt = null;
         foreach (var entry in ifEntries)
         {
-            //            if (entry.stmt is IfStatementSyntax if1)
-            //            {
-            //                ifStmt = if1;
-            //                ifEntry = entry;
-            //                break;
-            //            }
             if (entry.stmt is LabeledStatementSyntax labeledStmt && labeledStmt.Statement is IfStatementSyntax if2)
             {
                 ifStmt = if2;
@@ -172,26 +178,12 @@ public class TraceLog
 
         if (ifStmt == null)
         {
-            for (int i = Math.Max(commonStart - 10, 0); i <= commonStart; i++)
-            {
-                if (i >= this.entries.Count)
-                    break;
-
-                if (i == commonStart)
-                    Console.WriteLine("--- commonStart");
-                Console.WriteLine($"A{i}: {this.entries[i].TitleWithLineNo()}");
-            }
+            Print("A", Math.Max(commonStart - 10, 0), commonStart);
+            Print("A", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
             Console.WriteLine();
 
-            for (int j = Math.Max(commonStart - 10, 0); j <= commonStart; j++)
-            {
-                if (j >= other.entries.Count)
-                    break;
-
-                if (j == commonStart)
-                    Console.WriteLine("--- commonStart");
-                Console.WriteLine($"B{j}: {other.entries[j].TitleWithLineNo()}");
-            }
+            other.Print("B", Math.Max(commonStart - 10, 0), commonStart);
+            other.Print("B", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
             Console.WriteLine();
 
             throw new Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
@@ -244,12 +236,17 @@ public class TraceLog
         return result;
     }
 
-    public void Print(string prefix = "")
+    public void Print(string prefix = "", int start = 0, int end = -1, bool title = true, bool full = false)
     {
-        Console.WriteLine($"TraceLog: {entries.Count} entries, {hints.Count} hints");
-        foreach (var entry in entries)
+        if (title)
+            Console.WriteLine($"{(prefix == "" ? "" : $"{prefix}: ")}TraceLog: {entries.Count} entries, {hints.Count} hints");
+
+        if (end == -1)
+            end = entries.Count;
+
+        for (int i = start; i < end && i < entries.Count; i++)
         {
-            Console.WriteLine(prefix + entry.TitleWithLineNo());
+            Console.WriteLine(prefix + (full ? entries[i].StmtWithLineNo() : entries[i].TitleWithLineNo()));
         }
     }
 }
