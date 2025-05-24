@@ -243,7 +243,9 @@ public class TraceLog
 
         for (int i = start; i < end && i < entries.Count; i++)
         {
-            Console.WriteLine(prefix + (full ? entries[i].StmtWithLineNo() : entries[i].TitleWithLineNo()));
+            string line = prefix;
+            line += full ? entries[i].FormatStmtWithLineNo() : entries[i].TitleWithLineNo();
+            Console.WriteLine(line);
         }
     }
 }

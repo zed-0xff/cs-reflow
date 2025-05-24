@@ -19,7 +19,7 @@ public class TraceEntry
 
     public string Title()
     {
-        string result = stmt.ToString().Split(new[] { '\r', '\n' })[0];
+        string result = stmt.Title();
         if (comment != null && comment.Length > 0)
         {
             result += " // " + comment;
@@ -35,6 +35,11 @@ public class TraceEntry
     public string StmtWithLineNo()
     {
         return $"{stmt.LineNo()}: {stmt}";
+    }
+
+    public string FormatStmtWithLineNo()
+    {
+        return $"{stmt.LineNo()}: {PostProcessor.RemoveAllComments(stmt).NormalizeWhitespace()}";
     }
 
     public override bool Equals(object obj)

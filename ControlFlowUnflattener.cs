@@ -1229,9 +1229,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             statements.Add(stmt);
         }
 
-        if (Verbosity > 0)
-            Console.WriteLine("[d] switch vars: " + string.Join(", ", _varProcessor.VariableValues.SwitchVars()));
-
         BlockSyntax result = SyntaxFactory.Block(statements);
         return result;
     }
