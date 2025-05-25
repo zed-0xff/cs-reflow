@@ -50,7 +50,7 @@ public class ReflowTests
         }
 
         // Assert
-        Assert.Equal(expectedOutput.TrimEnd(), actualOutput.TrimEnd());
+        StringAssert.Equal(expectedOutput.TrimEnd(), actualOutput.TrimEnd());
     }
 
     [Fact]
