@@ -1684,7 +1684,6 @@
 		Strings_a392.ac4ab61b55de4826b3b342bf7f1b8e5e = Strings_a392.strings_a994[1171];  // ElementAccessExpression is not supported.
 		Strings_a392.ab6f01fc66384b86a7309534ab4ad838 = Strings_a392.strings_a994[1172];  // ElementAccessExpression is not supported.
 		Strings_a392.db9db63295fe49e38603c51aa08661ed = Strings_a392.strings_a994[1173];  // ElementAccessExpression is not supported.
-		num2--;  // 278
 		Strings_a392.bd8c4c9c1b264502abb1604712be7cac = Strings_a392.strings_a994[1174];  // ElementAccessExpression is not supported.
 		Strings_a392.a4ee3fcbad324182a623c708d07497d2 = Strings_a392.strings_a994[1175];  // ElementAccessExpression is not supported.
 		Strings_a392.aa0f4ed642214c958eabfd54be0ee491 = Strings_a392.strings_a994[1176];  // ElementAccessExpression is not supported.
@@ -4295,7 +4294,6 @@
 		while (true)
 		{
 			int num17 = num16;
-			num2 &= -492;
 			if (num17 >= String.get_Length(text2))
 			{
 				break;

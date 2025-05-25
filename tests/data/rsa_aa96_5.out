@@ -25,7 +25,6 @@
 		while (true)
 		{
 			int num3 = num2;
-			num |= 6;
 			if (num3 >= String.get_Length(text)) // num = 38
 			{
 				break;
@@ -39,7 +38,6 @@
 		int num5 = 0;  // 0
 		while (true)
 		{
-			num = (num & -35) | 0x191;
 			if (num5 >= String.get_Length(text2)) // num = 405
 			{
 				break;
@@ -53,7 +51,6 @@
 		int num6 = 0;  // 0
 		while (true)
 		{
-			num = (num & -6) | 0x6A;
 			if (num6 >= String.get_Length(text3)) // num = 506
 			{
 				break;

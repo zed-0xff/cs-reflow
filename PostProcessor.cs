@@ -168,47 +168,6 @@ public class PostProcessor
         return false;
     }
 
-    StatementSyntax PostProcess(StatementSyntax stmt)
-    {
-        switch (stmt)
-        {
-            case LabeledStatementSyntax labelStmt:
-                stmt = labelStmt.WithStatement(PostProcess(labelStmt.Statement));
-                break;
-
-            case ExpressionStatementSyntax exprStmt:
-                var expr = exprStmt.Expression;
-                if (expr is AssignmentExpressionSyntax assignExpr)
-                {
-                    var left = assignExpr.Left;
-                    var right = assignExpr.Right;
-                    if (left is IdentifierNameSyntax id && RemoveSwitchVars && isSwitchVar(id.Identifier.Text))
-                        stmt = EmptyStatement();
-                }
-                break;
-
-            case IfStatementSyntax ifStmt:
-                stmt = ifStmt.WithStatement(PostProcess(ifStmt.Statement as BlockSyntax));
-                if (ifStmt.Else != null)
-                {
-                    stmt = (stmt as IfStatementSyntax).WithElse(ifStmt.Else.WithStatement(PostProcess(ifStmt.Else.Statement)));
-                }
-                break;
-
-            case TryStatementSyntax tryStmt:
-                return tryStmt
-                    .WithBlock(PostProcess(tryStmt.Block))
-                    .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })))
-                    .WithFinally(tryStmt.Finally?.WithBlock(PostProcess(tryStmt.Finally.Block)));
-                break;
-
-            case BlockSyntax blockStmt:
-                stmt = PostProcess(blockStmt);
-                break;
-        }
-        return stmt;
-    }
-
     bool is_simple_expr(ExpressionSyntax expr)
     {
         if (expr is LiteralExpressionSyntax || expr is IdentifierNameSyntax)
@@ -285,6 +244,90 @@ public class PostProcessor
         return ifStmt;
     }
 
+    StatementSyntax PostProcess(StatementSyntax stmt)
+    {
+        var result = PostProcess(stmt as SyntaxNode);
+        if (result is StatementSyntax statement)
+            return statement;
+        else
+            throw new InvalidOperationException($"PostProcess() returned {result.Kind()} instead of StatementSyntax");
+    }
+
+    ExpressionSyntax PostProcess(ExpressionSyntax expr)
+    {
+        var result = PostProcess(expr as SyntaxNode);
+        if (result is ExpressionSyntax expression)
+            return expression;
+        else
+            throw new InvalidOperationException($"PostProcess() returned {result.Kind()} instead of ExpressionSyntax");
+    }
+
+    SyntaxNode PostProcess(SyntaxNode stmt)
+    {
+        switch (stmt)
+        {
+            case LabeledStatementSyntax labelStmt:
+                stmt = labelStmt.WithStatement(PostProcess(labelStmt.Statement));
+                break;
+
+            case ExpressionStatementSyntax exprStmt:
+                var id_expr = exprStmt.Expression switch
+                {
+                    AssignmentExpressionSyntax assignExpr => assignExpr.Left,  // x = 1, x += 1, ...
+                    PrefixUnaryExpressionSyntax preExpr => preExpr.Operand,    // ++x, --x
+                    PostfixUnaryExpressionSyntax postExpr => postExpr.Operand, // x++, x--
+                    _ => null
+                };
+                if (id_expr is IdentifierNameSyntax id && RemoveSwitchVars && isSwitchVar(id.Identifier.Text))
+                    stmt = EmptyStatement();
+                break;
+
+            case IfStatementSyntax ifStmt:
+                stmt = ifStmt.WithStatement(PostProcess(ifStmt.Statement as BlockSyntax));
+                if (ifStmt.Else != null)
+                {
+                    stmt = (stmt as IfStatementSyntax).WithElse(ifStmt.Else.WithStatement(PostProcess(ifStmt.Else.Statement)));
+                }
+                break;
+
+            case TryStatementSyntax tryStmt:
+                return tryStmt
+                    .WithBlock(PostProcess(tryStmt.Block))
+                    .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })))
+                    .WithFinally(tryStmt.Finally?.WithBlock(PostProcess(tryStmt.Finally.Block)));
+                break;
+
+            case BlockSyntax blockStmt:
+                stmt = PostProcess(blockStmt);
+                break;
+
+            case WhileStatementSyntax whileStmt:
+                stmt = whileStmt
+                    .WithCondition(PostProcess(whileStmt.Condition))
+                    .WithStatement(PostProcess(whileStmt.Statement as BlockSyntax));
+                break;
+
+            case DoStatementSyntax doStmt:
+                stmt = doStmt
+                    .WithCondition(PostProcess(doStmt.Condition))
+                    .WithStatement(PostProcess(doStmt.Statement as BlockSyntax));
+                break;
+
+            case ForStatementSyntax forStmt:
+                stmt = forStmt
+                    .WithCondition(PostProcess(forStmt.Condition))
+                    .WithStatement(PostProcess(forStmt.Statement as BlockSyntax));
+                break;
+
+            case ForEachStatementSyntax forEachStmt:
+                stmt = forEachStmt
+                    .WithExpression(PostProcess(forEachStmt.Expression))
+                    .WithStatement(PostProcess(forEachStmt.Statement as BlockSyntax));
+                break;
+        }
+        return stmt;
+    }
+
     BlockSyntax PostProcess(BlockSyntax block)
     {
         if (block == null)
@@ -310,7 +353,9 @@ public class PostProcessor
                     break;
 
                 default:
-                    stmt = PostProcess(stmt);
+                    stmt = PostProcess(stmt) as StatementSyntax;
+                    if (stmt == null)
+                        throw new InvalidOperationException($"PostProcess() returned null for {stmt.Kind()}");
                     break;
             }
 
