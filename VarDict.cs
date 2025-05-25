@@ -8,6 +8,8 @@ public class VarDict : Dictionary<string, object>, ICloneable
         public bool isLoop = false;
     }
 
+    public static bool ShowType = false;
+
     Dictionary<string, VarFlags> flags = new();
 
     public bool IsSwitchVar(string varName)
@@ -93,9 +95,6 @@ public class VarDict : Dictionary<string, object>, ICloneable
                 continue; // Skip loop variables
 
             hash = hash * 31 + kvp.Key.GetHashCode();
-            if (kvp.Value is UnknownValueBase)
-                continue; // Skip unknown values
-
             hash = hash * 31 + (kvp.Value?.GetHashCode() ?? 0);
         }
         return hash;
@@ -103,6 +102,9 @@ public class VarDict : Dictionary<string, object>, ICloneable
 
     public override string ToString()
     {
-        return "<VarDict " + string.Join(", ", this.Select(kvp => $"{kvp.Key}={kvp.Value}")) + ">";
+        if (ShowType)
+            return "<VarDict " + string.Join(", ", this.Select(kvp => $"{kvp.Key}=({kvp.Value?.GetType()}){kvp.Value}")) + ">";
+        else
+            return "<VarDict " + string.Join(", ", this.Select(kvp => $"{kvp.Key}={kvp.Value}")) + ">";
     }
 }
