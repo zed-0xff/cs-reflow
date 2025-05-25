@@ -5,6 +5,34 @@ using Xunit;
 public class VariableProcessorTests
 {
     [Fact]
+    public void Test_postIncr()
+    {
+        string expr_str = "x++";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["x"] = 1;
+        var result = processor.EvaluateExpression(expr);
+        Assert.IsType<int>(result);
+        Assert.Equal(1, result);
+        Assert.IsType<int>(processor.VariableValues["x"]);
+        Assert.Equal(2, processor.VariableValues["x"]);
+    }
+
+    [Fact]
+    public void Test_preIncr()
+    {
+        string expr_str = "++x";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VariableProcessor processor = new();
+        processor.VariableValues["x"] = 1;
+        var result = processor.EvaluateExpression(expr);
+        Assert.IsType<int>(result);
+        Assert.Equal(2, result);
+        Assert.IsType<int>(processor.VariableValues["x"]);
+        Assert.Equal(2, processor.VariableValues["x"]);
+    }
+
+    [Fact]
     public void Test_exprA()
     {
         string expr_str = "(0x359 ^ ((0x82E & num4) * (int)(num9 << 14))) == 0"; // always false

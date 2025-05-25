@@ -260,7 +260,7 @@ public class VariableProcessor : ICloneable
                         }
                         return variableValues[varName];
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         Type? type = null;
                         if (variableValues.ContainsKey(varName))
@@ -412,25 +412,37 @@ public class VariableProcessor : ICloneable
             return retValue;
         }
 
+        static INumber<T> eval_postfix<T>(T value, SyntaxKind kind) where T : INumber<T>, IBitwiseOperators<T, T, T>
+        {
+            return kind switch
+            {
+                SyntaxKind.PostDecrementExpression => value - T.One,
+                SyntaxKind.PostIncrementExpression => value + T.One,
+                _ => throw new NotSupportedException($"Postfix operator '{kind}' is not supported for {typeof(T)}.")
+            };
+        }
+
         // x--
         // x++
         object EvaluatePostfixExpression(PostfixUnaryExpressionSyntax expr)
         {
-            var retValue = EvaluateExpression(expr.Operand);
-            object newValue = retValue switch
+            var value = EvaluateExpression(expr.Operand);
+            var retValue = value;
+            var kind = expr.Kind();
+            object newValue = value switch
             {
-                UnknownValueBase u => expr.Kind() switch
-                {
-                    SyntaxKind.PostIncrementExpression => u.Add(1),
-                    SyntaxKind.PostDecrementExpression => u.Sub(1),
-                    _ => throw new NotSupportedException($"Postfix operator '{expr.Kind()}' is not supported.")
-                },
-                _ => expr.Kind() switch
-                {
-                    SyntaxKind.PostIncrementExpression => Convert.ToInt64(retValue) + 1,
-                    SyntaxKind.PostDecrementExpression => Convert.ToInt64(retValue) - 1,
-                    _ => throw new NotSupportedException($"Postfix operator '{expr.Kind()}' is not supported.")
-                }
+                byte b => eval_postfix(b, kind),
+                int i => eval_postfix(i, kind),
+                long l => eval_postfix(l, kind),
+                nint ni => eval_postfix(ni, kind),
+                nuint nu => eval_postfix(nu, kind),
+                sbyte sb => eval_postfix(sb, kind),
+                short s => eval_postfix(s, kind),
+                uint u => eval_postfix(u, kind),
+                ulong ul => eval_postfix(ul, kind),
+                ushort us => eval_postfix(us, kind),
+                UnknownValueBase u => u.Op(kind),
+                _ => throw new NotSupportedException($"Unary postfix operator '{kind}' is not supported for {value.GetType()}.")
             };
             if (expr.Operand is IdentifierNameSyntax id)
             {

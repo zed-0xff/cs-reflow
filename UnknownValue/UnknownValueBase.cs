@@ -58,6 +58,8 @@ public abstract class UnknownValueBase
     {
         return op switch
         {
+            SyntaxKind.PostIncrementExpression => Add(1),
+            SyntaxKind.PostDecrementExpression => Sub(1),
             SyntaxKind.BitwiseNotExpression => BitwiseNot(),
             SyntaxKind.UnaryPlusExpression => this,
             SyntaxKind.UnaryMinusExpression => Negate(),
