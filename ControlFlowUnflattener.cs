@@ -19,7 +19,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     TraceLog _traceLog = new();
     Dictionary<State, int> _states = new();
     Dictionary<int, List<State>> _condStates = new();
-    DefaultIntDict _visitedLines = new();
+    DefaultDict<int, int> _visitedLines = new();
     ReturnsDictionary _parentReturns = new();
     Stopwatch _stopWatch = Stopwatch.StartNew();
 

@@ -1,14 +1,15 @@
 using System.Collections.Generic;
 
-public class DefaultIntDict : Dictionary<int, int>
+public class DefaultDict<TKey, TValue> : Dictionary<TKey, TValue>
+    where TValue : new()
 {
-    public new int this[int key]
+    public new TValue this[TKey key]
     {
         get
         {
             if (!TryGetValue(key, out var value))
             {
-                value = 0;
+                value = new TValue(); // create new instance
                 base[key] = value;
             }
             return value;
