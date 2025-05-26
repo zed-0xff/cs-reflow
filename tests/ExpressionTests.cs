@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Xunit;
 
-public class ExpressionTests
+public partial class ExpressionTests
 {
     [Fact]
     public void Test_int_decl()
@@ -316,12 +316,17 @@ public class ExpressionTests
         Assert.Equal(res, result);
     }
 
+    void check0_err(string res_type, object value1, string op, string value2)
+    {
+        // TBD
+    }
+
     void check1_err(string res_type, object value1, string op, string value2)
     {
         // TBD
     }
 
-    void check1(string exprected_res_type, int expected_res, string type1, object value1, string op, string value2)
+    void check0(string exprected_res_type, int expected_res, string type1, object value1, string op, string value2)
     {
         var decl = $"{type1} x = {value1}";
         var expr = $"x {op} {value2}";
@@ -334,81 +339,16 @@ public class ExpressionTests
         Assert.Equal(expected_res.ToString(), result.ToString());
     }
 
-    // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
-    // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/conversions#10211-implicit-constant-expression-conversions
+    void check1(string exprected_res_type, int expected_res, string type1, object value1, string op, string value2)
+    {
+        var decl = $"{type1} x = {value1}";
+        var expr = $"{value2} {op} x";
 
-#pragma warning disable format
-    [Fact] void check1_byte_()         { check1("int",    127, "byte",   123, "+", "4"        ); }
-    [Fact] void check1_byte_byte()     { check1("int",    127, "byte",   123, "+", "(byte)4"  ); }
-    [Fact] void check1_byte_sbyte()    { check1("int",    127, "byte",   123, "+", "(sbyte)4" ); }
-    [Fact] void check1_byte_short()    { check1("int",    127, "byte",   123, "+", "(short)4" ); }
-    [Fact] void check1_byte_ushort()   { check1("int",    127, "byte",   123, "+", "(ushort)4"); }
-    [Fact] void check1_byte_int()      { check1("int",    127, "byte",   123, "+", "(int)4"   ); }
-    [Fact] void check1_byte_uint()     { check1("uint",   127, "byte",   123, "+", "(uint)4"  ); }
-    [Fact] void check1_byte_long()     { check1("long",   127, "byte",   123, "+", "(long)4"  ); }
-    [Fact] void check1_byte_ulong()    { check1("ulong",  127, "byte",   123, "+", "(ulong)4" ); }
-    [Fact] void check1_sbyte_()        { check1("int",    127, "sbyte",  123, "+", "4"        ); }
-    [Fact] void check1_sbyte_byte()    { check1("int",    127, "sbyte",  123, "+", "(byte)4"  ); }
-    [Fact] void check1_sbyte_sbyte()   { check1("int",    127, "sbyte",  123, "+", "(sbyte)4" ); }
-    [Fact] void check1_sbyte_short()   { check1("int",    127, "sbyte",  123, "+", "(short)4" ); }
-    [Fact] void check1_sbyte_ushort()  { check1("int",    127, "sbyte",  123, "+", "(ushort)4"); }
-    [Fact] void check1_sbyte_int()     { check1("int",    127, "sbyte",  123, "+", "(int)4"   ); }
-    [Fact] void check1_sbyte_uint()    { check1("long",   127, "sbyte",  123, "+", "(uint)4"  ); }
-    [Fact] void check1_sbyte_long()    { check1("long",   127, "sbyte",  123, "+", "(long)4"  ); }
-    [Fact] void check1_sbyte_ulong()   { check1_err("sbyte", 123, "+", "(ulong)4"); }
-    [Fact] void check1_short_()        { check1("int",    127, "short",  123, "+", "4"        ); }
-    [Fact] void check1_short_byte()    { check1("int",    127, "short",  123, "+", "(byte)4"  ); }
-    [Fact] void check1_short_sbyte()   { check1("int",    127, "short",  123, "+", "(sbyte)4" ); }
-    [Fact] void check1_short_short()   { check1("int",    127, "short",  123, "+", "(short)4" ); }
-    [Fact] void check1_short_ushort()  { check1("int",    127, "short",  123, "+", "(ushort)4"); }
-    [Fact] void check1_short_int()     { check1("int",    127, "short",  123, "+", "(int)4"   ); }
-    [Fact] void check1_short_uint()    { check1("long",   127, "short",  123, "+", "(uint)4"  ); }
-    [Fact] void check1_short_long()    { check1("long",   127, "short",  123, "+", "(long)4"  ); }
-    [Fact] void check1_short_ulong()   { check1_err("short", 123, "+", "(ulong)4"); }
-    [Fact] void check1_ushort_()       { check1("int",    127, "ushort", 123, "+", "4"        ); }
-    [Fact] void check1_ushort_byte()   { check1("int",    127, "ushort", 123, "+", "(byte)4"  ); }
-    [Fact] void check1_ushort_sbyte()  { check1("int",    127, "ushort", 123, "+", "(sbyte)4" ); }
-    [Fact] void check1_ushort_short()  { check1("int",    127, "ushort", 123, "+", "(short)4" ); }
-    [Fact] void check1_ushort_ushort() { check1("int",    127, "ushort", 123, "+", "(ushort)4"); }
-    [Fact] void check1_ushort_int()    { check1("int",    127, "ushort", 123, "+", "(int)4"   ); }
-    [Fact] void check1_ushort_uint()   { check1("uint",   127, "ushort", 123, "+", "(uint)4"  ); }
-    [Fact] void check1_ushort_long()   { check1("long",   127, "ushort", 123, "+", "(long)4"  ); }
-    [Fact] void check1_ushort_ulong()  { check1("ulong",  127, "ushort", 123, "+", "(ulong)4" ); }
-    [Fact] void check1_int_()          { check1("int",    127, "int",    123, "+", "4"        ); }
-    [Fact] void check1_int_byte()      { check1("int",    127, "int",    123, "+", "(byte)4"  ); }
-    [Fact] void check1_int_sbyte()     { check1("int",    127, "int",    123, "+", "(sbyte)4" ); }
-    [Fact] void check1_int_short()     { check1("int",    127, "int",    123, "+", "(short)4" ); }
-    [Fact] void check1_int_ushort()    { check1("int",    127, "int",    123, "+", "(ushort)4"); }
-    [Fact] void check1_int_int()       { check1("int",    127, "int",    123, "+", "(int)4"   ); }
-    [Fact] void check1_int_uint()      { check1("long",   127, "int",    123, "+", "(uint)4"  ); }
-    [Fact] void check1_int_long()      { check1("long",   127, "int",    123, "+", "(long)4"  ); }
-    [Fact] void check1_int_ulong()     { check1_err("int", 123, "+", "(ulong)4"); }
-    [Fact] void check1_uint_()         { check1("uint",   127, "uint",   123, "+", "4"        ); }
-    [Fact] void check1_uint_byte()     { check1("uint",   127, "uint",   123, "+", "(byte)4"  ); }
-    [Fact] void check1_uint_sbyte()    { check1("long",   127, "uint",   123, "+", "(sbyte)4" ); }
-    [Fact] void check1_uint_short()    { check1("long",   127, "uint",   123, "+", "(short)4" ); }
-    [Fact] void check1_uint_ushort()   { check1("uint",   127, "uint",   123, "+", "(ushort)4"); }
-    [Fact] void check1_uint_int()      { check1("uint",   127, "uint",   123, "+", "(int)4"   ); }
-    [Fact] void check1_uint_uint()     { check1("uint",   127, "uint",   123, "+", "(uint)4"  ); }
-    [Fact] void check1_uint_long()     { check1("long",   127, "uint",   123, "+", "(long)4"  ); }
-    [Fact] void check1_uint_ulong()    { check1("ulong",  127, "uint",   123, "+", "(ulong)4" ); }
-    [Fact] void check1_long_()         { check1("long",   127, "long",   123, "+", "4"        ); }
-    [Fact] void check1_long_byte()     { check1("long",   127, "long",   123, "+", "(byte)4"  ); }
-    [Fact] void check1_long_sbyte()    { check1("long",   127, "long",   123, "+", "(sbyte)4" ); }
-    [Fact] void check1_long_short()    { check1("long",   127, "long",   123, "+", "(short)4" ); }
-    [Fact] void check1_long_ushort()   { check1("long",   127, "long",   123, "+", "(ushort)4"); }
-    [Fact] void check1_long_int()      { check1("long",   127, "long",   123, "+", "(int)4"   ); }
-    [Fact] void check1_long_uint()     { check1("long",   127, "long",   123, "+", "(uint)4"  ); }
-    [Fact] void check1_long_long()     { check1("long",   127, "long",   123, "+", "(long)4"  ); }
-    [Fact] void check1_long_ulong()    { check1_err("long", 123, "+", "(ulong)4"); }
-    [Fact] void check1_ulong_()        { check1("ulong",  127, "ulong",  123, "+", "4"        ); }
-    [Fact] void check1_ulong_byte()    { check1("ulong",  127, "ulong",  123, "+", "(byte)4"  ); }
-    [Fact] void check1_ulong_sbyte()   { check1_err("ulong", 123, "+", "(sbyte)4"); }
-    [Fact] void check1_ulong_short()   { check1_err("ulong", 123, "+", "(short)4"); }
-    [Fact] void check1_ulong_ushort()  { check1("ulong",  127, "ulong",  123, "+", "(ushort)4"); }
-    [Fact] void check1_ulong_int()     { check1("ulong",  127, "ulong",  123, "+", "(int)4"   ); }
-    [Fact] void check1_ulong_uint()    { check1("ulong",  127, "ulong",  123, "+", "(uint)4"  ); }
-    [Fact] void check1_ulong_long()    { check1("ulong",  127, "ulong",  123, "+", "(long)4"  ); }
-    [Fact] void check1_ulong_ulong()   { check1("ulong",  127, "ulong",  123, "+", "(ulong)4" ); }
-#pragma warning restore format
+        VariableProcessor processor = new();
+        processor.EvaluateExpression(SyntaxFactory.ParseStatement(decl));
+        var result = processor.EvaluateExpression(SyntaxFactory.ParseExpression(expr));
+        var short_res_type = TypeDB.ShortType(result.GetType().Name);
+        Assert.True(exprected_res_type == short_res_type, $"{decl}; {expr} == ({exprected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
+        Assert.Equal(expected_res.ToString(), result.ToString());
+    }
 }

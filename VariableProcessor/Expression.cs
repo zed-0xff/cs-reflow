@@ -634,6 +634,10 @@ public partial class VariableProcessor
                 {
                     r = iceR.Cast(TypeDB.UInt);
                 }
+                else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL.Value >= 0)
+                {
+                    l = iceL.Cast(TypeDB.UInt);
+                }
                 else
                 {
                     l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);

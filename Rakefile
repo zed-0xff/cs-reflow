@@ -28,54 +28,67 @@ namespace :gen do
   task :int_tests do
     FileUtils.mkdir_p "tmp"
     system "dotnet new console -o tmp/int_tests --force -v q"
+    f = File.open("tests/ExpressionTests_gen.cs", "w")
     Dir.chdir "tmp/int_tests"
 
     types = [""] + TYPEMAP.values
-    checks = []
-    puts "#pragma warning disable format"
-    types.repeated_permutation(2).each do |type1, type2|
-      next if type1 == ""
+    f.puts "#pragma warning disable format"
+    f.puts "public partial class ExpressionTests {"
+    2.times do |idx|
+      types.repeated_permutation(2).each do |type1, type2|
+        next if type1 == ""
 
-      op = "+"
-      val1 = 123
+        op = "+"
+        val1 = 123
 
-      op2 = "4"
-      op2 = "(#{type2})4" unless type2.empty?
-      #printf "[.] %6s %s %9s = ", type1, op, op2
-      #$stdout.flush
+        op2 = "4"
+        op2 = "(#{type2})4" unless type2.empty?
 
-      code = <<~CODE
-        #{type1} x = #{val1};
-        var y = x #{op} #{op2};
-        Console.WriteLine($"{y.GetType()} {y}");
-      CODE
+        code =
+          case idx
+          when 0
+            <<~CODE
+              #{type1} x = #{val1};
+              var y = x #{op} #{op2};
+              Console.WriteLine($"{y.GetType()} {y}");
+            CODE
+          when 1
+            <<~CODE
+              #{type1} x = #{val1};
+              var y = #{op2} #{op} x;
+              Console.WriteLine($"{y.GetType()} {y}");
+            CODE
+          end
 
-      File.write("Program.cs", code)
-      result = `dotnet run -v q --no-restore 2> /dev/null`.strip
-      if $?.success?
-        a = result.split.map{ |x| TYPEMAP[x] || x }
-        #puts a.join(" ")
+        File.write("Program.cs", code)
+        result = `dotnet run -v q --no-restore 2> /dev/null`.strip
+        if $?.success?
+          a = result.split.map{ |x| TYPEMAP[x] || x }
+          fun = "check#{idx}"
+        else
+          a = []
+          fun = "check#{idx}_err"
+        end
 
-        fun = "check1"
-      else
-        #puts "Error"
-        fun = "check1_err"
-        a = []
-      end
-
-      a.append(type1, val1, op, op2)
-      if !fun['err']
-        printf "    [Fact] void %-22s { %s(%-9s %-4s %-9s %-4s %s %-11s); }\n", "check1_#{type1}_#{type2}()", fun,
-          a[0].inspect + ",",
-          a[1] + ",",
-          a[2].inspect + ",",
-          a[3].inspect + ",",
-          a[4].inspect + ",",
-          a[5].inspect
-      else
-        printf "    [Fact] void %-22s { %s(%s, %s, %s, %s); }\n", "check1_#{type1}_#{type2}()", fun, *a.map(&:inspect)
-      end
-    end
-    puts "#pragma warning restore format"
+        a.append(type1, val1, op, op2)
+        line =
+          if !fun['err']
+            sprintf "    [Fact] void %-22s { %s(%-9s %-4s %-9s %-4s %s %-11s); }", "check#{idx}_#{type1}_#{type2}()", fun,
+              a[0].inspect + ",",
+              a[1] + ",",
+              a[2].inspect + ",",
+              a[3].inspect + ",",
+              a[4].inspect + ",",
+              a[5].inspect
+          else
+            sprintf "    [Fact] void %-22s { %s(%s, %s, %s, %s); }", "check#{idx}_#{type1}_#{type2}()", fun, *a.map(&:inspect)
+          end
+        f.puts line
+        puts line
+      end # types
+    end # idx
+    f.puts "}"
+    f.puts "#pragma warning restore format"
+    f.close
   end
 end
