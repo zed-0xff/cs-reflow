@@ -176,6 +176,7 @@ class Program
 
             var printer = new SyntaxTreePrinter(code);
             printer.Verbosity = opts.verbosity;
+            VarDict.Verbosity = opts.verbosity;
 
             var unflattener = createUnflattener(code, opts, hints);
 

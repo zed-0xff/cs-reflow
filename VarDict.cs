@@ -8,7 +8,7 @@ public class VarDict : Dictionary<string, object>, ICloneable
         public bool isLoop = false;
     }
 
-    public static bool ShowType = false;
+    public static int Verbosity = 0;
 
     Dictionary<string, VarFlags> flags = new();
 
@@ -102,7 +102,7 @@ public class VarDict : Dictionary<string, object>, ICloneable
 
     public override string ToString()
     {
-        if (ShowType)
+        if (Verbosity > 1)
             return "<VarDict " + string.Join(", ", this.Select(kvp => $"{kvp.Key}=({kvp.Value?.GetType()}){kvp.Value}")) + ">";
         else
             return "<VarDict " + string.Join(", ", this.Select(kvp => $"{kvp.Key}={kvp.Value}")) + ">";
