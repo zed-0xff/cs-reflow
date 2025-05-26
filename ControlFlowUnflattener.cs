@@ -14,6 +14,11 @@ using ReturnsDictionary = System.Collections.Generic.Dictionary<string, int>;
 
 public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
+    // shared
+    SyntaxTree _tree;
+    DefaultDict<int, FlowInfo> _flowInfos = new();
+
+    // local
     VariableProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
@@ -23,11 +28,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     ReturnsDictionary _parentReturns = new();
     Stopwatch _stopWatch = Stopwatch.StartNew();
 
+    // configuration
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
     public bool PostProcess = true;
     public bool isClone = false;
+    public bool showIntermediateLogs = false;
+    public int commentPadding = 90;
 
     public void Reset()
     {
@@ -40,6 +48,62 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _parentReturns = new();
         _stopWatch = Stopwatch.StartNew();
     }
+
+    class FlowInfo
+    {
+        public int id = -1;
+        public SyntaxKind Kind = SyntaxKind.None;
+        public bool hasTrue = false;
+        public bool hasFalse = false;
+        public bool hasUnknown = false;
+        public bool hasBreak = false;
+        public bool hasContinue = false;
+        public bool hasReturn = false;
+        public HashSet<string> loopVars = new();
+
+        public FlowInfo() { }
+
+        public FlowInfo(SyntaxKind kind, int id = -1)
+        {
+            this.id = id;
+            this.Kind = kind;
+        }
+
+        public override string ToString()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("<FlowInfo");
+            if (id != -1)
+                sb.Append($" @{id}");
+            if (Kind != SyntaxKind.None)
+                sb.Append($" {Kind}");
+            if (hasTrue)
+                sb.Append(" hasTrue");
+            if (hasFalse)
+                sb.Append(" hasFalse");
+            if (hasUnknown)
+                sb.Append(" hasUnknown");
+            if (hasBreak)
+                sb.Append(" hasBreak");
+            if (hasContinue)
+                sb.Append(" hasContinue");
+            if (hasReturn)
+                sb.Append(" hasReturn");
+            if (loopVars.Count > 0)
+                sb.Append($" loopVars=[{String.Join(", ", loopVars)}]");
+            sb.Append(">");
+
+            return sb.ToString();
+        }
+    }
+
+    //    class Context
+    //    {
+    //        VarDict vars;
+    //        int lineno;
+    //        TraceLog traceLog;
+    //        // TODO: stack
+    //    }
 
     public class State
     {
@@ -68,8 +132,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             return $"<State lineno={lineno}, vars={vars}>";
         }
     };
-
-    private SyntaxTree _tree;
 
     class ReturnException : Exception
     {
@@ -201,9 +263,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         catch (ReturnException)
         {
         }
-        //        catch (LoopException le)
-        //        {
-        //        }
 
         return _traceLog;
     }
@@ -232,6 +291,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         clone._tree = _tree;     // shared, r/o
         clone._parentReturns = _parentReturns; // shared, r/o
+        clone._flowInfos = _flowInfos;   // shared, r/w
 
         return clone;
     }
@@ -263,13 +323,25 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_while(WhileStatementSyntax whileStmt)
     {
+        int loop_id = whileStmt.LineNo();
         var condition = whileStmt.Condition;
         var body = whileStmt.Statement;
 
         while (true)
         {
-            var value = EvaluateBoolExpression(condition);
+            object value;
+            if (_flowHints.TryGetValue(loop_id, out bool hintValue))
+            {
+                value = hintValue;
+            }
+            else
+            {
+                var ex = EvaluateExpressionEx(condition);
+                flow_info(whileStmt).loopVars.UnionWith(ex.VarsRead);
+                value = ex.Result;
+            }
 
+            update_flow_info(whileStmt, value);
             switch (value)
             {
                 case bool b:
@@ -281,11 +353,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         }
                         catch (BreakException)
                         {
+                            flow_info(whileStmt).hasBreak = true;
                             return;
                         }
                         catch (ContinueException)
                         {
+                            flow_info(whileStmt).hasContinue = true;
                             break;
+                        }
+                        catch (ReturnException)
+                        {
+                            flow_info(whileStmt).hasReturn = true;
+                            throw;
                         }
                     }
                     else
@@ -295,13 +374,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     break;
 
                 default:
-                    throw new NotImplementedException($"While condition type '{condition.GetType()}' is not supported.");
+                    throw new NotImplementedException($"While condition result ({value?.GetType()}) '{value}' is not supported.");
             }
         }
     }
 
     void trace_do(DoStatementSyntax doStmt)
     {
+        int loop_id = doStmt.LineNo();
         var body = doStmt.Statement as BlockSyntax; // TODO: single-statement body
         var condition = doStmt.Condition;
         int lastCount = _traceLog.entries.Count;
@@ -315,14 +395,23 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
             catch (BreakException)
             {
+                flow_info(doStmt).hasBreak = true;
                 return;
             }
             catch (ContinueException)
             {
+                flow_info(doStmt).hasContinue = true;
                 // continue jumps to condition eval
+            }
+            catch (ReturnException)
+            {
+                flow_info(doStmt).hasReturn = true;
+                throw;
             }
 
             var value = EvaluateBoolExpression(condition);
+            log_stmt(condition, value.ToString(), skip: true, prefix: "while ( ", suffix: " )");
+            update_flow_info(doStmt, value);
             switch (value)
             {
                 case bool b:
@@ -352,6 +441,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
+    StatementSyntax convert_for(ForStatementSyntax forStmt)
+    {
+        throw new NotImplementedException($"For statement at line {forStmt.LineNo()} is not supported yet.");
+    }
+
+    StatementSyntax convert_foreach(ForEachStatementSyntax forEachStmt)
+    {
+        throw new NotImplementedException($"ForEach statement at line {forEachStmt.LineNo()} is not supported yet.");
+    }
+
     void trace_switch(SwitchStatementSyntax switchStmt, object value)
     {
         if (value == null)
@@ -361,35 +460,42 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
 
-        foreach (var s in switchStmt.Sections)
+        if (value is GotoDefaultCaseException)
         {
-            foreach (var l in s.Labels)
+            swLabel = switchStmt.Sections
+                .SelectMany(s => s.Labels)
+                .OfType<DefaultSwitchLabelSyntax>()
+                .FirstOrDefault();
+        }
+        else
+        {
+            foreach (var s in switchStmt.Sections)
             {
-                if (l is CaseSwitchLabelSyntax caseLabel)
+                foreach (var l in s.Labels)
                 {
-                    var caseValue = EvaluateExpression(caseLabel.Value);
-                    if (caseValue.Equals(value))
+                    if (l is CaseSwitchLabelSyntax caseLabel)
                     {
-                        swLabel = caseLabel;
-                        break;
+                        var caseValue = EvaluateExpression(caseLabel.Value);
+                        if (caseValue.GetType() != value.GetType())
+                            throw new NotSupportedException($"Switch case value type mismatch: case {caseValue.GetType()} vs actual {value.GetType()}");
+                        if (caseValue.Equals(value))
+                        {
+                            swLabel = caseLabel;
+                            break;
+                        }
+                    }
+                    else if (l is DefaultSwitchLabelSyntax)
+                    {
+                        defaultLabel = l;
                     }
                 }
-                else if (l is DefaultSwitchLabelSyntax)
-                {
-                    defaultLabel = l;
-                    if (value is GotoDefaultCaseException)
-                    {
-                        swLabel = l;
-                        break;
-                    }
-                }
+                if (swLabel != null)
+                    break;
             }
         }
 
         if (swLabel == null)
-        {
             swLabel = defaultLabel;
-        }
 
         if (swLabel == null)
             return;
@@ -455,11 +561,42 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
+    void update_flow_info(StatementSyntax stmt, object value)
+    {
+        int id = stmt.LineNo();
+        var flowInfo = flow_info(stmt);
+
+        if (_flowHints.ContainsKey(id))
+            return;
+
+        switch (value)
+        {
+            case bool b when b:
+                flowInfo.hasTrue = true;
+                break;
+            case bool b when !b:
+                flowInfo.hasFalse = true;
+                break;
+            case UnknownValueBase:
+                flowInfo.hasUnknown = true;
+                break;
+        }
+    }
+
+    FlowInfo flow_info(StatementSyntax stmt)
+    {
+        int id = stmt.LineNo();
+        if (!_flowInfos.ContainsKey(id))
+            _flowInfos[id] = new FlowInfo(kind: stmt.Kind(), id: id);
+        return _flowInfos[id];
+    }
+
     void trace_if(IfStatementSyntax ifStmt, object value)
     {
         var condition = ifStmt.Condition;
-        int lineno = condition.LineNo();
+        int lineno = ifStmt.LineNo();
 
+        update_flow_info(ifStmt, value);
         switch (value)
         {
             case bool b:
@@ -489,7 +626,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 break;
 
             case UnknownValueBase:
-                throw new UndeterministicIfException(condition.ToString(), condition.LineNo());
+                throw new UndeterministicIfException(condition.ToString(), lineno);
 
             default:
                 throw new NotImplementedException($"If condition type '{value?.GetType()}' is not supported.");
@@ -578,6 +715,49 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         trace_block_inline(block.Statements, start_idx);
     }
 
+    void log_stmt(SyntaxNode stmt, string comment = "", bool skip = false, string prefix = "", string suffix = "")
+    {
+        if (Verbosity <= 0)
+            return;
+
+        string line = prefix + NodeTitle(stmt) + suffix;
+        int nVisited = _visitedLines[stmt.LineNo()];
+        if (nVisited > 1)
+        {
+            line = $"[{nVisited}] " + line;
+        }
+
+        int lineno = stmt.LineNo();
+        if (_flowInfos.ContainsKey(lineno))
+        {
+            comment = String.IsNullOrEmpty(comment) ? "" : (comment + "; ");
+            comment += _flowInfos[lineno].ToString();
+        }
+
+        if (!String.IsNullOrEmpty(comment))
+        {
+            if (line.Length > commentPadding - 1)
+            {
+                line = line.Substring(0, commentPadding - 1) + "…";
+            }
+            if (comment.Length > commentPadding - 1)
+            {
+                comment = comment.Substring(0, commentPadding - 1) + "…";
+            }
+            line = line.PadRight(commentPadding) + ANSI_COLOR_GRAY + " // " + comment + ANSI_COLOR_RESET;
+        }
+
+        if (skip)
+            Console.Write(ANSI_COLOR_GRAY);
+        Console.Write($"{stmt.LineNo().ToString().PadLeft(6)}: ");
+        Console.Write(line);
+        if (skip)
+            Console.Write(ANSI_COLOR_RESET);
+        Console.WriteLine();
+        if (Verbosity > 1)
+            Console.WriteLine($"    vars: {_varProcessor.VariableValues}");
+    }
+
     // trace block as main flow
     public void trace_block_inline(SyntaxList<StatementSyntax> statements, int start_idx = 0)
     {
@@ -661,10 +841,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             foreach (string v in ex.VarsReferenced)
                                 setSwitchVar(v);
                         }
-                        //                        if (RemoveSwitchVars && ex.VarsWritten.Count > 0 && ex.VarsWritten.All(v => isSwitchVar(v)))
-                        //                        {
-                        //                            skip = true;
-                        //                        }
                         break;
 
                     case SwitchStatementSyntax sw:
@@ -679,17 +855,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case WhileStatementSyntax whileStmt:
-                        if (whileStmt.ToString().Contains("switch"))
-                        {
-                            value = EvaluateHintedExpression(whileStmt.Condition);
-                            comment = value.ToString();
-                            skip = true; // skip only if value is known
-                        }
-                        else
-                        {
-                            // copy as-is
-                            trace = false;
-                        }
+                        value = EvaluateHintedExpression(whileStmt.Condition);
+                        comment = value.ToString();
+                        skip = true; // skip only if value is known
                         break;
 
                     case UsingStatementSyntax usingStmt:
@@ -710,11 +878,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case ForEachStatementSyntax forEachStmt:
-                        stmt = forEachStmt.WithStatement(ReflowBlock(forEachStmt.Statement as BlockSyntax));
+                        stmt = convert_foreach(forEachStmt);
                         break;
 
                     case ForStatementSyntax forStmt:
-                        stmt = forStmt.WithStatement(ReflowBlock(forStmt.Statement as BlockSyntax));
+                        stmt = convert_for(forStmt);
                         break;
                 }
             }
@@ -740,43 +908,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 }
             }
 
-            string line = NodeTitle(stmt);
-            int nVisited = _visitedLines[lineno];
-            if (nVisited > 1)
-            {
-                line = $"[{nVisited}] " + line;
-            }
-
-            if (line.Length > 99)
-            {
-                line = line.Substring(0, 99) + "…";
-            }
-            if (!String.IsNullOrEmpty(comment))
-            {
-                if (comment.Length > 99)
-                {
-                    comment = comment.Substring(0, 99) + "…";
-                }
-                line = line.PadRight(100) + " // " + comment;
-            }
-
-            if (Verbosity > 0)
-            {
-                if (skip)
-                    Console.Write(ANSI_COLOR_GRAY);
-                Console.Write($"{stmt.LineNo().ToString().PadLeft(6)}: ");
-                Console.Write(line);
-                if (skip)
-                    Console.Write(ANSI_COLOR_RESET);
-                Console.WriteLine();
-                if (Verbosity > 1)
-                    Console.WriteLine($"    vars: {_varProcessor.VariableValues}");
-            }
-
+            log_stmt(stmt, comment, skip);
             if (!skip)
-            {
                 _traceLog.entries.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues, comment));
-            }
 
             var state = new State(stmt.LineNo(), _varProcessor.VariableValues);
             if (_states.TryGetValue(state, out int idx))
@@ -1170,16 +1304,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         }
                     }
 
-                    //                    logs[maxIdx].Print("A");
-                    //                    Console.WriteLine();
-                    //
-                    //                    logs[i].Print("B");
-                    //                    Console.WriteLine();
+                    if (showIntermediateLogs)
+                    {
+                        logs[maxIdx].Print("A");
+                        logs[i].Print("B");
+                    }
 
                     logs[i] = logs[i].Merge(logs[maxIdx], Verbosity);
 
-                    //                    logs[i].Print("C");
-                    //                    Console.WriteLine();
+                    if (showIntermediateLogs)
+                        logs[i].Print("C");
 
                     logs.RemoveAt(maxIdx);
                     break;
@@ -1308,4 +1442,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return result;
     }
 
+    public void DumpFlowInfos()
+    {
+        Console.WriteLine("Flow infos:");
+        foreach (var kv in _flowInfos)
+        {
+            Console.WriteLine($"{kv.Key}: {kv.Value}");
+        }
+    }
 }

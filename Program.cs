@@ -10,6 +10,7 @@ class Program
         string? filename,
         List<string> methods,
         List<string> hintList,
+        string? expr,
         int verbosity,
         bool processAll,
         bool listMethods,
@@ -17,7 +18,8 @@ class Program
         bool addComments,
         bool removeSwitchVars,
         bool postProcess,
-        List<string> dropVars
+        List<string> dropVars,
+        bool dumpFlowInfos
     );
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, Dictionary<int, bool> hints)
@@ -102,11 +104,24 @@ class Program
             description: "Drop specified variable(s)."
         );
 
+        var dumpFlowInfosOpt = new Option<bool>(
+            name: "--dump-flow-infos",
+            getDefaultValue: () => false,
+            description: "Dump FlowInfos."
+        );
+
+        var exprArg = new Option<string>(
+            aliases: new[] { "--expr", "-e" },
+            getDefaultValue: () => string.Empty,
+            description: "Evaluate an expression."
+        );
+
         // --- Define the root command ---
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
             filenameArg,
             methodsArg,
+            exprArg,
             hintOpt,
             verbosityOpt,
             processAllOpt,
@@ -116,7 +131,8 @@ class Program
             postProcessOpt,
             quietOpt,
             listMethodsOpt,
-            dropVarsOpt
+            dropVarsOpt,
+            dumpFlowInfosOpt
         };
 
         // --- Set the handler ---
@@ -125,6 +141,7 @@ class Program
             var opts = new Options(
                 filename: context.ParseResult.GetValueForArgument(filenameArg),
                 methods: context.ParseResult.GetValueForArgument(methodsArg),
+                expr: context.ParseResult.GetValueForOption(exprArg),
                 hintList: context.ParseResult.GetValueForOption(hintOpt),
                 verbosity: context.ParseResult.GetValueForOption(quietOpt) ? -1 : context.ParseResult.Tokens.Count(t => t.Value == "-v"),
                 processAll: context.ParseResult.GetValueForOption(processAllOpt),
@@ -133,7 +150,8 @@ class Program
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
                 postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
-                dropVars: context.ParseResult.GetValueForOption(dropVarsOpt)
+                dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
+                dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt)
             );
 
             var hints = new Dictionary<int, bool>();
@@ -155,11 +173,15 @@ class Program
 
             string code;
 
-            if (string.IsNullOrEmpty(opts.filename))
+            if (!string.IsNullOrEmpty(opts.expr))
+            {
+                code = opts.expr;
+            }
+            else if (string.IsNullOrEmpty(opts.filename))
             {
                 if (!Console.IsInputRedirected)
                 {
-                    Console.WriteLine("No input file nor pipe is specified. Run with --help for more information.");
+                    Console.WriteLine("No input file nor pipe nor expr is specified. Run with --help for more information.");
                     return;
                 }
                 code = Console.In.ReadToEnd();
@@ -183,7 +205,7 @@ class Program
             if (opts.methods == null || opts.methods.Count == 0)
             {
                 var methodDict = unflattener.Methods;
-                if (methodDict.Count == 0)
+                if (methodDict.Count == 0 && string.IsNullOrEmpty(opts.expr))
                 {
                     Console.WriteLine("[?] No methods found.");
                     return;
@@ -229,6 +251,11 @@ class Program
                         Console.WriteLine();
                     }
                 }
+            }
+
+            if (opts.dumpFlowInfos)
+            {
+                unflattener.DumpFlowInfos();
             }
         });
 
