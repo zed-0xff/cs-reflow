@@ -2,13 +2,7 @@ public class UnknownValueList : UnknownTypedValue
 {
     public List<long> values = new();
 
-    public UnknownValueList(string type, List<long> values = null) : base(type)
-    {
-        if (values != null)
-            this.values = values;
-    }
-
-    public UnknownValueList(IntInfo type, List<long> values = null) : base(type)
+    public UnknownValueList(TypeDB.IntInfo type, List<long> values = null) : base(type)
     {
         if (values != null)
             this.values = values;
@@ -57,12 +51,11 @@ public class UnknownValueList : UnknownTypedValue
     public override UnknownValueBase Negate() => new UnknownValueList(type, values.Select(v => MaskWithSign(-v)).OrderBy(x => x).ToList());
     public override UnknownValueBase BitwiseNot() => new UnknownValueList(type, values.Select(v => MaskWithSign(~v)).OrderBy(x => x).ToList());
 
-    public override object Cast(string toType)
+    public override object Cast(TypeDB.IntInfo toType)
     {
-        toType = ShortType(toType);
-        if (type.Name == "uint" && toType == "int") // uint -> int
+        if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
-            return new UnknownValueList("int", Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
+            return new UnknownValueList(TypeDB.Int, Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
         }
         return base.Cast(toType);
     }

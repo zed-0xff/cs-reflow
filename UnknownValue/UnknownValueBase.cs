@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 public abstract class UnknownValueBase
 {
     public abstract override string ToString();
-    public abstract object Cast(string toType);
+    public abstract object Cast(TypeDB.IntInfo toType);
     public abstract long Cardinality();
     public abstract IEnumerable<long> Values();
 
@@ -134,6 +134,9 @@ public abstract class UnknownValueBase
                 return true;
             case ulong ul when ul <= long.MaxValue:
                 result = (long)ul;
+                return true;
+            case IntConstExpr ice:
+                result = ice.Value;
                 return true;
             default:
                 result = default;

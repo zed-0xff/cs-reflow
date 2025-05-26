@@ -21,37 +21,48 @@ public class UnknownValueTests
     [Fact]
     public void Test_create_null()
     {
-        var a = UnknownValue.Create((string)null);
+        string? str = null;
+        var a = UnknownValue.Create(str);
         Assert.True(a is UnknownValue);
 
-        var b = UnknownValue.Create((Type)null);
+        Type? type = null;
+        var b = UnknownValue.Create(type);
         Assert.True(b is UnknownValue);
+    }
+
+    [Fact]
+    public void Test_create_int()
+    {
+        var a = UnknownValue.Create(TypeDB.Int);
+        Assert.True(a is UnknownValueRange);
+        Assert.Equal("UnknownValue<int>", a.ToString());
     }
 
     [Fact]
     public void Test_expr()
     {
-        var a = UnknownValue.Create("int");
-        a = a.Cast("uint") as UnknownValueBase;
-        a = a.Div(1024u);
-        Assert.Equal("UnknownValue<uint>[0..4194303]", a.ToString());
-        a = a.Cast("int") as UnknownValueBase;
-        a = a.Sub(67108864);
-        Assert.Equal("UnknownValue<int>[−67108864..−62914561]", a.ToString());
+        var a = UnknownValue.Create(TypeDB.Int);
+        a = a.Cast(TypeDB.UInt) as UnknownValueBase;
+        a = a?.Div(1024u);
+        Assert.Equal("UnknownValue<uint>[0..4194303]", a?.ToString());
+        a = a?.Cast(TypeDB.Int) as UnknownValueBase;
+        a = a?.Sub(67108864);
+        Assert.Equal("UnknownValue<int>[−67108864..−62914561]", a?.ToString());
 
-        var b = UnknownValue.Create("int");
-        b = b.Cast("uint") as UnknownValueBase;
-        b = b.Mod(1949u);
-        Assert.Equal("UnknownValue<uint>[0..1948]", b.ToString());
-        b = b.Xor(0x70EF1C76);
-        Assert.Equal("UnknownValue<uint>[1949]", b.ToString());
-        b = b.Mul(2048);
-        Assert.Equal("UnknownValue<uint>[1949]", b.ToString());
-        b = b.Cast("int") as UnknownValueBase;
-        Assert.Equal("UnknownValue<int>[1949]", b.ToString());
-        Assert.Equal(2025848832, b.Min());
-        Assert.Equal(2030041088, b.Max());
+        var b = UnknownValue.Create(TypeDB.Int);
+        b = b.Cast(TypeDB.UInt) as UnknownValueBase;
+        b = b?.Mod(1949u);
+        Assert.Equal("UnknownValue<uint>[0..1948]", b?.ToString());
+        b = b?.Xor(0x70EF1C76);
+        Assert.Equal("UnknownValue<uint>[1949]", b?.ToString());
+        b = b?.Mul(2048);
+        Assert.Equal("UnknownValue<uint>[1949]", b?.ToString());
+        b = b?.Cast(TypeDB.Int) as UnknownValueBase;
+        Assert.Equal("UnknownValue<int>[1949]", b?.ToString());
+        Assert.Equal(2025848832, b?.Min());
+        Assert.Equal(2030041088, b?.Max());
 
+        Assert.NotNull(a);
         Assert.Equal(false, a.Eq(b));
     }
 }

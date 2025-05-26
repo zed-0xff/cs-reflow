@@ -4,12 +4,12 @@ public class UnknownValueBits : UnknownTypedValue
 
     public List<sbyte> Bits => bits;
 
-    public UnknownValueBits(IntInfo type, IEnumerable<sbyte>? bits = null) : base(type)
+    public UnknownValueBits(TypeDB.IntInfo type, IEnumerable<sbyte>? bits = null) : base(type)
     {
         init(bits);
     }
 
-    public UnknownValueBits(IntInfo type, long val, long mask) : base(type)
+    public UnknownValueBits(TypeDB.IntInfo type, long val, long mask) : base(type)
     {
         init(null);
         for (int i = 0; i < type.nbits; i++)
@@ -21,12 +21,7 @@ public class UnknownValueBits : UnknownTypedValue
         }
     }
 
-    public UnknownValueBits(string type, IEnumerable<sbyte>? bits = null) : base(type)
-    {
-        init(bits);
-    }
-
-    public static UnknownValueBits CreateFromAnd(IntInfo type, long mask)
+    public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
         var bits = new sbyte[type.nbits];
         for (int i = 0; i < type.nbits; i++)
@@ -34,7 +29,7 @@ public class UnknownValueBits : UnknownTypedValue
         return new UnknownValueBits(type, bits);
     }
 
-    public static UnknownValueBits CreateFromOr(IntInfo type, long mask)
+    public static UnknownValueBits CreateFromOr(TypeDB.IntInfo type, long mask)
     {
         var bits = new sbyte[type.nbits];
         for (int i = 0; i < type.nbits; i++)
@@ -111,9 +106,9 @@ public class UnknownValueBits : UnknownTypedValue
         return v;
     }
 
-    public override object Cast(string toType)
+    public override object Cast(TypeDB.IntInfo toType)
     {
-        if (GetType(toType).nbits == type.nbits)
+        if (toType.nbits == type.nbits)
             return new UnknownValueBits(toType, bits);
 
         return base.Cast(toType);

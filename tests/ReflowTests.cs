@@ -14,7 +14,11 @@ public class ReflowTests
                 if (Directory.Exists(dataPath))
                     return dataPath;
 
-                basePath = Directory.GetParent(basePath).FullName;
+                var parent = Directory.GetParent(basePath);
+                if (parent == null)
+                    break;
+
+                basePath = parent.FullName;
             }
             throw new DirectoryNotFoundException("data directory not found");
         }
@@ -135,5 +139,11 @@ public class ReflowTests
     public void big()
     {
         checkData("big");
+    }
+
+    [Fact]
+    public void do_()
+    {
+        checkData("do");
     }
 }

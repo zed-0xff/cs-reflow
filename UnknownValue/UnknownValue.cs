@@ -13,17 +13,14 @@ public class UnknownValue : UnknownValueBase
         if (string.IsNullOrEmpty(type) || !UnknownTypedValue.IsTypeSupported(type))
             return new UnknownValue();
 
-        return UnknownTypedValue.Create(type);
+        return UnknownTypedValue.Create(TypeDB.Find(type));
     }
 
     public static UnknownValueBase Create(Type? type) => Create(type?.ToString());
     public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
-    public static UnknownValueBase Create(UnknownTypedValue.IntInfo type) => UnknownTypedValue.Create(type);
+    public static UnknownValueBase Create(TypeDB.IntInfo type) => UnknownTypedValue.Create(type);
 
-    public override UnknownValueBase Cast(string toType)
-    {
-        return UnknownValue.Create(toType);
-    }
+    public override UnknownValueBase Cast(TypeDB.IntInfo toType) => Create(toType);
 
     public override string ToString()
     {

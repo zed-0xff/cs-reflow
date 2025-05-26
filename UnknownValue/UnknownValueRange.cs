@@ -2,22 +2,12 @@ public class UnknownValueRange : UnknownTypedValue
 {
     public LongRange Range { get; }
 
-    public UnknownValueRange(IntInfo type, LongRange? range = null) : base(type)
+    public UnknownValueRange(TypeDB.IntInfo type, LongRange? range = null) : base(type)
     {
         Range = range ?? this.type.Range;
     }
 
-    public UnknownValueRange(string type, LongRange? range = null) : base(type)
-    {
-        Range = range ?? this.type.Range;
-    }
-
-    public UnknownValueRange(string type, long min, long max) : base(type)
-    {
-        Range = new LongRange(min, max);
-    }
-
-    public UnknownValueRange(IntInfo type, long min, long max) : base(type)
+    public UnknownValueRange(TypeDB.IntInfo type, long min, long max) : base(type)
     {
         Range = new LongRange(min, max);
     }
@@ -39,26 +29,24 @@ public class UnknownValueRange : UnknownTypedValue
         return Range.Equals(type.Range);
     }
 
-    public override object Cast(string toType)
+    public override object Cast(TypeDB.IntInfo toType)
     {
-        toType = ShortType(toType);
-
-        if (type.Name == "uint" && toType == "int") // uint -> int
+        if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
             if (Range.Min >= 0 && Range.Max <= int.MaxValue)
-                return new UnknownValueRange("int", Range);
+                return new UnknownValueRange(TypeDB.Int, Range);
             if (Range.Min > int.MaxValue)
-                return new UnknownValueRange("int", new LongRange(unchecked((int)Range.Min), unchecked((int)Range.Max)));
-            return new UnknownValueRange("int");
+                return new UnknownValueRange(TypeDB.Int, new LongRange(unchecked((int)Range.Min), unchecked((int)Range.Max)));
+            return new UnknownValueRange(TypeDB.Int);
         }
 
-        if (type.Name == "int" && toType == "uint") // int -> uint
+        if (type == TypeDB.Int && toType == TypeDB.UInt) // int -> uint
         {
             if (Range.Min >= 0 && Range.Max >= 0)
-                return new UnknownValueRange("uint", Range);
+                return new UnknownValueRange(TypeDB.UInt, Range);
             if (Range.Max < 0)
-                return new UnknownValueRange("uint", new LongRange(unchecked((uint)Range.Min), unchecked((uint)Range.Max)));
-            return new UnknownValueRange("uint");
+                return new UnknownValueRange(TypeDB.UInt, new LongRange(unchecked((uint)Range.Min), unchecked((uint)Range.Max)));
+            return new UnknownValueRange(TypeDB.UInt);
         }
 
         return base.Cast(toType);

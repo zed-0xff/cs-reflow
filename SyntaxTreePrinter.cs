@@ -52,7 +52,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
             {
                 case LocalDeclarationStatementSyntax l:
                     color = ANSI_COLOR_LIGHT_BLUE;
-                    variableProcessor.ProcessLocalDeclaration(l);
+                    variableProcessor.EvaluateExpression(l);
                     break;
                 case ExpressionStatementSyntax e:
                     color = ANSI_COLOR_LIGHT_CYAN;

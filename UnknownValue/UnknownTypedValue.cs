@@ -1,54 +1,15 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
-    public IntInfo type { get; }
+    public TypeDB.IntInfo type { get; }
 
-    public UnknownTypedValue(string typeName) : base()
-    {
-        type = GetType(typeName);
-    }
-
-    public UnknownTypedValue(IntInfo type) : base()
+    public UnknownTypedValue(TypeDB.IntInfo type) : base()
     {
         this.type = type;
     }
 
-    public static UnknownTypedValue Create(string typeName) => new UnknownValueRange(typeName);
-    public static UnknownTypedValue Create(IntInfo type) => new UnknownValueRange(type);
+    public static UnknownTypedValue Create(TypeDB.IntInfo type) => new UnknownValueRange(type);
 
     public static readonly long MAX_DISCRETE_CARDINALITY = 1_000_000L;
-
-    public class IntInfo
-    {
-        public string Name { get; init; }
-        public int nbits { get; init; }
-        public bool signed { get; init; }
-
-        public long MinValue => signed ? -(1L << (nbits - 1)) : 0;
-        public long MaxValue => signed ? (1L << (nbits - 1)) - 1 : (1L << nbits) - 1;
-
-        public long Mask => (1L << nbits) - 1;
-        public LongRange Range => new LongRange(MinValue, MaxValue);
-
-        public override string ToString() => Name;
-        public override bool Equals(object obj) => (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
-
-        public override int GetHashCode() => HashCode.Combine(nbits, signed);
-    }
-
-    static readonly Dictionary<string, IntInfo> INFOS = new()
-    {
-        ["bool"] = new IntInfo { Name = "bool", nbits = 1, signed = false },
-        ["byte"] = new IntInfo { Name = "byte", nbits = 8, signed = false },
-        ["sbyte"] = new IntInfo { Name = "sbyte", nbits = 8, signed = true },
-        ["short"] = new IntInfo { Name = "short", nbits = 16, signed = true },
-        ["ushort"] = new IntInfo { Name = "ushort", nbits = 16, signed = false },
-        ["int"] = new IntInfo { Name = "int", nbits = 32, signed = true },
-        ["uint"] = new IntInfo { Name = "uint", nbits = 32, signed = false },
-        ["long"] = new IntInfo { Name = "long", nbits = 64, signed = true },
-        ["ulong"] = new IntInfo { Name = "ulong", nbits = 64, signed = false },
-        ["nint"] = new IntInfo { Name = "nint", nbits = 32, signed = true }, // TODO: 32/64 bit cmdline switch
-        ["nuint"] = new IntInfo { Name = "nuint", nbits = 32, signed = false }, // TODO: 32/64 bit cmdline switch
-    };
 
     public long MaskNoSign(long value)
     {
@@ -72,33 +33,13 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public static bool IsTypeSupported(string typeName)
     {
-        return INFOS.ContainsKey(ShortType(typeName));
-    }
-
-    public static IntInfo GetType(string typeName)
-    {
-        if (!INFOS.TryGetValue(ShortType(typeName), out IntInfo? t))
-            throw new NotImplementedException($"UnknownTypedValue: {typeName} not implemented.");
-        return t;
-    }
-
-    protected static string ShortType(string type)
-    {
-        return type switch
-        {
-            "System.Boolean" => "bool",
-            "System.Byte" => "byte",
-            "System.Int32" => "int",
-            "System.SByte" => "sbyte",
-            "System.UInt32" => "uint",
-            _ => type,
-        };
+        return TypeDB.TryFind(typeName) is not null;
     }
 
     public abstract bool Contains(long value);
     public abstract bool IntersectsWith(UnknownTypedValue right);
-    public abstract long Min();
-    public abstract long Max();
+    public abstract override long Min();
+    public abstract override long Max();
 
     public override object Eq(object right)
     {
@@ -204,19 +145,18 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return new UnknownValueList(type, values.OrderBy(x => x).ToList());
     }
 
-    public override object Cast(string toType)
+    public override object Cast(TypeDB.IntInfo toType)
     {
-        toType = ShortType(toType);
-        if (toType == "bool")
+        if (toType == TypeDB.Bool)
         {
             switch (Cardinality())
             {
                 case 0:
-                    return UnknownValue.Create("bool");
+                    return UnknownValue.Create(TypeDB.Bool);
                 case 1:
                     return !Contains(0);
                 default:
-                    return Contains(0) ? UnknownValue.Create("bool") : true;
+                    return Contains(0) ? UnknownValue.Create(TypeDB.Bool) : true;
             }
         }
         throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");

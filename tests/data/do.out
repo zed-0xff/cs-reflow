@@ -1,0 +1,42 @@
+void case1()
+{
+    init();  // InvocationExpression is not supported.
+    if (y)
+    {
+        foo();
+    }
+    else
+    {
+        bar();
+    }
+}
+
+void case2()
+{
+    foo();  // InvocationExpression is not supported.
+}
+
+void case3()
+{
+    if (y)
+    {
+        foo();
+    }
+    else
+    {
+        bar();
+    }
+}
+
+void case4()
+{
+    foo();  // InvocationExpression is not supported.
+    bar();  // InvocationExpression is not supported.
+}
+
+void case5()
+{
+    foo();  // InvocationExpression is not supported.
+    bar();  // InvocationExpression is not supported.
+}
+
