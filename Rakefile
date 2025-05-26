@@ -32,6 +32,7 @@ namespace :gen do
 
     types = [""] + TYPEMAP.values
     checks = []
+    puts "#pragma warning disable format"
     types.repeated_permutation(2).each do |type1, type2|
       next if type1 == ""
 
@@ -55,15 +56,26 @@ namespace :gen do
         a = result.split.map{ |x| TYPEMAP[x] || x }
         #puts a.join(" ")
 
-        fun = "check"
+        fun = "check1"
       else
         #puts "Error"
-        fun = "check_err"
+        fun = "check1_err"
         a = []
       end
 
       a.append(type1, val1, op, op2)
-      puts "    [Fact] void check_#{type1}_#{type2}() { #{fun}(#{a.map(&:inspect).join(", ")}); }"
+      if !fun['err']
+        printf "    [Fact] void %-22s { %s(%-9s %-4s %-9s %-4s %s %-11s); }\n", "check1_#{type1}_#{type2}()", fun,
+          a[0].inspect + ",",
+          a[1] + ",",
+          a[2].inspect + ",",
+          a[3].inspect + ",",
+          a[4].inspect + ",",
+          a[5].inspect
+      else
+        printf "    [Fact] void %-22s { %s(%s, %s, %s, %s); }\n", "check1_#{type1}_#{type2}()", fun, *a.map(&:inspect)
+      end
     end
+    puts "#pragma warning restore format"
   end
 end
