@@ -388,8 +388,15 @@ public class PostProcessor
 
     public BlockSyntax PostProcessAll(BlockSyntax block)
     {
-        // TODO
-        return PostProcess(PostProcess(block));
+        for (int i = 0; i < 10; i++)
+        {
+            string s0 = RemoveAllComments(block).NormalizeWhitespace().ToString();
+            block = PostProcess(block);
+            string s1 = RemoveAllComments(block).NormalizeWhitespace().ToString();
+            if (s0 == s1)
+                break; // no changes
+        }
+        return block;
     }
 }
 

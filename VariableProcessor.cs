@@ -70,4 +70,15 @@ public partial class VariableProcessor : ICloneable
         e.Evaluate();
         return e;
     }
+
+    public void UpdateExistingVars(VariableProcessor other)
+    {
+        foreach (var kvp in other.VariableValues)
+        {
+            if (VariableValues.ContainsKey(kvp.Key))
+            {
+                VariableValues[kvp.Key] = kvp.Value;
+            }
+        }
+    }
 }

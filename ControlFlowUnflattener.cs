@@ -59,7 +59,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         public bool hasBreak = false;
         public bool hasContinue = false;
         public bool hasReturn = false;
+        public bool hasOutGoto = false;
+        public bool hasInterCaseGoto = false; // goto from one case into a middle of another
         public HashSet<string> loopVars = new();
+        public HashSet<object> values = new();
 
         public FlowInfo() { }
 
@@ -87,10 +90,27 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 sb.Append(" hasBreak");
             if (hasContinue)
                 sb.Append(" hasContinue");
+            if (hasOutGoto)
+                sb.Append(" hasOutGoto");
+            if (hasInterCaseGoto)
+                sb.Append(" hasInterCaseGoto");
             if (hasReturn)
                 sb.Append(" hasReturn");
             if (loopVars.Count > 0)
                 sb.Append($" loopVars=[{String.Join(", ", loopVars)}]");
+            if (values.Count > 0)
+            {
+                if (values.Count > 5)
+                    sb.Append($" values=[{String.Join(", ", values.Take(5))}, …][{values.Count}]");
+                else if (values.Count == 1 && values.First() is bool)
+                {
+                    // skip
+                }
+                else
+                {
+                    sb.Append($" values=[{String.Join(", ", values)}]");
+                }
+            }
             sb.Append(">");
 
             return sb.ToString();
@@ -133,76 +153,79 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     };
 
-    class ReturnException : Exception
+    // control flow exceptions
+
+    abstract class FlowException : Exception
     {
-        public object? result;
-        public ReturnException(object? result) : base($"return {result}")
+        public readonly int lineno;
+        public FlowException(int lineno, string message) : base(message)
         {
-            this.result = result;
+            this.lineno = lineno;
         }
     }
 
-    class GotoException : Exception
+    class ReturnException : FlowException
     {
-        public string label;
-        public GotoException(string label) : base($"goto label '{label}' not found")
+        public ReturnException(int lineno) : base(lineno, "return") { }
+    }
+
+    class GotoException : FlowException
+    {
+        public readonly string label;
+        public GotoException(int lineno, string label) : base(lineno, $"goto label '{label}'")
         {
             this.label = label;
         }
     }
 
-    class GotoCaseException : Exception
+    class GotoCaseException : FlowException
     {
-        public object value;
-        public GotoCaseException(object value) : base($"goto case {value}")
+        public readonly object value;
+        public GotoCaseException(int lineno, object value) : base(lineno, $"goto case {value}")
         {
             this.value = value;
         }
     }
 
-    class GotoDefaultCaseException : Exception
+    class GotoDefaultCaseException : FlowException
     {
-        public GotoDefaultCaseException() : base("goto default case") { }
-    }
-
-    class ContinueException : Exception
-    {
-        public ContinueException() : base("continue") { }
-    }
-
-    class BreakException : Exception
-    {
-        public BreakException() : base("break") { }
-    }
-
-    class UndeterministicIfException : Exception
-    {
-        public int lineno;
-        public UndeterministicIfException(string condition, int lineno) : base($"undeterministic if({condition}) at line {lineno}")
+        public GotoDefaultCaseException(int lineno) : base(lineno, "goto default case")
         {
-            this.lineno = lineno;
         }
     }
 
-    class LoopException : Exception
+    class ContinueException : FlowException
     {
-        public int lineno;
-        public int idx;
-        public LoopException(string message, int lineno, int idx) : base(message)
+        public ContinueException(int lineno) : base(lineno, "continue") { }
+    }
+
+    class BreakException : FlowException
+    {
+        public BreakException(int lineno) : base(lineno, "break") { }
+    }
+
+    class UndeterministicIfException : FlowException
+    {
+        public UndeterministicIfException(string condition, int lineno) : base(lineno, $"undeterministic if({condition}) at line {lineno}")
         {
-            this.lineno = lineno;
+        }
+    }
+
+    class LoopException : FlowException
+    {
+        public readonly int idx;
+        public LoopException(string message, int lineno, int idx) : base(lineno, message)
+        {
             this.idx = idx;
         }
     }
 
-    class ConditionalLoopException : Exception
+    class ConditionalLoopException : FlowException
     {
-        public int lineno;
-        public ConditionalLoopException(string message, int lineno) : base(message)
-        {
-            this.lineno = lineno;
-        }
+        public ConditionalLoopException(string message, int lineno) : base(lineno, message) { }
     }
+
+    // end of exceptions
 
     public void DropVars(List<string> vars)
     {
@@ -288,6 +311,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.Verbosity = Verbosity;
         clone.RemoveSwitchVars = RemoveSwitchVars;
         clone.AddComments = AddComments;
+        clone.showIntermediateLogs = showIntermediateLogs;
 
         clone._tree = _tree;     // shared, r/o
         clone._parentReturns = _parentReturns; // shared, r/o
@@ -366,6 +390,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             flow_info(whileStmt).hasReturn = true;
                             throw;
                         }
+                        catch (GotoException)
+                        {
+                            flow_info(whileStmt).hasOutGoto = true;
+                            throw;
+                        }
                     }
                     else
                     {
@@ -381,7 +410,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_do(DoStatementSyntax doStmt)
     {
-        int loop_id = doStmt.LineNo();
         var body = doStmt.Statement as BlockSyntax; // TODO: single-statement body
         var condition = doStmt.Condition;
         int lastCount = _traceLog.entries.Count;
@@ -408,6 +436,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 flow_info(doStmt).hasReturn = true;
                 throw;
             }
+            catch (GotoException)
+            {
+                flow_info(doStmt).hasOutGoto = true;
+                throw;
+            }
 
             var value = EvaluateBoolExpression(condition);
             log_stmt(condition, value.ToString(), skip: true, prefix: "while ( ", suffix: " )");
@@ -426,14 +459,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         if (_traceLog.entries[lastCount - 1] != lastEntry)
                             throw new Exception($"Do-while loop at line {doStmt.LineNo()} has changed since last evaluation. Last entry: {lastEntry}, current entry: {_traceLog.entries.Last()}");
                     }
-                    TraceLog loopLog = _traceLog.CutFrom(lastCount);
-                    var newDoStmt = doStmt
-                        .WithStatement(ReflowBlock(body, log: loopLog))
-                        .WithAdditionalAnnotations(new SyntaxAnnotation("OriginalLineNo", doStmt.LineNo().ToString()));
-
-                    loopLog.entries.Last().comment = unk.ToString();
-                    _traceLog.entries.Add(new TraceEntry(newDoStmt, unk, _varProcessor.VariableValues));
-                    break;
+                    // TraceLog loopLog = _traceLog.CutFrom(lastCount);
+                    //                    var newDoStmt = doStmt
+                    //                        .WithStatement(ReflowBlock(body, log: loopLog))
+                    //                        .WithAdditionalAnnotations(new SyntaxAnnotation("OriginalLineNo", doStmt.LineNo().ToString()));
+                    //
+                    //                    loopLog.entries.Last().comment = unk.ToString();
+                    //                    _traceLog.entries.Add(new TraceEntry(newDoStmt, unk, _varProcessor.VariableValues));
+                    // _traceLog.entries.Add(new TraceEntry(doStmt, unk, _varProcessor.VariableValues));
+                    return;
 
                 default:
                     throw new NotImplementedException($"Not supported Do condition type '{value}'");
@@ -453,6 +487,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_switch(SwitchStatementSyntax switchStmt, object value)
     {
+        if (value is VariableProcessor.Expression ex)
+        {
+            value = ex.Result;
+            flow_info(switchStmt).loopVars.UnionWith(ex.VarsRead);
+        }
+        if (value is not GotoDefaultCaseException)
+            update_flow_info(switchStmt, value);
+
         if (value == null)
             throw new NotImplementedException($"{switchStmt.LineNo()}: Switch statement with null value.");
         if (value is UnknownValueBase)
@@ -497,7 +539,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (swLabel == null)
             swLabel = defaultLabel;
 
-        if (swLabel == null)
+        if (swLabel == null) // no matching case or default label found
             return;
 
         //        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
@@ -515,22 +557,30 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             catch (BreakException)
             {
                 break;
-
             }
             catch (GotoCaseException e)
             {
                 trace_switch(switchStmt, e.value);
                 return;
-
             }
             catch (GotoDefaultCaseException e)
             {
                 trace_switch(switchStmt, e);
                 return;
             }
+            catch (ReturnException e)
+            {
+                flow_info(switchStmt).hasReturn = true;
+                throw;
+            }
+            catch (ContinueException e)
+            {
+                flow_info(switchStmt).hasContinue = true;
+                throw;
+            }
             catch (GotoException e)
             {
-                // real-life example - jump from one case inside a middle of another
+                // real-life example - jump from one case into a middle of another
                 //
                 //    case 1:
                 //        foo();
@@ -552,11 +602,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             section = section2;
                             start_idx = i;
                             found = true;
+                            flow_info(switchStmt).hasInterCaseGoto = true;
                             break;
                         }
                     }
                 }
-                if (!found) throw;
+                if (!found)
+                {
+                    flow_info(switchStmt).hasOutGoto = true;
+                    throw;
+                }
             }
         }
     }
@@ -568,6 +623,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         if (_flowHints.ContainsKey(id))
             return;
+
+        flowInfo.values.Add(value);
 
         switch (value)
         {
@@ -641,7 +698,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     TryStatementSyntax convert_try(TryStatementSyntax tryStmt, ReturnsDictionary retLabels)
     {
-        var newBlock = Clone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Block);
+        var clone = Clone().WithParentReturns(retLabels);
+        var newBlock = clone.ReflowBlock(tryStmt.Block);
+        _varProcessor.UpdateExistingVars(clone._varProcessor);
+
         var newCatches = SyntaxFactory.List(
                 tryStmt.Catches.Select(c =>
                     {
@@ -652,7 +712,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return tryStmt
             .WithBlock(newBlock)
             .WithCatches(newCatches)
-            .WithFinally(tryStmt.Finally?.WithBlock(Clone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Finally.Block)));
+            .WithFinally(tryStmt.Finally?.WithBlock(Clone().WithParentReturns(retLabels).ReflowBlock(tryStmt.Finally.Block)))
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("OriginalLineNo", tryStmt.LineNo().ToString())
+                    );
     }
 
     public object EvaluateExpression(ExpressionSyntax expression)
@@ -775,6 +838,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
 
         // Console.WriteLine($"[d] {statements.First().LineNo()}: labels: {String.Join(", ", labels.Keys)}");
+        VariableProcessor.Expression? ex = null;
 
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
@@ -800,7 +864,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
             try
             {
-                VariableProcessor.Expression ex;
+                ex = null;
                 switch (stmt)
                 {
                     case IfStatementSyntax ifStmt:
@@ -829,18 +893,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             valueStr = valueStr.ToLower();
 
                         comment = valueStr;
-
-                        // TODO: move this 2 blocks to PostProcess()
-                        if (ex.VarsRead.Count > 0 && ex.VarsRead.All(v => isSwitchVar(v)))
-                        {
-                            foreach (string v in ex.VarsWritten)
-                                setSwitchVar(v);
-                        }
-                        if (ex.VarsWritten.Count > 0 && ex.VarsWritten.Any(v => isSwitchVar(v))) // questionable
-                        {
-                            foreach (string v in ex.VarsReferenced)
-                                setSwitchVar(v);
-                        }
                         break;
 
                     case SwitchStatementSyntax sw:
@@ -939,10 +991,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         switch (gotoStmt.CaseOrDefaultKeyword.Kind())
                         {
                             case SyntaxKind.CaseKeyword:
-                                throw new GotoCaseException(EvaluateExpression(gotoStmt.Expression));
+                                throw new GotoCaseException(gotoStmt.LineNo(), EvaluateExpression(gotoStmt.Expression));
 
                             case SyntaxKind.DefaultKeyword:
-                                throw new GotoDefaultCaseException();
+                                throw new GotoDefaultCaseException(gotoStmt.LineNo());
 
                             default:
                                 // goto label_123
@@ -961,7 +1013,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                                     else
                                     {
                                         // jump to outer block
-                                        throw new GotoException(labelId.Identifier.Text);
+                                        throw new GotoException(gotoStmt.LineNo(), labelId.Identifier.Text);
                                     }
                                 }
                                 break;
@@ -969,7 +1021,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         throw new ArgumentException($"Label '{gotoStmt.Expression}' not found. ({gotoStmt.CaseOrDefaultKeyword})");
 
                     case SwitchStatementSyntax switchStmt:
-                        trace_switch(switchStmt, value);
+                        trace_switch(switchStmt, ex);
                         break;
 
                     case WhileStatementSyntax whileStmt:
@@ -993,9 +1045,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         trace_block_inline(usingStmt.Statement as BlockSyntax);
                         break;
 
-                    case BreakStatementSyntax: throw new BreakException();
-                    case ContinueStatementSyntax: throw new ContinueException();
-                    case ReturnStatementSyntax: throw new ReturnException(null); // TODO: return value
+                    case BreakStatementSyntax: throw new BreakException(lineno);
+                    case ContinueStatementSyntax: throw new ContinueException(lineno);
+                    case ReturnStatementSyntax: throw new ReturnException(lineno); // TODO: return value
 
                     default:
                         throw new NotImplementedException($"{stmt.LineNo()}: Unhandled statement type: {stmt.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")}");
@@ -1113,6 +1165,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
         List<TraceLog> logs = new();
+        FlowInfo flowInfo = new FlowInfo(SyntaxKind.Block, block.LineNo());
 
         while (queue.Count > 0)
         {
@@ -1140,18 +1193,40 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     clone.trace_block_inline(block);
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
-                        Console.WriteLine($"<<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}");
+                        Console.WriteLine($"<<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}\n");
                 }
-                catch (ReturnException)
+                catch (ReturnException retExc)
                 {
+                    flowInfo.hasReturn = true;
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
-                        Console.WriteLine($"<<< return at line {clone._traceLog.entries.Last().stmt.LineNo()}");
+                        Console.WriteLine($"<<< return at line {retExc.lineno}\n");
+                }
+                catch (BreakException breakExc)
+                {
+                    flowInfo.hasBreak = true;
+                    logs.Add(clone._traceLog);
+                    if (Verbosity > 0)
+                        Console.WriteLine($"<<< break at line {breakExc.lineno}\n");
+                }
+                catch (ContinueException contExc)
+                {
+                    flowInfo.hasContinue = true;
+                    logs.Add(clone._traceLog);
+                    if (Verbosity > 0)
+                        Console.WriteLine($"<<< continue at line {contExc.lineno}\n");
+                }
+                catch (GotoException gotoExc) // goto to outer block
+                {
+                    flowInfo.hasOutGoto = true;
+                    logs.Add(clone._traceLog);
+                    if (Verbosity > 0)
+                        Console.WriteLine($"<<< goto {gotoExc.label} from line {gotoExc.lineno}\n");
                 }
                 catch (UndeterministicIfException e)
                 {
                     if (Verbosity > 0)
-                        Console.WriteLine($"[d] <<< {e.Message}");
+                        Console.WriteLine($"<<< {e.Message}\n");
 
                     HintsDictionary hints0 = new(hints);
                     hints0[e.lineno] = false;
@@ -1445,9 +1520,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public void DumpFlowInfos()
     {
         Console.WriteLine("Flow infos:");
-        foreach (var kv in _flowInfos)
+        foreach (var key in _flowInfos.Keys.OrderBy(k => k))
         {
-            Console.WriteLine($"{kv.Key}: {kv.Value}");
+            Console.WriteLine($"{key.ToString().PadLeft(6)}: {_flowInfos[key]}");
         }
     }
 }

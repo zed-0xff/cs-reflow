@@ -22,11 +22,15 @@ public class TraceLog
         if (start < 0 || start >= entries.Count)
             throw new ArgumentOutOfRangeException(nameof(start), "Start index is out of range");
 
-        TraceLog result = new();
-        result.hints = new(hints);
-        result.entries.AddRange(entries.GetRange(start, entries.Count - start));
-        entries.RemoveRange(start, entries.Count - start);
-        return result;
+        int count = entries.Count - start;
+        var cutEntries = entries.GetRange(start, count);
+        entries.RemoveRange(start, count);
+
+        return new TraceLog
+        {
+            hints = new(hints),
+            entries = new List<TraceEntry>(cutEntries)
+        };
     }
 
     // returns element key if only one difference, -1 otherwise
@@ -143,8 +147,10 @@ public class TraceLog
 
         // make new if/then/else
         List<TraceEntry> ifEntries = new();
-        ifEntries.Add(this.entries[commonStart]);
-        ifEntries.Add(other.entries[commonStart]);
+        if (commonStart < this.entries.Count)
+            ifEntries.Add(this.entries[commonStart]);
+        if (commonStart < other.entries.Count)
+            ifEntries.Add(other.entries[commonStart]);
 
         TraceEntry? ifEntry = null;
         IfStatementSyntax? ifStmt = null;
@@ -175,13 +181,11 @@ public class TraceLog
 
         if (ifStmt == null)
         {
-            Print("A", Math.Max(commonStart - 10, 0), commonStart);
+            Print("A", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
             Print("A", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
-            Console.WriteLine();
 
-            other.Print("B", Math.Max(commonStart - 10, 0), commonStart);
+            other.Print("B", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
             other.Print("B", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
-            Console.WriteLine();
 
             throw new Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
         }
@@ -233,7 +237,7 @@ public class TraceLog
         return result;
     }
 
-    public void Print(string prefix = "", int start = 0, int end = -1, bool title = true, bool full = false)
+    public void Print(string prefix = "", int start = 0, int end = -1, bool title = true, bool full = false, bool addEmptyLine = true)
     {
         if (title)
             Console.WriteLine($"{(prefix == "" ? "" : $"{prefix}: ")}TraceLog: {entries.Count} entries, {hints.Count} hints");
@@ -247,5 +251,7 @@ public class TraceLog
             line += full ? entries[i].FormatStmtWithLineNo() : entries[i].TitleWithLineNo();
             Console.WriteLine(line);
         }
+        if (addEmptyLine)
+            Console.WriteLine();
     }
 }

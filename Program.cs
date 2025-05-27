@@ -19,7 +19,8 @@ class Program
         bool removeSwitchVars,
         bool postProcess,
         List<string> dropVars,
-        bool dumpFlowInfos
+        bool dumpFlowInfos,
+        bool showIntermediateLogs
     );
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, Dictionary<int, bool> hints)
@@ -29,7 +30,8 @@ class Program
             Verbosity = opts.verbosity,
             RemoveSwitchVars = opts.removeSwitchVars,
             AddComments = opts.addComments,
-            PostProcess = opts.postProcess
+            PostProcess = opts.postProcess,
+            showIntermediateLogs = opts.showIntermediateLogs,
         };
     }
 
@@ -105,7 +107,7 @@ class Program
         );
 
         var dumpFlowInfosOpt = new Option<bool>(
-            name: "--dump-flow-infos",
+            aliases: new[] { "--dump-flow-infos", "-F" },
             getDefaultValue: () => false,
             description: "Dump FlowInfos."
         );
@@ -114,6 +116,12 @@ class Program
             aliases: new[] { "--expr", "-e" },
             getDefaultValue: () => string.Empty,
             description: "Evaluate an expression."
+        );
+
+        var showIntermediateLogsOpt = new Option<bool>(
+            aliases: new[] { "--show-intermediate-logs", "-I" },
+            getDefaultValue: () => false,
+            description: "Show intermediate logs during processing."
         );
 
         // --- Define the root command ---
@@ -132,7 +140,8 @@ class Program
             quietOpt,
             listMethodsOpt,
             dropVarsOpt,
-            dumpFlowInfosOpt
+            dumpFlowInfosOpt,
+            showIntermediateLogsOpt
         };
 
         // --- Set the handler ---
@@ -151,7 +160,8 @@ class Program
                 postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
-                dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt)
+                dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
+                showIntermediateLogs: context.ParseResult.GetValueForOption(showIntermediateLogsOpt)
             );
 
             var hints = new Dictionary<int, bool>();

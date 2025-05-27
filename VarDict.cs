@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-public class VarDict : Dictionary<string, object>, ICloneable
+public class VarDict : Dictionary<string, object>
 {
     public class VarFlags
     {
@@ -34,7 +34,7 @@ public class VarDict : Dictionary<string, object>, ICloneable
         return new List<string>(flags.Where(kvp => kvp.Value.isSwitch).Select(kvp => kvp.Key));
     }
 
-    public object Clone()
+    public VarDict Clone()
     {
         // Create a new instance of VarDict
         var clonedDict = new VarDict();
