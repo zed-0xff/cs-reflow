@@ -386,6 +386,16 @@ public class PostProcessor
         return block.WithStatements(List(statements));
     }
 
+    public SyntaxNode ProcessFunction(SyntaxNode root)
+    {
+        return root switch
+        {
+            BaseMethodDeclarationSyntax method => method.WithBody(PostProcess(method.Body)),
+            LocalFunctionStatementSyntax func => func.WithBody(PostProcess(func.Body)),
+            _ => throw new InvalidOperationException($"Unsupported function type: {root.Kind()}")
+        };
+    }
+
     public BlockSyntax PostProcessAll(BlockSyntax block)
     {
         for (int i = 0; i < 10; i++)

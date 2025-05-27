@@ -46,6 +46,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _condStates = new();
         _visitedLines = new();
         _parentReturns = new();
+        _flowInfos = new();
         _stopWatch = Stopwatch.StartNew();
     }
 

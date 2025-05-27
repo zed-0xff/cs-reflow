@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Linq;
 
 class Program
 {
-    public record Options(
+    record Options(
         string? filename,
         List<string> methods,
         List<string> hintList,
@@ -17,11 +18,18 @@ class Program
         bool printTree,
         bool addComments,
         bool removeSwitchVars,
-        bool postProcess,
+        PostProcessMode postProcess,
         List<string> dropVars,
         bool dumpFlowInfos,
         bool showIntermediateLogs
     );
+
+    enum PostProcessMode
+    {
+        Disabled,
+        Enabled,
+        Only
+    }
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, Dictionary<int, bool> hints)
     {
@@ -30,9 +38,30 @@ class Program
             Verbosity = opts.verbosity,
             RemoveSwitchVars = opts.removeSwitchVars,
             AddComments = opts.addComments,
-            PostProcess = opts.postProcess,
+            PostProcess = (opts.postProcess != PostProcessMode.Disabled),
             showIntermediateLogs = opts.showIntermediateLogs,
         };
+    }
+
+    static PostProcessMode ParsePostProcessMode(string? input)
+    {
+        switch (input?.ToLowerInvariant())
+        {
+            case "1":
+            case "on":
+            case "true":
+                return PostProcessMode.Enabled;
+            case "0":
+            case "off":
+            case "false":
+                return PostProcessMode.Disabled;
+            case "only":
+                return PostProcessMode.Only;
+            default:
+                Console.Error.WriteLine($"Invalid value: {input}. Must be one of: 1, 0, on, off, true, false, only.");
+                Environment.Exit(1);
+                return PostProcessMode.Disabled; // never reached
+        }
     }
 
     public static int Main(string[] args)
@@ -94,11 +123,11 @@ class Program
             description: "Remove switch variables."
         );
 
-        var postProcessOpt = new Option<bool>(
-            aliases: new[] { "--post-process", "-P" },
-            getDefaultValue: () => true,
-            description: "Post-process the code."
-        );
+        var postProcessOpt = new Option<string>(
+                aliases: new[] { "--post-process", "-P" },
+                getDefaultValue: () => "true",
+                description: "Post-process the code. Accepts: 1/on/true, 0/off/false, only (post-process only)."
+                );
 
         var dropVarsOpt = new Option<List<string>>(
             name: "--drop-var",
@@ -157,7 +186,7 @@ class Program
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
-                postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
+                postProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(postProcessOpt)),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
@@ -206,68 +235,70 @@ class Program
                 code = File.ReadAllText(opts.filename);
             }
 
-            var printer = new SyntaxTreePrinter(code);
-            printer.Verbosity = opts.verbosity;
             VarDict.Verbosity = opts.verbosity;
 
             var unflattener = createUnflattener(code, opts, hints);
+            var methodDict = unflattener.Methods;
 
+            bool printAll = false;
+            List<CSharpSyntaxNode> methods = new List<CSharpSyntaxNode>();
             if (opts.methods == null || opts.methods.Count == 0)
             {
-                var methodDict = unflattener.Methods;
-                if (methodDict.Count == 0 && string.IsNullOrEmpty(opts.expr))
-                {
-                    Console.WriteLine("[?] No methods found.");
-                    return;
-                }
-
-                if (opts.listMethods)
-                {
-                    Console.WriteLine("methods:\n - " + string.Join("\n - ", methodDict.Select(kv => $"{kv.Key}: {kv.Value}")));
-                }
-                else
-                {
-                    if (opts.printTree)
-                    {
-                        printer.Print();
-                    }
-                    else
-                    {
-                        foreach (var method in methodDict)
-                        {
-                            unflattener.Reset();
-                            unflattener.SetHints(hints);
-                            unflattener.DropVars(opts.dropVars);
-                            Console.WriteLine(unflattener.ReflowMethod(method.Key));
-                            Console.WriteLine();
-                        }
-                    }
-                }
+                printAll = true;
+                methods = unflattener.Methods.Values.Select(m => unflattener.GetMethod(m)).ToList();
             }
             else
             {
                 foreach (var methodName in opts.methods)
                 {
-                    if (opts.printTree)
-                    {
-                        printer.PrintMethod(methodName);
-                    }
-                    else
-                    {
-                        unflattener.Reset();
-                        unflattener.SetHints(hints);
-                        unflattener.DropVars(opts.dropVars);
-                        Console.WriteLine(unflattener.ReflowMethod(methodName));
-                        Console.WriteLine();
-                    }
+                    methods.Add(unflattener.GetMethod(methodName));
                 }
             }
 
-            if (opts.dumpFlowInfos)
+            // define lambda
+            Action? lambda;
+            if (opts.listMethods)
             {
-                unflattener.DumpFlowInfos();
+                if (methodDict.Count != 0)
+                    Console.WriteLine("methods:\n - " + string.Join("\n - ", methodDict.Select(kv => $"{kv.Key}: {kv.Value}")));
+                else
+                    Console.WriteLine("[?] No methods found.");
             }
-        });
+            else if (opts.printTree)
+            {
+                var printer = new SyntaxTreePrinter(code);
+                printer.Verbosity = opts.verbosity;
+
+                if (printAll)
+                    printer.Print();
+                else
+                    foreach (var methodName in opts.methods)
+                        printer.PrintMethod(methodName);
+            }
+            else if (opts.postProcess == PostProcessMode.Only)
+            {
+                foreach (var method in methods)
+                {
+                    PostProcessor postProcessor = new(new());
+                    var processed = postProcessor.ProcessFunction(method);
+                    Console.Write(processed.ToFullString());
+                }
+            }
+            else
+            {
+                foreach (var method in methods)
+                {
+                    unflattener.Reset();
+                    unflattener.SetHints(hints);
+                    unflattener.DropVars(opts.dropVars);
+                    Console.WriteLine(unflattener.ReflowMethod(method));
+                    if (opts.dumpFlowInfos)
+                        unflattener.DumpFlowInfos();
+                    Console.WriteLine();
+                }
+            }
+
+        }); // rootCommand.SetHandler
 
         return rootCommand.Invoke(args);
     }
