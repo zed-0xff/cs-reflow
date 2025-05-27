@@ -293,7 +293,10 @@ class Program
                     unflattener.DropVars(opts.dropVars);
                     Console.WriteLine(unflattener.ReflowMethod(method));
                     if (opts.dumpFlowInfos)
+                    {
+                        Console.WriteLine();
                         unflattener.DumpFlowInfos();
+                    }
                     Console.WriteLine();
                 }
             }
