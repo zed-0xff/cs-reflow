@@ -146,4 +146,10 @@ public class ReflowTests
     {
         checkData("do");
     }
+
+    [Fact]
+    public void if_()
+    {
+        checkData("if");
+    }
 }

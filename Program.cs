@@ -280,6 +280,7 @@ class Program
                 foreach (var method in methods)
                 {
                     PostProcessor postProcessor = new(new());
+                    postProcessor.Verbosity = opts.verbosity;
                     var processed = postProcessor.ProcessFunction(method);
                     Console.Write(processed.ToFullString());
                 }
@@ -296,6 +297,12 @@ class Program
                     {
                         Console.WriteLine();
                         unflattener.DumpFlowInfos();
+
+                        Console.WriteLine();
+                        var collector = new ControlFlowTreeCollector();
+                        collector.Visit(method);
+                        Console.WriteLine("Control Flow Tree:");
+                        collector.PrintTree();
                     }
                     Console.WriteLine();
                 }

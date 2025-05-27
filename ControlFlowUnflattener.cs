@@ -337,7 +337,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     }
 
     public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
-        .Where(n => n is MethodDeclarationSyntax || n is ConstructorDeclarationSyntax || n is DestructorDeclarationSyntax || n is LocalFunctionStatementSyntax)
+        .Where(n => n is BaseMethodDeclarationSyntax || n is LocalFunctionStatementSyntax)
         .ToDictionary(
                 n => n.SpanStart,
                 n => n is MethodDeclarationSyntax m ? m.Identifier.Text :
