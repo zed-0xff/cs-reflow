@@ -2,7 +2,7 @@
 	{
 		object obj = default(object);
 		object obj2 = default(object);
-		obj = P_0;  // UnknownValue
+		obj = P_0;
 		if ((int) /*calli with instance method signature not supportd*/ == 0)
 		{
 			byte[] array;

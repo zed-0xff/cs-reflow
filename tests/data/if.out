@@ -12,12 +12,12 @@ void as_is()
 
 void keep_true()
 {
-    foo();  // InvocationExpression is not supported.
+    foo();
 }
 
 void keep_false()
 {
-    bar();  // InvocationExpression is not supported.
+    bar();
 }
 
 void as_is_indirect()
@@ -34,11 +34,11 @@ void as_is_indirect()
 
 void keep_true_indirect()
 {
-    foo();  // InvocationExpression is not supported.
+    foo();
 }
 
 void keep_false_indirect()
 {
-    bar();  // InvocationExpression is not supported.
+    bar();
 }
 

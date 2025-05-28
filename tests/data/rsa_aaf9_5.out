@@ -2,7 +2,7 @@
 	{
 		object obj = default(object);
 		object obj2 = default(object);
-		obj2 = object_0beb;  // UnknownValue
+		obj2 = object_0beb;
 		if (String.StartsWith(obj2, Strings_a392.a61152b364724562909882c1c581e1e6))
 		{
 			if (String.EndsWith(obj2, Strings_a392.ac17ada76b14486c83f1e0819fe49a19))

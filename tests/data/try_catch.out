@@ -1,19 +1,178 @@
-	public unsafe override void try_catch(PaintEventArgs paintEventArgs_0a)
-	{
-		try
-		{
-			if (Control.GetStyle(this, 8192))
-			{
-				((Control)this).OnPaintBackground(paintEventArgs_0a);
-			}
-	
-			ab5dbb20393b4538b9a05d9405e644d5(paintEventArgs_0a);  // InvocationExpression is not supported.
-			return;
-		}
-		catch
-		{
-			Control.Invalidate(this);  // InvocationExpression is not supported.
-			return;
-		}
-	}
+void return_from_try()
+{
+    try
+    {
+        moo1();
+        return;
+    }
+    catch
+    {
+        bar();
+    }
 
+    baz();
+}
+
+void return_from_catch()
+{
+    try
+    {
+        moo();
+    }
+    catch (Ex1)
+    {
+        bar1();
+        return;
+    }
+    catch (Ex2)
+    {
+        asdf();
+    }
+
+    baz();
+}
+
+void break_from_try()
+{
+    lbl_41:
+        try
+        {
+            moo1();
+        }
+        catch (Ex1)
+        {
+            bar();
+        }
+
+    try
+    {
+        moo1();
+    }
+    catch (Ex1)
+    {
+        bar();
+    }
+
+    goto lbl_41;
+}
+
+void continue_from_try()
+{
+    lbl_58:
+        try
+        {
+            moo1();
+        }
+        catch (Ex1)
+        {
+            bar();
+        }
+
+    try
+    {
+        moo1();
+    }
+    catch (Ex1)
+    {
+        bar();
+    }
+
+    goto lbl_58;
+}
+
+void goto_from_try()
+{
+    lbl_75:
+        try
+        {
+            moo1();
+        }
+        catch (Ex1)
+        {
+            bar();
+        }
+
+    try
+    {
+        moo1();
+    }
+    catch (Ex1)
+    {
+        bar();
+    }
+
+    goto lbl_75;
+}
+
+void set_outer_var()
+{
+    int x = 1;
+    try
+    {
+        x = 2;
+        moo();
+    }
+    catch
+    {
+    }
+
+    if (x == 2)
+    {
+        foo();
+    }
+}
+
+void _1_or_2()
+{
+    int x = 1;
+    try
+    {
+        moo();
+    }
+    catch
+    {
+        x = 2;
+    }
+
+    if (x == 2)
+    {
+        foo();
+    }
+}
+
+void _2_or_3()
+{
+    int x = 1;
+    try
+    {
+        x = 2;
+        moo();
+    }
+    catch
+    {
+        x = 3;
+    }
+
+    if (x == 2)
+    {
+        foo();
+    }
+
+    if (x == 3)
+    {
+        bar();
+    }
+}
+
+void _finally()
+{
+    try
+    {
+        moo();
+    }
+    catch
+    {
+    }
+
+    always_called();
+}

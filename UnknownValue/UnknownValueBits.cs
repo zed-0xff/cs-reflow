@@ -421,4 +421,14 @@ public class UnknownValueBits : UnknownTypedValue
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
 
     public override int GetHashCode() => HashCode.Combine(type.GetHashCode(), bits.GetHashCode());
+
+    public override UnknownValueBase Merge(object other)
+    {
+        return other switch
+        {
+            // TODO: narrower range with new class, that contains a list of UnknownValueBase
+            UnknownValueBits otherBits => new UnknownValueBits(type, bits.Zip(otherBits.bits, (b1, b2) => (sbyte)(b1 == b2 ? b1 : -1)).ToList()),
+            _ => base.Merge(other)
+        };
+    }
 }

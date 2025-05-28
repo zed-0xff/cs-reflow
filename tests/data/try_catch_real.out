@@ -7,12 +7,12 @@
 				((Control)this).OnPaintBackground(paintEventArgs_0a);
 			}
 	
-			ab5dbb20393b4538b9a05d9405e644d5(paintEventArgs_0a);  // InvocationExpression is not supported.
+			ab5dbb20393b4538b9a05d9405e644d5(paintEventArgs_0a);
 			return;
 		}
 		catch
 		{
-			Control.Invalidate(this);  // InvocationExpression is not supported.
+			Control.Invalidate(this);
 			return;
 		}
 	}

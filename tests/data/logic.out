@@ -1,17 +1,17 @@
 void case1()
 {
-    should_run1();  // InvocationExpression is not supported.
+    should_run1();
 }
 
 void case2()
 {
-    should_run2();  // InvocationExpression is not supported.
+    should_run2();
 }
 
 void case3()
 {
-    bool a = true;  // true
-    var c = a ? 123 : (b ? 456 : 789);  // 123
-    stub(c);  // InvocationExpression is not supported.
+    bool a = true;
+    var c = a ? 123 : (b ? 456 : 789); // b is unknown but it should not be evaluated
+    stub(c); // prevent 'c' to be dropped by post-processor
 }
 

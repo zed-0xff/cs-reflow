@@ -8,6 +8,6 @@
 			}
 		}
 	
-		((Form)this).Dispose(bool_0aw);  // InvocationExpression is not supported.
+		((Form)this).Dispose(bool_0aw);
 	}
 

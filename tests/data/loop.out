@@ -1,14 +1,14 @@
 	public unsafe static List<string> loop()
 	{
-		List<string> list = new List<string>();  // ObjectCreationExpression is not supported.
-		List<string> list2 = list;  // UnknownValue
-		int num8 = default(int);  // 0
+		List<string> list = new List<string>();
+		List<string> list2 = list;
+		int num8 = default(int);
 		object obj = default(object);
-		int num10 = default(int);  // 0
+		int num10 = default(int);
 		object obj2 = default(object);
-		obj2 = mkdir_abd3();  // InvocationExpression is not supported.
-		obj = IO.Directory.GetFiles((string)obj2, Strings_a392.a8c2ee1d336b4bee9ea084c338609bd1);  // InvocationExpression is not supported.
-		num8 = ((Array)obj).Length;  // SimpleMemberAccessExpression is not supported.
+		obj2 = mkdir_abd3();
+		obj = IO.Directory.GetFiles((string)obj2, Strings_a392.a8c2ee1d336b4bee9ea084c338609bd1);
+		num8 = ((Array)obj).Length;
 		if (num8 > 0)
 		{
 			num10 = 0;

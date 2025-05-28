@@ -1,9 +1,9 @@
 	public unsafe static string get_icon_a661(object object_0a)
 	{
-		string text = get_str(72129, 73044, 169);  // InvocationExpression is not supported.
-		string text2 = get_str(8975, 9889, 160);  // InvocationExpression is not supported.
-		string text3 = get_str(44130, 45101, 188);  // InvocationExpression is not supported.
-		bool ab759f63c28b4fceadd28e63ce8bde = Class_ae29.flag_ab75;  // SimpleMemberAccessExpression is not supported.
+		string text = get_str(72129, 73044, 169);
+		string text2 = get_str(8975, 9889, 160);
+		string text3 = get_str(44130, 45101, 188);
+		bool ab759f63c28b4fceadd28e63ce8bde = Class_ae29.flag_ab75;
 		if (!ab759f63c28b4fceadd28e63ce8bde)
 		{
 			Class_ae29.flag_ab75 = true;

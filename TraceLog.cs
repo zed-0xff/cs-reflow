@@ -98,17 +98,38 @@ public class TraceLog
         return false;
     }
 
-    // copy labels from both sources
+    // 1. copy labels from both sources
+    // 2. use merged 'value'
+    // 3. merge variables
     void add_with_labels(TraceLog log1, TraceLog log2, int start1, int start2, int n)
     {
         for (int i = 0; i < n; i++)
         {
             int pos1 = start1 + i;
             int pos2 = start2 + i;
-            if (log2.entries[pos2].stmt is LabeledStatementSyntax)
-                entries.Add(log2.entries[pos2]);
-            else
-                entries.Add(log1.entries[pos1]);
+
+            var entry1 = log1.entries[pos1];
+            var entry2 = log2.entries[pos2];
+
+            var stmt1 = entry1.stmt;
+            var stmt2 = entry2.stmt;
+
+            if (stmt1 is LabeledStatementSyntax l1 && stmt2 is LabeledStatementSyntax l2 && l1.Identifier.Text != l2.Identifier.Text)
+                throw new Exception($"Cannot merge labeled statements with different labels: {l1.Identifier} vs {l2.Identifier}");
+
+            // prefer labeled one
+            var stmt = (stmt2 is LabeledStatementSyntax) ? stmt2 : stmt1;
+
+            object? value = object.Equals(entry1.value, entry2.value) ? entry1.value : null;
+
+            var vars = entry1.vars.Clone();
+            vars.MergeCommon(entry2.vars);
+
+            string? comment = null;
+            if (entry1.comment != null && entry2.comment != null && entry1.comment == entry2.comment)
+                comment = entry1.comment;
+
+            entries.Add(new(stmt, value, vars, comment));
         }
     }
 
@@ -132,12 +153,20 @@ public class TraceLog
         int commonEnd = 0;
         if (commonStart < this.entries.Count && commonStart < other.entries.Count)
         {
-            while (eq_stmt(this.entries[this.entries.Count - commonEnd - 1].stmt, other.entries[other.entries.Count - commonEnd - 1].stmt))
+            while (commonEnd < this.entries.Count - commonStart &&
+                    commonEnd < other.entries.Count - commonStart &&
+                    eq_stmt(this.entries[this.entries.Count - commonEnd - 1].stmt, other.entries[other.entries.Count - commonEnd - 1].stmt))
                 commonEnd++;
         }
 
         if (verbosity > 0)
             Console.WriteLine($"[d] TraceLog.Merge: commonStart = {commonStart}, commonEnd = {commonEnd}");
+
+        if (commonEnd + commonStart > this.entries.Count ||
+            commonEnd + commonStart > other.entries.Count)
+        {
+            throw new Exception($"Invalid commonStart ({commonStart}) or commonEnd ({commonEnd}) for TraceLog with {this.entries.Count} and {other.entries.Count} entries");
+        }
 
         TraceLog result = new();
 

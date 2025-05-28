@@ -36,7 +36,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return TypeDB.TryFind(typeName) is not null;
     }
 
-    public abstract bool Contains(long value);
+    public abstract override bool Contains(long value);
     public abstract bool IntersectsWith(UnknownTypedValue right);
     public abstract override long Min();
     public abstract override long Max();
@@ -182,5 +182,14 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return new UnknownValueList(type, Values().Select(v => v | mask).Distinct().OrderBy(x => x).ToList());
 
         return UnknownValueBits.CreateFromOr(type, mask);
+    }
+
+    public override UnknownValueBase Merge(object other)
+    {
+        return other switch
+        {
+            UnknownTypedValue otherTyped => (otherTyped.type == type) ? UnknownValue.Create(type) : UnknownValue.Create(),
+            _ => base.Merge(other)
+        };
     }
 }

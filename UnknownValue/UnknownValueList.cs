@@ -1,6 +1,6 @@
 public class UnknownValueList : UnknownTypedValue
 {
-    public List<long> values = new();
+    public List<long> values = new(); // TODO: test with HashSet
 
     public UnknownValueList(TypeDB.IntInfo type, List<long> values = null) : base(type)
     {
@@ -62,7 +62,10 @@ public class UnknownValueList : UnknownTypedValue
 
     public override string ToString()
     {
-        return $"UnknownValue<{type}>[{values.Count}]";
+        if (values.Count <= 5)
+            return $"UnknownValueList<{type}>{{{string.Join(", ", values)}}}";
+        else
+            return $"UnknownValueList<{type}>[{values.Count}]";
     }
 
     public override long Cardinality() => values.Count;
@@ -79,4 +82,21 @@ public class UnknownValueList : UnknownTypedValue
     public override bool Equals(object obj) => obj is UnknownValueList other && type == other.type && values.SequenceEqual(other.values);
 
     public override int GetHashCode() => HashCode.Combine(type, values);
+
+    public override UnknownValueBase Merge(object other)
+    {
+        return other switch
+        {
+            UnknownValueList l => new UnknownValueList(type, values.Union(l.values).OrderBy(x => x).ToList()),
+            byte b => Contains(b) ? this : new UnknownValueList(type, values.Concat(new[] { (long)b }).OrderBy(x => x).ToList()),
+            sbyte sb => Contains(sb) ? this : new UnknownValueList(type, values.Concat(new[] { (long)sb }).OrderBy(x => x).ToList()),
+            short s => Contains(s) ? this : new UnknownValueList(type, values.Concat(new[] { (long)s }).OrderBy(x => x).ToList()),
+            ushort us => Contains(us) ? this : new UnknownValueList(type, values.Concat(new[] { (long)us }).OrderBy(x => x).ToList()),
+            int i => Contains(i) ? this : new UnknownValueList(type, values.Concat(new[] { (long)i }).OrderBy(x => x).ToList()),
+            uint ui => Contains(ui) ? this : new UnknownValueList(type, values.Concat(new[] { (long)ui }).OrderBy(x => x).ToList()),
+            long l => Contains(l) ? this : new UnknownValueList(type, values.Concat(new[] { (long)l }).OrderBy(x => x).ToList()),
+            // TODO: ulong
+            _ => base.Merge(other)
+        };
+    }
 }

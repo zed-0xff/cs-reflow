@@ -26,6 +26,8 @@ public abstract class UnknownValueBase
     public abstract object Gt(object right);
     public abstract object Lt(object right);
 
+    public abstract bool Contains(long value);
+
     public static object LogicalOr(object left, object right)
     {
         if (left is bool lb && lb)
@@ -142,5 +144,14 @@ public abstract class UnknownValueBase
                 result = default;
                 return false;
         }
+    }
+
+    public virtual UnknownValueBase Merge(object other)
+    {
+        return other switch
+        {
+            UnknownValue u => u,
+            _ => throw new NotImplementedException($"{ToString()}.Merge({other}): not implemented")
+        };
     }
 }

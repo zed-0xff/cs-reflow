@@ -2,26 +2,26 @@
 	{
 		object input = default(object);
 		object result = default(object);
-		int num18 = default(int);  // 0
+		int num18 = default(int);
 		object obj2 = default(object);
 		object arr15 = default(object);
-		ushort type19 = default(ushort);  // 0
-		RSAParameters parameters = default(RSAParameters);  // Default expression 'default(RSAParameters)' is not supported.
-		RSAParameters rSAParameters = default(RSAParameters);  // Default expression 'default(RSAParameters)' is not supported.
-		byte b = default(byte);  // 0
+		ushort type19 = default(ushort);
+		RSAParameters parameters = default(RSAParameters);
+		RSAParameters rSAParameters = default(RSAParameters);
+		byte b = default(byte);
 		object exponent = default(object);
-		int count = default(int);  // 0
-		byte b2 = default(byte);  // 0
-		byte b3 = default(byte);  // 0
-		byte b4 = default(byte);  // 0
+		int count = default(int);
+		byte b2 = default(byte);
+		byte b3 = default(byte);
+		byte b4 = default(byte);
 		object obj3 = default(object);
-		ushort num26 = default(ushort);  // 0
+		ushort num26 = default(ushort);
 		object modulus = default(object);
-		ushort num27 = default(ushort);  // 0
-		byte[] array = new byte[115];  // ArrayCreationExpression is not supported.
-		array[9] = 101;  // 101
-		string text = get_str(49595, 35902, 137);  // InvocationExpression is not supported.
-		int num2 = 0;  // 0
+		ushort num27 = default(ushort);
+		byte[] array = new byte[115];
+		array[9] = 101;
+		string text = get_str(49595, 35902, 137);
+		int num2 = 0;
 		while (true)
 		{
 			int num3 = num2;
@@ -34,8 +34,8 @@
 			num2++;
 		}
 	
-		string text2 = get_str(27513, 9243, 76);  // InvocationExpression is not supported.
-		int num5 = 0;  // 0
+		string text2 = get_str(27513, 9243, 76);
+		int num5 = 0;
 		while (true)
 		{
 			if (num5 >= String.get_Length(text2)) // num = 405
@@ -47,8 +47,8 @@
 			num5++;
 		}
 	
-		string text3 = get_str(38752, 55247, 202);  // InvocationExpression is not supported.
-		int num6 = 0;  // 0
+		string text3 = get_str(38752, 55247, 202);
+		int num6 = 0;
 		while (true)
 		{
 			if (num6 >= String.get_Length(text3)) // num = 506
@@ -60,43 +60,43 @@
 			num6++;
 		}
 	
-		array[62] = 14;  // 14
-		byte[] array2 = new byte[15];  // ArrayCreationExpression is not supported.
-		array[11] = 29;  // 29
-		array[10] = 164;  // 164
-		array[55] = 213;  // 213
-		Runtime.CompilerServices.RuntimeHelpers.InitializeArray(array2, (RuntimeFieldHandle) /*OpCode not supported: ldmembertoken a2327656515942c2af3673172f772396 at IL_016e*/);  // InvocationExpression is not supported.
-		array[7] = 254;  // 254
-		object object_1beo = array2;  // UnknownValue
-		MemoryStream memoryStream;  // UnknownValue
-		object obj;  // UnknownValue
-		array[6] = 141;  // 141
-		array[70] = 248;  // 248
-		array[3] = 81;  // 81
-		array[4] = 2;  // 2
-		array[5] = 178;  // 178
-		array[8] = 232;  // 232
-		QRCoder.PngByteQRCode.aba41bc5444c4cd7875e3b5a7b863448 = array;  // UnknownValue
-		memoryStream = new MemoryStream((byte[])object_0bed);  // ObjectCreationExpression is not supported.
-		array[6] = 141;  // 141
-		input = memoryStream;  // UnknownValue
-		array[70] = 248;  // 248
-		array[5] = 178;  // 178
-		array[4] = 2;  // 2
-		array[3] = 81;  // 81
-		array[8] = 232;  // 232
-		QRCoder.PngByteQRCode.aba41bc5444c4cd7875e3b5a7b863448 = array;  // UnknownValue
-		obj = new BinaryReader((Stream)input);  // ObjectCreationExpression is not supported.
+		array[62] = 14;
+		byte[] array2 = new byte[15];
+		array[11] = 29;
+		array[10] = 164;
+		array[55] = 213;
+		Runtime.CompilerServices.RuntimeHelpers.InitializeArray(array2, (RuntimeFieldHandle) /*OpCode not supported: ldmembertoken a2327656515942c2af3673172f772396 at IL_016e*/);
+		array[7] = 254;
+		object object_1beo = array2;
+		MemoryStream memoryStream;
+		object obj;
+		array[6] = 141;
+		array[70] = 248;
+		array[3] = 81;
+		array[4] = 2;
+		array[5] = 178;
+		array[8] = 232;
+		QRCoder.PngByteQRCode.aba41bc5444c4cd7875e3b5a7b863448 = array;
+		memoryStream = new MemoryStream((byte[])object_0bed);
+		array[6] = 141;
+		input = memoryStream;
+		array[70] = 248;
+		array[5] = 178;
+		array[4] = 2;
+		array[3] = 81;
+		array[8] = 232;
+		QRCoder.PngByteQRCode.aba41bc5444c4cd7875e3b5a7b863448 = array;
+		obj = new BinaryReader((Stream)input);
 		try
 		{
-			array[70] = 248;  // 248
-			array[6] = 141;  // 141
-			array[3] = 81;  // 81
-			array[4] = 2;  // 2
-			array[5] = 178;  // 178
-			array[8] = 232;  // 232
-			QRCoder.PngByteQRCode.aba41bc5444c4cd7875e3b5a7b863448 = array;  // UnknownValue
-			ushort type15 = ((BinaryReader)obj).ReadUInt16();  // InvocationExpression is not supported.
+			array[70] = 248;
+			array[6] = 141;
+			array[3] = 81;
+			array[4] = 2;
+			array[5] = 178;
+			array[8] = 232;
+			QRCoder.PngByteQRCode.aba41bc5444c4cd7875e3b5a7b863448 = array;
+			ushort type15 = ((BinaryReader)obj).ReadUInt16();
 			if (type15 == 33072)
 			{
 				((BinaryReader)obj).ReadByte();

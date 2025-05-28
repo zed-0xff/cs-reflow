@@ -1,6 +1,6 @@
 void case1()
 {
-    init();  // InvocationExpression is not supported.
+    init();
     if (y)
     {
         foo();
@@ -13,7 +13,7 @@ void case1()
 
 void case2()
 {
-    foo();  // InvocationExpression is not supported.
+    foo();
 }
 
 void case3()
@@ -30,13 +30,13 @@ void case3()
 
 void case4()
 {
-    foo();  // InvocationExpression is not supported.
-    bar();  // InvocationExpression is not supported.
+    foo();
+    bar();
 }
 
 void case5()
 {
-    foo();  // InvocationExpression is not supported.
-    bar();  // InvocationExpression is not supported.
+    foo();
+    bar();
 }
 

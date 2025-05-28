@@ -27,6 +27,8 @@ public class UnknownValue : UnknownValueBase
         return "UnknownValue";
     }
 
+    public override bool Contains(long value) => true;
+
     public override long Cardinality()
     {
         throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
@@ -60,4 +62,6 @@ public class UnknownValue : UnknownValueBase
     public override bool Equals(object? obj) => obj is UnknownValue;
 
     public override int GetHashCode() => typeof(UnknownValue).GetHashCode();
+
+    public override UnknownValueBase Merge(object other) => this;
 }

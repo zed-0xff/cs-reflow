@@ -6,10 +6,10 @@ using System.Collections.Generic;
 
 class ControlFlowNode
 {
-    public StatementSyntax Statement { get; }
+    public CSharpSyntaxNode Statement { get; }
     public List<ControlFlowNode> Children { get; } = new();
 
-    public ControlFlowNode(StatementSyntax statement)
+    public ControlFlowNode(CSharpSyntaxNode statement)
     {
         Statement = statement;
     }
@@ -32,7 +32,7 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         _stack.Push(Root);
     }
 
-    private void AddNode(StatementSyntax stmt)
+    private void AddNode(CSharpSyntaxNode stmt)
     {
         var node = new ControlFlowNode(stmt);
         _stack.Peek().Children.Add(node);
@@ -44,7 +44,7 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         _stack.Pop();
     }
 
-    private void VisitControlFlow(StatementSyntax stmt, Action baseVisit)
+    private void VisitControlFlow(CSharpSyntaxNode stmt, Action baseVisit)
     {
         AddNode(stmt);
         baseVisit();
@@ -59,6 +59,21 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         }
         _labels[node.Identifier.ToString()] = node;
         VisitControlFlow(node, () => base.VisitLabeledStatement(node));
+    }
+
+    public override void VisitTryStatement(TryStatementSyntax node)
+    {
+        VisitControlFlow(node, () => base.VisitTryStatement(node));
+    }
+
+    public override void VisitCatchClause(CatchClauseSyntax node)
+    {
+        VisitControlFlow(node, () => base.VisitCatchClause(node));
+    }
+
+    public override void VisitFinallyClause(FinallyClauseSyntax node)
+    {
+        VisitControlFlow(node, () => base.VisitFinallyClause(node));
     }
 
     public override void VisitIfStatement(IfStatementSyntax node)

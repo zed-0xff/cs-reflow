@@ -6,10 +6,10 @@ public class UnknownValueListTests
     public void Test_ToString()
     {
         UnknownValueList a = new(TypeDB.UInt);
-        Assert.Equal("UnknownValue<uint>[0]", a.ToString());
+        Assert.Equal("UnknownValueList<uint>{}", a.ToString());
 
         UnknownValueList b = new(TypeDB.Int, new List<long> { 1, 2, 3 });
-        Assert.Equal("UnknownValue<int>[3]", b.ToString());
+        Assert.Equal("UnknownValueList<int>{1, 2, 3}", b.ToString());
     }
 
     [Fact]

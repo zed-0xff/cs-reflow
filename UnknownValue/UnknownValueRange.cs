@@ -233,5 +233,27 @@ public class UnknownValueRange : UnknownTypedValue
             (min, max) = (max, min);
         return new UnknownValueRange(type, new LongRange(min, max));
     }
+
+    public override UnknownValueBase Merge(object other)
+    {
+        return other switch
+        {
+            UnknownValueRange r =>
+                (r.Contains(Range.Min) && r.Contains(Range.Max)) ? r :
+                (Contains(r.Range.Min) && Contains(r.Range.Max)) ? this :
+                new UnknownValueRange(type),                                // TODO: handle merging ranges more intelligently
+
+            byte b => Contains(b) ? this : new UnknownValueRange(type), // and for all of these
+            sbyte sb => Contains(sb) ? this : new UnknownValueRange(type),
+            short s => Contains(s) ? this : new UnknownValueRange(type),
+            ushort us => Contains(us) ? this : new UnknownValueRange(type),
+            int i => Contains(i) ? this : new UnknownValueRange(type),
+            uint ui => Contains(ui) ? this : new UnknownValueRange(type),
+            long l => Contains(l) ? this : new UnknownValueRange(type),
+            ulong ul => (ul <= long.MaxValue && Contains((long)ul)) ? this : new UnknownValue(),
+
+            _ => base.Merge(other)
+        };
+    }
 }
 
