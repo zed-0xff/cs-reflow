@@ -291,10 +291,14 @@ public class PostProcessor
                 break;
 
             case TryStatementSyntax tryStmt:
+                var newFinally = tryStmt.Finally?.WithBlock(PostProcess(tryStmt.Finally.Block));
+                if (newFinally != null && newFinally.Block.Statements.Count == 0)
+                    newFinally = null; // remove empty finally block
+
                 return tryStmt
                     .WithBlock(PostProcess(tryStmt.Block))
                     .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })))
-                    .WithFinally(tryStmt.Finally?.WithBlock(PostProcess(tryStmt.Finally.Block)));
+                    .WithFinally(newFinally);
                 break;
 
             case BlockSyntax blockStmt:

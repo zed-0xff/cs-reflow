@@ -121,7 +121,7 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         var stmt = node.Statement;
         if (stmt != null)
         {
-            string line = $"{stmt.LineNo().ToString().PadLeft(6)}: {new string(' ', depth*IndentSpaces)}{stmt.Title()}";
+            string line = $"{stmt.LineNo().ToString().PadLeft(6)}: {new string(' ', depth * IndentSpaces)}{stmt.Title()}";
             if (stmt is GotoStatementSyntax gotoStmt && gotoStmt.Expression is IdentifierNameSyntax id && _labels.TryGetValue(id.Identifier.ToString(), out var label))
             {
                 line = line.PadRight(CommentPadding);
