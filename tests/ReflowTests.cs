@@ -88,6 +88,12 @@ public class ReflowTests
     }
 
     [Fact]
+    public void try_catch_real()
+    {
+        checkData("try_catch_real");
+    }
+
+    [Fact]
     public void CheckBox_a47b()
     {
         checkData("CheckBox_a47b");
@@ -151,5 +157,11 @@ public class ReflowTests
     public void if_()
     {
         checkData("if");
+    }
+
+    [Fact]
+    public void if2()
+    {
+        checkData("if2");
     }
 }

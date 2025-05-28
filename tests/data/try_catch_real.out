@@ -1,0 +1,19 @@
+	public unsafe override void try_catch(PaintEventArgs paintEventArgs_0a)
+	{
+		try
+		{
+			if (Control.GetStyle(this, 8192))
+			{
+				((Control)this).OnPaintBackground(paintEventArgs_0a);
+			}
+	
+			ab5dbb20393b4538b9a05d9405e644d5(paintEventArgs_0a);  // InvocationExpression is not supported.
+			return;
+		}
+		catch
+		{
+			Control.Invalidate(this);  // InvocationExpression is not supported.
+			return;
+		}
+	}
+

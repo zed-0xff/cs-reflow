@@ -1,0 +1,44 @@
+void as_is()
+{
+    if (a)
+    {
+        foo();
+    }
+    else
+    {
+        bar();
+    }
+}
+
+void keep_true()
+{
+    foo();  // InvocationExpression is not supported.
+}
+
+void keep_false()
+{
+    bar();  // InvocationExpression is not supported.
+}
+
+void as_is_indirect()
+{
+    if (a)
+    {
+        foo();
+    }
+    else
+    {
+        bar();
+    }
+}
+
+void keep_true_indirect()
+{
+    foo();  // InvocationExpression is not supported.
+}
+
+void keep_false_indirect()
+{
+    bar();  // InvocationExpression is not supported.
+}
+
