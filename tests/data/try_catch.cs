@@ -49,6 +49,8 @@ void break_from_try()
             bar();
         }
     }
+
+    baz();
 }
 
 void continue_from_try()

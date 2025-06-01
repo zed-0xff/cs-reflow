@@ -11,11 +11,14 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
 using ReturnsDictionary = System.Collections.Generic.Dictionary<string, int>;
+using FlowDictionary = System.Collections.Generic.Dictionary<Microsoft.CodeAnalysis.SyntaxNode, ControlFlowNode>;
 
 public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
     // shared
     SyntaxTree _tree;
+    FlowDictionary _flowDict;
+    HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
 
     // local
@@ -314,9 +317,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.AddComments = AddComments;
         clone.showIntermediateLogs = showIntermediateLogs;
 
-        clone._tree = _tree;     // shared, r/o
+        clone._tree = _tree;                   // shared, r/o
+        clone._flowDict = _flowDict;           // shared, r/o?
         clone._parentReturns = _parentReturns; // shared, r/o
-        clone._flowInfos = _flowInfos;   // shared, r/w
+        clone._flowInfos = _flowInfos;         // shared, r/w
+        clone._visitedLabels = _visitedLabels; // shared, r/w
 
         return clone;
     }
@@ -601,6 +606,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         var stmt = section2.Statements[i];
                         if (stmt is LabeledStatementSyntax l && l.Identifier.Text == label)
                         {
+                            _visitedLabels.Add(label);
                             section = section2;
                             start_idx = i;
                             found = true;
@@ -858,15 +864,29 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             StatementSyntax stmt = statements[i];
             string comment = "";
-            string label = "";
             object? value = UnknownValue.Create();
             bool skip = false;
             bool trace = true;
 
+            ControlFlowNode flowNode = new();
+            _flowDict.TryGetValue(stmt, out flowNode);
+
             if (stmt is LabeledStatementSyntax l0)
             {
-                label = l0.Identifier.Text;
+                _visitedLabels.Add(l0.Identifier.Text);
                 stmt = l0.Statement;
+                if (flowNode.keep)
+                {
+                    if (l0.Statement is not EmptyStatementSyntax)
+                    {
+                        l0 = l0
+                            .WithStatement(EmptyStatement())
+                            .WithAdditionalAnnotations(
+                                    new SyntaxAnnotation("OriginalLineNo", l0.LineNo().ToString())
+                                    );
+                    }
+                    _traceLog.entries.Add(new TraceEntry(l0, null, _varProcessor.VariableValues));
+                }
             }
             int lineno = stmt.LineNo();
 
@@ -924,6 +944,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case GotoStatementSyntax:
+                        if (flowNode.keep)
+                        {
+                            skip = false;
+                            trace = false;
+                        }
+                        else
+                        {
+                            skip = true;
+                        }
+                        break;
+
                     case ContinueStatementSyntax:
                     case BreakStatementSyntax:
                     case BlockSyntax:
@@ -976,6 +1007,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 _states[state] = _traceLog.entries.Count - 1;
             }
 
+            if (!trace)
+                continue;
+
             try
             {
                 switch (stmt)
@@ -1027,8 +1061,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case WhileStatementSyntax whileStmt:
-                        if (trace)
-                            trace_while(whileStmt);
+                        trace_while(whileStmt);
                         break;
 
                     case DoStatementSyntax doStmt:
@@ -1263,6 +1296,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     if (clone._traceLog.entries[idx].stmt is LabeledStatementSyntax labelStmt)
                     {
                         labelId = labelStmt.Identifier;
+                        _visitedLabels.Add(labelId.Text);
                     }
                     else
                     {
@@ -1496,6 +1530,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
+
+        var collector = new ControlFlowTreeCollector();
+        collector.Process(body);
+        _flowDict = collector.Root.ToDictionary();
 
         var newBody = ReflowBlock(body, isMethod: true);
         if (PostProcess)

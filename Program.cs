@@ -300,7 +300,7 @@ class Program
 
                         Console.WriteLine();
                         var collector = new ControlFlowTreeCollector();
-                        collector.Visit(method);
+                        collector.Process(method);
                         Console.WriteLine("Control Flow Tree:");
                         collector.PrintTree();
                     }
