@@ -4,88 +4,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 
-using FlowDictionary = System.Collections.Generic.Dictionary<Microsoft.CodeAnalysis.SyntaxNode, ControlFlowNode>;
-
-class ControlFlowNode
-{
-    public CSharpSyntaxNode? Statement { get; } = null;
-    public List<ControlFlowNode> Children { get; } = new();
-    public ControlFlowNode? Parent { get; } = null;
-
-    public ControlFlowNode() {}
-
-    public ControlFlowNode(CSharpSyntaxNode? statement, ControlFlowNode? parent)
-    {
-        Statement = statement;
-        Parent = parent;
-    }
-
-    public int LineNo() => Statement?.LineNo() ?? 0;
-
-    public bool keep = false;
-    public bool hasBreak = false;
-    public bool hasContinue = false;
-
-    public string ShortFlags()
-    {
-        char[] a = new char[] { '_', '_', '_' };
-
-        if (keep)        a[0] = 'K';
-        if (hasBreak)    a[1] = 'B';
-        if (hasContinue) a[2] = 'C';
-
-        string s = new string(a);
-        if (s.All(c => c == '_'))
-            s = s.Replace("_", " ");
-        return s;    
-    }
-
-    public FlowDictionary ToDictionary()
-    {
-        FlowDictionary dict = new();
-        if (Statement != null)
-        {
-            dict[Statement] = this;
-        }
-        foreach(var child in Children)
-        {
-            var childDict = child.ToDictionary();
-            foreach (var kvp in childDict)
-                dict[kvp.Key] = kvp.Value;
-        }
-        return dict;
-    }
-
-    public ControlFlowNode? FindParent(SyntaxKind kind)
-    {
-        ControlFlowNode? current = this;
-        while (current != null)
-        {
-            if (current.Statement?.Kind() == kind)
-                return current;
-            current = current.Parent;
-        }
-        return null;
-    }
-
-    public bool IsBreakable()
-    {
-        return Statement is ForStatementSyntax ||
-            Statement is ForEachStatementSyntax ||
-            Statement is WhileStatementSyntax ||
-            Statement is DoStatementSyntax ||
-            Statement is SwitchStatementSyntax;
-    }
-
-    public bool IsContinuable()
-    {
-        return Statement is ForStatementSyntax ||
-            Statement is ForEachStatementSyntax ||
-            Statement is WhileStatementSyntax ||
-            Statement is DoStatementSyntax;
-    }
-}
-
 class ControlFlowTreeCollector : CSharpSyntaxWalker
 {
     public ControlFlowNode Root { get; }
@@ -239,11 +157,12 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         node.Children.ForEach(gather_flags);
 
         bool wasTry = false;
-        switch(node.Statement)
+        switch (node.Statement)
         {
             case BreakStatementSyntax:
                 wasTry = false;
-                while (true){
+                while (true)
+                {
                     node = node.Parent;
                     if (node.Statement is TryStatementSyntax)
                         wasTry = true;
@@ -260,7 +179,8 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
 
             case ContinueStatementSyntax:
                 wasTry = false;
-                while (true){
+                while (true)
+                {
                     node = node.Parent;
                     if (node.Statement is TryStatementSyntax)
                         wasTry = true;
@@ -296,6 +216,6 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
     {
         Visit(node);
         gather_flags(Root);
-    }    
+    }
 }
 

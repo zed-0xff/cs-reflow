@@ -5,12 +5,13 @@ using System.Collections.Generic;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
+using HintsDictionary = System.Collections.Generic.Dictionary<int, EHint>;
 
 public class TraceLog
 {
     public List<TraceEntry> entries = new();
     public HintsDictionary hints = new();
+    public FlowInfo flowInfo = new();
 
     public override string ToString()
     {
@@ -42,8 +43,8 @@ public class TraceLog
         int diff_key = -1;
         foreach (var kvp in hints1)
         {
-            bool value1 = kvp.Value;
-            if (!hints2.TryGetValue(kvp.Key, out bool value2))
+            EHint value1 = kvp.Value;
+            if (!hints2.TryGetValue(kvp.Key, out EHint value2))
                 return -1;
 
             if (value1 != value2)
@@ -73,7 +74,7 @@ public class TraceLog
 
     string hints2str(HintsDictionary hints)
     {
-        return "{" + string.Join(", ", hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}")) + "}";
+        return "{" + string.Join(", ", hints.Select(kv => $"{kv.Key}:{kv.Value}")) + "}";
     }
 
     bool eq_stmt(StatementSyntax stmt1, StatementSyntax stmt2)
@@ -237,8 +238,15 @@ public class TraceLog
                     .ToArray()
                 );
 
-        BlockSyntax thenBlock1 = hints[hint_key] ? thenBlock : elseBlock;
-        BlockSyntax elseBlock1 = hints[hint_key] ? elseBlock : thenBlock;
+        bool hint = hints[hint_key] switch
+        {
+            EHint.True => true,
+            EHint.False => false,
+            _ => throw new Exception($"Unexpected hint value for key {hint_key}: {hints[hint_key]}")
+        };
+
+        BlockSyntax thenBlock1 = hint ? thenBlock : elseBlock;
+        BlockSyntax elseBlock1 = hint ? elseBlock : thenBlock;
 
         StatementSyntax newIfStmt = ifStmt
             .WithStatement(thenBlock1)

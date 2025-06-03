@@ -9,14 +9,22 @@ using System;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-using HintsDictionary = System.Collections.Generic.Dictionary<int, bool>;
+using HintsDictionary = System.Collections.Generic.Dictionary<int, EHint>;
 using ReturnsDictionary = System.Collections.Generic.Dictionary<string, int>;
-using FlowDictionary = System.Collections.Generic.Dictionary<Microsoft.CodeAnalysis.SyntaxNode, ControlFlowNode>;
+
+public enum EHint
+{
+    None = 0,
+    True = 1,
+    False = 2,
+    Unknown = 3
+}
 
 public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
     // shared
     SyntaxTree _tree;
+    ControlFlowNode _flowRoot;
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
@@ -53,73 +61,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _stopWatch = Stopwatch.StartNew();
     }
 
-    class FlowInfo
-    {
-        public int id = -1;
-        public SyntaxKind Kind = SyntaxKind.None;
-        public bool hasTrue = false;
-        public bool hasFalse = false;
-        public bool hasUnknown = false;
-        public bool hasBreak = false;
-        public bool hasContinue = false;
-        public bool hasReturn = false;
-        public bool hasOutGoto = false;
-        public bool hasInterCaseGoto = false; // goto from one case into a middle of another
-        public HashSet<string> loopVars = new();
-        public HashSet<object> values = new();
-
-        public FlowInfo() { }
-
-        public FlowInfo(SyntaxKind kind, int id = -1)
-        {
-            this.id = id;
-            this.Kind = kind;
-        }
-
-        public override string ToString()
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.Append("<FlowInfo");
-            if (id != -1)
-                sb.Append($" @{id}");
-            if (Kind != SyntaxKind.None)
-                sb.Append($" {Kind}");
-            if (hasTrue)
-                sb.Append(" hasTrue");
-            if (hasFalse)
-                sb.Append(" hasFalse");
-            if (hasUnknown)
-                sb.Append(" hasUnknown");
-            if (hasBreak)
-                sb.Append(" hasBreak");
-            if (hasContinue)
-                sb.Append(" hasContinue");
-            if (hasOutGoto)
-                sb.Append(" hasOutGoto");
-            if (hasInterCaseGoto)
-                sb.Append(" hasInterCaseGoto");
-            if (hasReturn)
-                sb.Append(" hasReturn");
-            if (loopVars.Count > 0)
-                sb.Append($" loopVars=[{String.Join(", ", loopVars)}]");
-            if (values.Count > 0)
-            {
-                if (values.Count > 5)
-                    sb.Append($" values=[{String.Join(", ", values.Take(5))}, …][{values.Count}]");
-                else if (values.Count == 1 && values.First() is bool)
-                {
-                    // skip
-                }
-                else
-                {
-                    sb.Append($" values=[{String.Join(", ", values)}]");
-                }
-            }
-            sb.Append(">");
-
-            return sb.ToString();
-        }
-    }
 
     //    class Context
     //    {
@@ -318,7 +259,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.showIntermediateLogs = showIntermediateLogs;
 
         clone._tree = _tree;                   // shared, r/o
-        clone._flowDict = _flowDict;           // shared, r/o?
+        clone._flowRoot = _flowRoot;           // shared, r/o, but may have clone's own override(s)
+        clone._flowDict = _flowDict;           // shared, r/o, but may have clone's own override(s)
         clone._parentReturns = _parentReturns; // shared, r/o
         clone._flowInfos = _flowInfos;         // shared, r/w
         clone._visitedLabels = _visitedLabels; // shared, r/w
@@ -329,6 +271,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public void SetHints(HintsDictionary flowHints)
     {
         _flowHints = new(flowHints);
+    }
+
+    private ControlFlowUnflattener WithOwnFlowDict()
+    {
+        _flowRoot = _flowRoot.RootClone();
+        _flowDict = _flowRoot.ToDictionary();
+        return this;
     }
 
     public ControlFlowUnflattener WithHints(HintsDictionary flowHints)
@@ -361,9 +310,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         while (true)
         {
             object value;
-            if (_flowHints.TryGetValue(loop_id, out bool hintValue))
+            if (_flowHints.TryGetValue(loop_id, out EHint hintValue))
             {
-                value = hintValue;
+                value = hintValue switch
+                {
+                    EHint.True => true,
+                    EHint.False => false,
+                    EHint.Unknown => UnknownValue.Create(),
+                    _ => throw new ArgumentOutOfRangeException(nameof(hintValue), hintValue, "Unknown hint value")
+                };
             }
             else
             {
@@ -689,6 +644,58 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return this;
     }
 
+    WhileStatementSyntax convert_while(WhileStatementSyntax whileStmt, ReturnsDictionary retLabels)
+    {
+        var block = whileStmt.Statement as BlockSyntax;
+        if (block == null)
+            throw new NotSupportedException($"While statement at line {whileStmt.LineNo()} with single statement body is not supported.");
+
+        return whileStmt
+            .WithStatement(ReflowBlock(block)) // XXX retLabels not used
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("OriginalLineNo", whileStmt.LineNo().ToString())
+                    );
+    }
+
+    WhileStatementSyntax? maybe_convert_while(WhileStatementSyntax whileStmt, ReturnsDictionary retLabels)
+    {
+        if (_flowDict[whileStmt].forceInline)
+            return null; // called from clone()
+
+        // TODO: single-statement while
+        if (whileStmt.Statement is not BlockSyntax)
+        {
+            return null;
+        }
+
+        var clone = Clone()
+            .WithOwnFlowDict()
+            .WithParentReturns(retLabels);
+
+        // can't call trace_statements_inline() bc all breaks/continues/returns need to be catched
+        clone._flowDict[whileStmt].forceInline = true;
+        BlockSyntax? whileParent = whileStmt.Parent as BlockSyntax;
+        if (whileParent == null)
+        {
+            Console.Error.WriteLine($"[?] {whileStmt.TitleWithLineNo()}: no parent block");
+            return null;
+        }
+
+        int whileIdx = whileParent.Statements.IndexOf(whileStmt);
+        if (whileIdx < 0)
+        {
+            Console.Error.WriteLine($"[?] {whileStmt.TitleWithLineNo()}: while statement not found in parent block.");
+            return null;
+        }
+
+        var log = clone.TraceBlock(whileParent, whileIdx);
+
+        if (log.entries.FirstOrDefault() is TraceEntry te && te.stmt is LabeledStatementSyntax)
+            return convert_while(whileStmt, retLabels);
+
+        return null;
+    }
+
     TryStatementSyntax convert_try(TryStatementSyntax tryStmt, ReturnsDictionary retLabels)
     {
         var clone = Clone().WithParentReturns(retLabels);
@@ -756,15 +763,34 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             case Int64 i64:
                 value = i64 != 0;
                 break;
+            case UnknownValueBase unk:
+                value = !unk.Contains(0);
+                break;
         }
 
         return value;
     }
 
-    public object EvaluateHintedExpression(ExpressionSyntax expression)
+    public object EvaluateHintedBoolExpression(ExpressionSyntax expression)
     {
-        if (_flowHints.TryGetValue(expression.LineNo(), out bool hint))
-            return hint;
+        if (expression is AssignmentExpressionSyntax assignExpr)
+        {
+            throw new NotSupportedException("TBD");
+        }
+        if (_flowHints.TryGetValue(expression.LineNo(), out EHint hint))
+        {
+            switch (hint)
+            {
+                case EHint.True:
+                    return true;
+                case EHint.False:
+                    return false;
+                case EHint.Unknown:
+                    return UnknownValue.Create();
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(hint), hint, "Unknown hint value");
+            }
+        }
 
         return EvaluateBoolExpression(expression);
     }
@@ -886,6 +912,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                                     );
                     }
                     _traceLog.entries.Add(new TraceEntry(l0, null, _varProcessor.VariableValues));
+                    flowNode.kept = true;
                 }
             }
             int lineno = stmt.LineNo();
@@ -904,7 +931,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         if (NodeTitle(ifStmt).Contains("calli with instance method signature not support") && !_flowHints.ContainsKey(lineno))
                             value = UnknownValue.Create();
                         else
-                            value = EvaluateHintedExpression(ifStmt.Condition);
+                            value = EvaluateHintedBoolExpression(ifStmt.Condition);
 
                         comment = value.ToString();
                         if (_flowHints.ContainsKey(lineno))
@@ -933,9 +960,34 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case WhileStatementSyntax whileStmt:
-                        value = EvaluateHintedExpression(whileStmt.Condition);
+                        value = EvaluateHintedBoolExpression(whileStmt.Condition);
                         comment = value.ToString();
-                        skip = true; // skip only if value is known
+                        switch (value)
+                        {
+                            case true:
+                                WhileStatementSyntax? newWhile = maybe_convert_while(whileStmt, retLabels);
+                                if (newWhile == null)
+                                {
+                                    skip = true;
+                                    trace = true;
+                                }
+                                else
+                                {
+                                    stmt = newWhile;
+                                    skip = false;
+                                    trace = false;
+                                }
+                                break;
+                            case false:
+                                skip = true;
+                                trace = false;
+                                break;
+                            default:
+                                skip = false;
+                                trace = false;
+                                stmt = convert_while(whileStmt, retLabels);
+                                break;
+                        }
                         break;
 
                     case UsingStatementSyntax usingStmt:
@@ -948,6 +1000,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         {
                             skip = false;
                             trace = false;
+                            flowNode.kept = true;
                         }
                         else
                         {
@@ -1196,12 +1249,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     }
 
     // does not update variables nor _traceLog
-    public TraceLog TraceBlock(BlockSyntax block)
+    public TraceLog TraceBlock(BlockSyntax block, int start_idx = 0)
     {
         Queue<HintsDictionary> queue = new();
         queue.Enqueue(_flowHints);
         List<TraceLog> logs = new();
         FlowInfo flowInfo = new FlowInfo(SyntaxKind.Block, block.LineNo());
+        int flags = 0;
 
         while (queue.Count > 0)
         {
@@ -1226,7 +1280,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
                 try
                 {
-                    clone.trace_statements_inline(block);
+                    clone.trace_statements_inline(block, start_idx);
                     logs.Add(clone._traceLog);
                     if (Verbosity > 0)
                         Console.WriteLine($"<<< end of block at line {clone._traceLog.entries.Last().stmt.LineNo()}\n");
@@ -1265,11 +1319,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         Console.WriteLine($"<<< {e.Message}\n");
 
                     HintsDictionary hints0 = new(hints);
-                    hints0[e.lineno] = false;
+                    hints0[e.lineno] = EHint.False;
                     queue.Enqueue(hints0);
 
                     HintsDictionary hints1 = new(hints);
-                    hints1[e.lineno] = true;
+                    hints1[e.lineno] = EHint.True;
                     queue.Enqueue(hints1);
                 }
                 catch (LoopException l)
@@ -1279,14 +1333,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
                     int idx = l.idx;
                     VarDict varValues = clone._varProcessor.VariableValues;
-                    while (idx > 0 && clone._traceLog.entries.Last().stmt == clone._traceLog.entries[idx].stmt)
+                    while (idx > 0 && clone._traceLog.entries.Last().stmt.StripLabel() == clone._traceLog.entries[idx].stmt)
                     {
                         varValues = clone._traceLog.entries.Last().vars;
                         clone._traceLog.entries.RemoveAt(clone._traceLog.entries.Count - 1);
                         idx--;
                     }
 
-                    idx++;
                     var targetStmt = clone._traceLog.entries[idx].stmt;
                     if (Verbosity > 0)
                         Console.WriteLine($"[.] loop at line {l.lineno} -> lbl_{targetStmt.LineNo()} (idx={l.idx}, log_len={clone._traceLog.entries.Count})");
@@ -1369,7 +1422,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine($"[d] logs:");
                     for (int i = 0; i < logs.Count; i++)
                     {
-                        Console.WriteLine($"[d] - {i}: {logs[i].entries.Count} entries, hints: [{String.Join(", ", logs[i].hints.Select(kv => $"{kv.Key}:{(kv.Value ? 1 : 0)}"))}]");
+                        Console.WriteLine($"[d] - {i}: {logs[i].entries.Count} entries, hints: [{String.Join(", ", logs[i].hints.Select(kv => $"{kv.Key}:{(kv.Value)}"))}]");
                     }
                 }
             }
@@ -1443,12 +1496,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (logs.Count != 1)
             throw new Exception($"Cannot merge logs: {logs.Count} logs left");
 
-        if (Verbosity > 1 && logs[0].entries.Count > 0)
-            Console.WriteLine($"[=] final vars: {logs[0].entries[^1].vars}");
-        if (Verbosity > 0)
-            Console.WriteLine($"[=] final log: {logs[0]}");
+        var finalLog = logs[0];
+        finalLog.flowInfo = flowInfo;
 
-        return logs[0];
+        if (Verbosity > 1 && finalLog.entries.Count > 0)
+            Console.WriteLine($"[=] final vars: {finalLog.entries[^1].vars}");
+        if (Verbosity > 0)
+            Console.WriteLine($"[=] final log: {finalLog}");
+
+        return finalLog;
     }
 
     public string ReflowMethod(int lineno)
@@ -1474,10 +1530,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             var lastEntry = log.entries.Last();
             _varProcessor.VariableValues.UpdateExisting(lastEntry.vars);
-            if (isMethod && lastEntry.stmt.ToString() == "return;")
-            {
-                log.entries.RemoveAt(log.entries.Count - 1);
-            }
         }
 
         List<StatementSyntax> statements = new();
@@ -1492,8 +1544,43 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             statements.Add(stmt);
         }
 
+        var labels = block.DescendantNodes()
+            .OfType<LabeledStatementSyntax>()
+            .Where(l => _flowDict.TryGetValue(l, out ControlFlowNode flowNode) && flowNode.keep && !flowNode.kept)
+            .ToList();
+
+        foreach (var label in labels)
+        {
+            var lastStmt = getLastStmt(statements);
+            if (!lastStmt.IsTerminal())
+            {
+                log.Print();
+                throw new NotSupportedException($"Labeled statement at line {label.LineNo()} does not end with a terminal statement: {lastStmt}");
+            }
+            statements.Add(
+                label // TODO: trace further
+            );
+        }
+
+        if (isMethod && statements.Count > 1 && statements.Last().ToString() == "return;")
+        {
+            statements.RemoveAt(statements.Count - 1);
+        }
+
         BlockSyntax result = SyntaxFactory.Block(statements);
         return result;
+    }
+
+    CSharpSyntaxNode getLastStmt(object obj)
+    {
+        return obj switch
+        {
+            List<StatementSyntax> list => list.LastOrDefault(),
+            LabeledStatementSyntax labeledStmt => getLastStmt(labeledStmt.Statement),
+            BlockSyntax block => getLastStmt(block.Statements.LastOrDefault()),
+            StatementSyntax stmt => stmt,
+            _ => throw new ArgumentException($"Unsupported type: {obj.GetType()}", nameof(obj))
+        };
     }
 
     public string ReflowMethod(CSharpSyntaxNode methodNode, string indentation = "", string eol = "")
@@ -1533,6 +1620,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         var collector = new ControlFlowTreeCollector();
         collector.Process(body);
+        _flowRoot = collector.Root;
         _flowDict = collector.Root.ToDictionary();
 
         var newBody = ReflowBlock(body, isMethod: true);
@@ -1562,7 +1650,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             _ => throw new ArgumentException("Unsupported method node type.", nameof(methodNode))
         };
 
-        string result = newMethodNode.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true).ToFullString();
+        string result = GotoSpacer.Process(
+                newMethodNode
+                .NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true)
+                .ToFullString()
+                );
         if (linePrefix != "")
         {
             result = linePrefix + result.Replace(eol, eol + linePrefix);

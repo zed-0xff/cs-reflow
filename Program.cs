@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
+using HintsDictionary = System.Collections.Generic.Dictionary<int, EHint>;
+
 class Program
 {
     record Options(
@@ -31,7 +33,7 @@ class Program
         Only
     }
 
-    static ControlFlowUnflattener createUnflattener(string code, Options opts, Dictionary<int, bool> hints)
+    static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints)
     {
         return new ControlFlowUnflattener(code, hints)
         {
@@ -193,16 +195,14 @@ class Program
                 showIntermediateLogs: context.ParseResult.GetValueForOption(showIntermediateLogsOpt)
             );
 
-            var hints = new Dictionary<int, bool>();
+            var hints = new HintsDictionary();
 
             foreach (var entry in opts.hintList ?? Enumerable.Empty<string>())
             {
                 var parts = entry.Split(':');
-                if (parts.Length == 2 &&
-                    int.TryParse(parts[0], out int lineno) &&
-                    bool.TryParse(parts[1], out bool hintValue))
+                if (parts.Length == 2 && int.TryParse(parts[0], out int lineno))
                 {
-                    hints[lineno] = hintValue;
+                    hints[lineno] = Enum.Parse<EHint>(parts[1]);
                 }
                 else
                 {

@@ -24,4 +24,20 @@ public static class SyntaxNodeExtensions
     {
         return node.ToString().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault().Trim();
     }
+
+    public static string TitleWithLineNo(this SyntaxNode node)
+    {
+        return $"{node.LineNo()}: {node.Title()}";
+    }
+
+    public static SyntaxNode StripLabel(this SyntaxNode node) => node is LabeledStatementSyntax l ? l.Statement : node;
+
+    public static bool IsTerminal(this SyntaxNode node)
+    {
+        return node is BreakStatementSyntax ||
+               node is ContinueStatementSyntax ||
+               node is ReturnStatementSyntax ||
+               node is ThrowStatementSyntax ||
+               node is GotoStatementSyntax;
+    }
 }
