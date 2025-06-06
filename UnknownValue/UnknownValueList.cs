@@ -57,6 +57,10 @@ public class UnknownValueList : UnknownTypedValue
         {
             return new UnknownValueList(TypeDB.Int, Values().Select(v => (long)unchecked((int)(uint)v)).ToList());
         }
+        else if (type == TypeDB.Int && toType == TypeDB.UInt) // int -> uint
+        {
+            return new UnknownValueList(TypeDB.UInt, Values().Select(v => (long)unchecked((uint)v)).ToList());
+        }
         return base.Cast(toType);
     }
 
@@ -81,7 +85,14 @@ public class UnknownValueList : UnknownTypedValue
 
     public override bool Equals(object obj) => obj is UnknownValueList other && type == other.type && values.SequenceEqual(other.values);
 
-    public override int GetHashCode() => HashCode.Combine(type, values);
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(type);
+        foreach (var v in values)
+            hash.Add(v);
+        return hash.ToHashCode();
+    }
 
     public override UnknownValueBase Merge(object other)
     {

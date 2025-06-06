@@ -420,7 +420,14 @@ public class UnknownValueBits : UnknownTypedValue
 
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
 
-    public override int GetHashCode() => HashCode.Combine(type.GetHashCode(), bits.GetHashCode());
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(type);
+        foreach (var b in bits)
+            hash.Add(b);
+        return hash.ToHashCode();
+    }
 
     public override UnknownValueBase Merge(object other)
     {
