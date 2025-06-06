@@ -186,6 +186,10 @@ public partial class VariableProcessor
                     // Handle assignment expressions (e.g., num3 = (num4 = (uint)(num2 ^ 0x76ED016F)))
                     var left = assignmentExpr.Left;
                     var right = assignmentExpr.Right;
+
+                    if (!(left is IdentifierNameSyntax))
+                        throw new NotSupportedException($"Assignment to '{left.Kind()}' is not supported");
+
                     string varName = left.ToString(); // XXX arrays?
                     VarsWritten.Add(varName);
 
@@ -363,16 +367,7 @@ public partial class VariableProcessor
             }
 
             var value = EvaluateExpression(expr.Operand);
-            var retValue = eval_prefix(value, expr.Kind());
-
-            if (expr.Operand is IdentifierNameSyntax id)
-            {
-                string varName = id.Identifier.Text;
-                VarsWritten.Add(varName);
-                VarsRead.Add(varName);
-                variableValues[varName] = retValue;
-            }
-            return retValue;
+            return eval_prefix(value, expr.Kind());
         }
 
         static INumber<T> eval_postfix<T>(T value, SyntaxKind kind) where T : INumber<T>, IBitwiseOperators<T, T, T>
