@@ -358,16 +358,25 @@ public partial class VariableProcessor
         // ++x
         object EvaluatePrefixExpression(PrefixUnaryExpressionSyntax expr)
         {
-            if (
-                    expr.Operand is not IdentifierNameSyntax &&
-                    (expr.Kind() == SyntaxKind.PreDecrementExpression || expr.Kind() == SyntaxKind.PreIncrementExpression)
-               )
+            var value = EvaluateExpression(expr.Operand);
+            var retValue = eval_prefix(value, expr.Kind());
+
+            if (expr.Kind() == SyntaxKind.PreDecrementExpression || expr.Kind() == SyntaxKind.PreIncrementExpression)
             {
-                throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");
+                if (expr.Operand is IdentifierNameSyntax id)
+                {
+                    string varName = id.Identifier.Text;
+                    VarsWritten.Add(varName);
+                    VarsRead.Add(varName);
+                    variableValues[varName] = retValue;
+                }
+                else
+                {
+                    throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");
+                }
             }
 
-            var value = EvaluateExpression(expr.Operand);
-            return eval_prefix(value, expr.Kind());
+            return retValue;
         }
 
         static INumber<T> eval_postfix<T>(T value, SyntaxKind kind) where T : INumber<T>, IBitwiseOperators<T, T, T>
