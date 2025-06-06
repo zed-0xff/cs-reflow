@@ -15,6 +15,24 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_int_negate()
+    {
+        int x = 123;
+        int y = ~x;
+        Assert.Equal(-124, y);
+        Assert.Equal(123, x);
+
+        string stmt_str = "int y = ~x";
+        VariableProcessor processor = new();
+        processor.VariableValues["x"] = 123;
+        var result = processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+        Assert.IsType<int>(processor.VariableValues["y"]);
+        Assert.Equal(-124, processor.VariableValues["y"]);
+        Assert.IsType<int>(processor.VariableValues["x"]);
+        Assert.Equal(123, processor.VariableValues["x"]);
+    }
+
+    [Fact]
     public void Test_int_assign_existing()
     {
         string expr_str = "x = 123";
