@@ -200,14 +200,31 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
                 var parentTry = node.FindParent(SyntaxKind.TryStatement);
                 if (parentTry != null)
                 {
-                    var labelNode = _labels[gotoStmt.Expression.ToString()];
-                    if (!object.Equals(parentTry, labelNode.FindParent(SyntaxKind.TryStatement)))
+                    switch (gotoStmt.CaseOrDefaultKeyword.Kind())
                     {
-                        node.keep = true;
-                        labelNode.keep = true;
+                        case SyntaxKind.DefaultKeyword:
+                        case SyntaxKind.CaseKeyword:
+                            // "goto case XXX"
+                            // "goto default" handled below
+                            var switchStmt = node.FindParent(SyntaxKind.SwitchStatement);
+                            if (!object.Equals(parentTry, switchStmt.FindParent(SyntaxKind.TryStatement)))
+                            {
+                                node.keep = true;
+                                switchStmt.keep = true;
+                            }
+                            break;
+
+                        default:
+                            // "goto labelXXX"
+                            var labelNode = _labels[gotoStmt.Expression.ToString()];
+                            if (!object.Equals(parentTry, labelNode.FindParent(SyntaxKind.TryStatement)))
+                            {
+                                node.keep = true;
+                                labelNode.keep = true;
+                            }
+                            break;
                     }
                 }
-
                 break;
         }
     }
