@@ -34,74 +34,121 @@ void return_from_catch()
 
 void break_from_try()
 {
-    lbl_41:
+    while (true)
+    {
         try
         {
-            moo1();
+            bft1();
+            break;
         }
         catch (Ex1)
         {
             bar();
         }
-
-    try
-    {
-        moo1();
-    }
-    catch (Ex1)
-    {
-        bar();
     }
 
-    goto lbl_41;
+    baz();
 }
 
 void continue_from_try()
 {
-    lbl_58:
+    while (true)
+    {
         try
         {
-            moo1();
+            cft1();
+            continue;
         }
         catch (Ex1)
         {
             bar();
         }
-
-    try
-    {
-        moo1();
-    }
-    catch (Ex1)
-    {
-        bar();
     }
 
-    goto lbl_58;
+    baz();
 }
 
 void goto_from_try()
 {
-    lbl_75:
+    while (true)
+    {
         try
         {
-            moo1();
+            gft1();
+            goto l2;
         }
         catch (Ex1)
         {
             bar();
         }
-
-    try
-    {
-        moo1();
-    }
-    catch (Ex1)
-    {
-        bar();
     }
 
-    goto lbl_75;
+    return;
+
+    l2:
+        baz();
+}
+
+void goto_from_catch1()
+{
+    while (true)
+    {
+        try
+        {
+            moo();
+        }
+        catch (Ex1)
+        {
+            goto l2;
+        }
+    }
+
+    return;
+
+    l2:
+        baz();
+}
+
+void goto_from_catch2()
+{
+    while (true)
+    {
+        bbb();
+        try
+        {
+            moo();
+        }
+        catch (Ex1)
+        {
+            goto l2;
+        }
+    }
+
+    return;
+
+    l2:
+        baz();
+}
+
+void goto_from_catch3()
+{
+    while (true)
+    {
+        bbb();
+        try
+        {
+            moo();
+        }
+        catch (Ex1)
+        {
+            goto l2;
+        }
+    }
+
+    return;
+
+    l2:
+        baz();
 }
 
 void set_outer_var()

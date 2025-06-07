@@ -44,8 +44,7 @@ public class VarDict : Dictionary<string, object>
             }
             else
             {
-                // If the object is not ICloneable, you might need to handle how to copy it
-                clonedDict[entry.Key] = entry.Value; // Just copy reference as is
+                clonedDict[entry.Key] = entry.Value;
             }
         }
 

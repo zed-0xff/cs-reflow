@@ -161,17 +161,19 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         {
             case BreakStatementSyntax:
                 wasTry = false;
-                while (true)
+                for (var pnode = node.Parent; pnode != null; pnode = pnode.Parent)
                 {
-                    node = node.Parent;
-                    if (node.Statement is TryStatementSyntax)
+                    if (pnode.Statement is TryStatementSyntax)
                         wasTry = true;
 
-                    if (node.IsBreakable())
+                    if (pnode.IsBreakable())
                     {
-                        node.hasBreak = true;
+                        pnode.hasBreak = true;
                         if (wasTry)
+                        {
                             node.keep = true;
+                            pnode.keep = true;
+                        }
                         break;
                     }
                 }
@@ -179,17 +181,19 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
 
             case ContinueStatementSyntax:
                 wasTry = false;
-                while (true)
+                for (var pnode = node.Parent; pnode != null; pnode = pnode.Parent)
                 {
-                    node = node.Parent;
-                    if (node.Statement is TryStatementSyntax)
+                    if (pnode.Statement is TryStatementSyntax)
                         wasTry = true;
 
-                    if (node.IsContinuable())
+                    if (pnode.IsContinuable())
                     {
-                        node.hasContinue = true;
+                        pnode.hasContinue = true;
                         if (wasTry)
+                        {
                             node.keep = true;
+                            pnode.keep = true;
+                        }
                         break;
                     }
                 }

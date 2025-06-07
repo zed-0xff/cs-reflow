@@ -25,6 +25,17 @@ class ControlFlowNode
         Parent = parent;
     }
 
+    public ControlFlowNode Clone()
+    {
+        ControlFlowNode clone = new(Statement, Parent);
+        clone.flags = flags;
+        foreach (var child in Children)
+        {
+            clone.Children.Add(child);
+        }
+        return clone;
+    }
+
     public int LineNo() => Statement?.LineNo() ?? 0;
 
     public bool keep
@@ -84,11 +95,12 @@ class ControlFlowNode
 
     public string ShortFlags()
     {
-        char[] a = new char[] { '_', '_', '_' };
+        char[] a = new char[] { '_', '_', '_', '_' };
 
         if (keep) a[0] = 'K';
         if (hasBreak) a[1] = 'B';
         if (hasContinue) a[2] = 'C';
+        if (forceInline) a[3] = 'I';
 
         string s = new string(a);
         if (s.All(c => c == '_'))
@@ -139,6 +151,11 @@ class ControlFlowNode
             Statement is ForEachStatementSyntax ||
             Statement is WhileStatementSyntax ||
             Statement is DoStatementSyntax;
+    }
+
+    public override string ToString()
+    {
+        return $"[{ShortFlags()}]";
     }
 
     const int IndentSpaces = 2;

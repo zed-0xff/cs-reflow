@@ -13,14 +13,20 @@ public class GotoSpacer : CSharpSyntaxRewriter
         for (int i = 0; i < node.Statements.Count; i++)
         {
             var stmt = node.Statements[i];
-            if (stmt is GotoStatementSyntax && i < node.Statements.Count - 1)
+            switch (stmt)
             {
-                stmt = stmt.WithTrailingTrivia(
-                    TriviaList(
-                        EndOfLine("\n"),
-                        EndOfLine("\n") // Add a blank line after the goto statement
-                    )
-                );
+                case GotoStatementSyntax:
+                case ReturnStatementSyntax:
+                    if (i < node.Statements.Count - 1)
+                    {
+                        stmt = stmt.WithTrailingTrivia(
+                                TriviaList(
+                                    EndOfLine("\n"),
+                                    EndOfLine("\n") // Add a blank line after the goto/return
+                                    )
+                                );
+                    }
+                    break;
             }
             newStatements.Add(stmt);
         }

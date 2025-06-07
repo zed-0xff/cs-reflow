@@ -12,10 +12,14 @@ public class TraceLog
     public List<TraceEntry> entries = new();
     public HintsDictionary hints = new();
     public FlowInfo flowInfo = new();
+    public string Id => $"TL{id:X4}";
+    int id = nextId++;
+
+    static int nextId = 0;
 
     public override string ToString()
     {
-        return $"<TraceLog: {entries.Count} entries, {hints.Count} hints>";
+        return $"<TraceLog TL{id:X4}: {entries.Count} entries, {hints.Count} hints>";
     }
 
     public TraceLog CutFrom(int start)
@@ -175,98 +179,101 @@ public class TraceLog
         if (commonStart > 0)
             result.add_with_labels(this, other, 0, 0, commonStart);
 
-        // make new if/then/else
-        List<TraceEntry> ifEntries = new();
-        if (commonStart < this.entries.Count)
-            ifEntries.Add(this.entries[commonStart]);
-        if (commonStart < other.entries.Count)
-            ifEntries.Add(other.entries[commonStart]);
-
-        TraceEntry? ifEntry = null;
-        IfStatementSyntax? ifStmt = null;
-        LabeledStatementSyntax? labelStmt = null;
-        foreach (var entry in ifEntries)
+        //        if (commonStart < this.entries.Count || commonStart < other.entries.Count || commonEnd > 0)
         {
-            if (entry.stmt is LabeledStatementSyntax labeledStmt && labeledStmt.Statement is IfStatementSyntax if2)
-            {
-                ifStmt = if2;
-                ifEntry = entry;
-                labelStmt = labeledStmt;
-                break;
-            }
-        }
+            // make new if/then/else
+            List<TraceEntry> ifEntries = new();
+            if (commonStart < this.entries.Count)
+                ifEntries.Add(this.entries[commonStart]);
+            if (commonStart < other.entries.Count)
+                ifEntries.Add(other.entries[commonStart]);
 
-        if (ifStmt == null)
-        {
+            TraceEntry? ifEntry = null;
+            IfStatementSyntax? ifStmt = null;
+            LabeledStatementSyntax? labelStmt = null;
             foreach (var entry in ifEntries)
             {
-                if (entry.stmt is IfStatementSyntax if1)
+                if (entry.stmt is LabeledStatementSyntax labeledStmt && labeledStmt.Statement is IfStatementSyntax if2)
                 {
-                    ifStmt = if1;
+                    ifStmt = if2;
                     ifEntry = entry;
+                    labelStmt = labeledStmt;
                     break;
                 }
             }
-        }
 
-        if (ifStmt == null)
-        {
-            Print("A", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
-            Print("A", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
+            if (ifStmt == null)
+            {
+                foreach (var entry in ifEntries)
+                {
+                    if (entry.stmt is IfStatementSyntax if1)
+                    {
+                        ifStmt = if1;
+                        ifEntry = entry;
+                        break;
+                    }
+                }
+            }
 
-            other.Print("B", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
-            other.Print("B", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
+            if (ifStmt == null)
+            {
+                Print("A", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
+                Print("A", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
 
-            throw new Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
-        }
+                other.Print("B", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
+                other.Print("B", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
 
-        if (ifStmt.LineNo() != hint_key)
-        {
-            Console.WriteLine($"[d] if statement: {ifStmt.LineNo()}: {ifStmt}");
-            throw new Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
-        }
+                throw new Exception($"Expected if statement at {commonStart - 1}, got {ifEntry?.stmt}");
+            }
 
-        BlockSyntax thenBlock = Block(
-                this.entries.GetRange(commonStart + 1, this.entries.Count - commonEnd - commonStart - 1)
-                .Select(e => e.stmt)
-                .ToArray()
-                );
+            if (ifStmt.LineNo() != hint_key)
+            {
+                Console.WriteLine($"[d] if statement: {ifStmt.LineNo()}: {ifStmt}");
+                throw new Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+            }
 
-        BlockSyntax elseBlock = Block(
-                other.entries.GetRange(commonStart + 1, other.entries.Count - commonEnd - commonStart - 1)
+            BlockSyntax thenBlock = Block(
+                    this.entries.GetRange(commonStart + 1, this.entries.Count - commonEnd - commonStart - 1)
                     .Select(e => e.stmt)
                     .ToArray()
-                );
-
-        bool hint = hints[hint_key] switch
-        {
-            EHint.True => true,
-            EHint.False => false,
-            _ => throw new Exception($"Unexpected hint value for key {hint_key}: {hints[hint_key]}")
-        };
-
-        BlockSyntax thenBlock1 = hint ? thenBlock : elseBlock;
-        BlockSyntax elseBlock1 = hint ? elseBlock : thenBlock;
-
-        StatementSyntax newIfStmt = ifStmt
-            .WithStatement(thenBlock1)
-            .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null)
-            .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("OriginalLineNo", ifStmt.LineNo().ToString())
                     );
 
-        if (labelStmt != null)
-        {
-            newIfStmt = labelStmt
-                .WithStatement(newIfStmt);
+            BlockSyntax elseBlock = Block(
+                    other.entries.GetRange(commonStart + 1, other.entries.Count - commonEnd - commonStart - 1)
+                        .Select(e => e.stmt)
+                        .ToArray()
+                    );
+
+            bool hint = hints[hint_key] switch
+            {
+                EHint.True => true,
+                EHint.False => false,
+                _ => throw new Exception($"Unexpected hint value for key {hint_key}: {hints[hint_key]}")
+            };
+
+            BlockSyntax thenBlock1 = hint ? thenBlock : elseBlock;
+            BlockSyntax elseBlock1 = hint ? elseBlock : thenBlock;
+
+            StatementSyntax newIfStmt = ifStmt
+                .WithStatement(thenBlock1)
+                .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null)
+                .WithAdditionalAnnotations(
+                        new SyntaxAnnotation("OriginalLineNo", ifStmt.LineNo().ToString())
+                        );
+
+            if (labelStmt != null)
+            {
+                newIfStmt = labelStmt
+                    .WithStatement(newIfStmt);
+            }
+
+            result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry.vars));
+
+            // add common tail
+            if (commonEnd > 0)
+                //result.entries.AddRange(this.entries.GetRange(this.entries.Count - commonEnd, commonEnd));
+                result.add_with_labels(this, other, this.entries.Count - commonEnd, other.entries.Count - commonEnd, commonEnd);
         }
-
-        result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry.vars));
-
-        // add common tail
-        if (commonEnd > 0)
-            //result.entries.AddRange(this.entries.GetRange(this.entries.Count - commonEnd, commonEnd));
-            result.add_with_labels(this, other, this.entries.Count - commonEnd, other.entries.Count - commonEnd, commonEnd);
 
         result.hints = new(hints);
         result.hints.Remove(hint_key);
@@ -277,14 +284,14 @@ public class TraceLog
     public void Print(string prefix = "", int start = 0, int end = -1, bool title = true, bool full = false, bool addEmptyLine = true)
     {
         if (title)
-            Console.WriteLine($"{(prefix == "" ? "" : $"{prefix}: ")}TraceLog: {entries.Count} entries, {hints.Count} hints");
+            Console.WriteLine($"{(prefix == "" ? "" : $"{prefix}: ")}{this}");
 
         if (end == -1)
             end = entries.Count;
 
         for (int i = start; i < end && i < entries.Count; i++)
         {
-            string line = prefix;
+            string line = $"{Id} ";
             line += full ? entries[i].FormatStmtWithLineNo() : entries[i].TitleWithLineNo();
             Console.WriteLine(line);
         }

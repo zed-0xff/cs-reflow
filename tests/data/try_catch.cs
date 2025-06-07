@@ -40,9 +40,9 @@ void break_from_try()
     {
         try
         {
-            moo1();
+            bft1();
             break;
-            moo2();
+            never_called();
         }
         catch (Ex1)
         {
@@ -59,15 +59,17 @@ void continue_from_try()
     {
         try
         {
-            moo1();
+            cft1();
             continue;
-            moo2();
+            never_called();
         }
         catch (Ex1)
         {
             bar();
         }
     }
+
+    baz();
 }
 
 void goto_from_try()
@@ -76,8 +78,9 @@ void goto_from_try()
     {
         try
         {
-            moo1();
+            gft1();
             goto l2;
+            never_called();
         }
         catch (Ex1)
         {
@@ -101,6 +104,7 @@ void goto_from_catch1()
         catch (Ex1)
         {
             goto l2;
+            never_called();
         }
     }
     return;
