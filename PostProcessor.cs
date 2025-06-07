@@ -199,15 +199,32 @@ public class PostProcessor
         return false;
     }
 
+    // XXX may be incorrect if operators are overridden
     ExpressionSyntax invert_condition(ExpressionSyntax condition)
     {
         switch (condition)
         {
             case BinaryExpressionSyntax binaryExpr:
-                if (binaryExpr.IsKind(SyntaxKind.EqualsExpression))
-                    return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken));
-                else if (binaryExpr.IsKind(SyntaxKind.NotEqualsExpression))
-                    return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken));
+                switch (binaryExpr.Kind())
+                {
+                    case SyntaxKind.EqualsExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken));
+
+                    case SyntaxKind.NotEqualsExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken));
+
+                    case SyntaxKind.LessThanExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.GreaterThanEqualsToken));
+
+                    case SyntaxKind.LessThanOrEqualExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.GreaterThanToken));
+
+                    case SyntaxKind.GreaterThanExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.LessThanEqualsToken));
+
+                    case SyntaxKind.GreaterThanOrEqualExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.LessThanToken));
+                }
                 break;
 
             case PrefixUnaryExpressionSyntax unaryExpr:
@@ -216,7 +233,7 @@ public class PostProcessor
                 break;
         }
 
-        return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, condition);
+        return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(condition));
     }
 
     IfStatementSyntax postprocess_if(IfStatementSyntax ifStmt)

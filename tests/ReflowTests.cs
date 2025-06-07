@@ -165,4 +165,10 @@ public class ReflowTests
     {
         checkData("if2");
     }
+
+    [Fact]
+    public void while_()
+    {
+        checkData("while");
+    }
 }

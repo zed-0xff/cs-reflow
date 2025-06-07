@@ -663,7 +663,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         var block = whileStmt.Statement as BlockSyntax;
         if (block == null)
-            throw new NotSupportedException($"While statement at line {whileStmt.LineNo()} with single statement body is not supported.");
+            block = Block(SingletonList(whileStmt.Statement));
 
         return whileStmt
             .WithStatement(ReflowBlock(block)) // XXX retLabels not used
@@ -689,12 +689,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             return null;
         }
 
-        // TODO: single-statement while
-        if (whileStmt.Statement is not BlockSyntax)
-        {
-            return null;
-        }
-
         bool keep = _flowDict[whileStmt].keep;
         if (!keep)
         {
@@ -702,8 +696,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .WithFlowDictOverride(whileStmt, (node) => node.forceInline = true)
                 .WithParentReturns(retLabels);
 
-            // can't call trace_statements_inline() bc all breaks/continues/returns need to be catched
-            //Console.WriteLine($"[d] {_traceLog.Id} tracing while() in clone");
+            // all breaks/continues/returns need to be catched!
             var log = clone.TraceBlock(SingletonList<StatementSyntax>(whileStmt));
             keep = log.entries.FirstOrDefault() is TraceEntry te && te.stmt is LabeledStatementSyntax;
             if (Verbosity > 0)
@@ -899,6 +892,34 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             Console.WriteLine($"    vars: {_varProcessor.VariableValues}");
     }
 
+    // return: bool skip?
+    bool check_flow_stmt(StatementSyntax stmt)
+    {
+        var flowNode = _flowDict[stmt];
+        if (flowNode.keep)
+        {
+            flowNode.kept = true;
+            return false;
+        }
+        else
+        {
+            bool keep = stmt switch
+            {
+                ContinueStatementSyntax _ => flowNode.FindParent(n => n.IsContinuable()).keep,
+                BreakStatementSyntax _ => flowNode.FindParent(n => n.IsBreakable()).keep,
+                _ => false
+            };
+
+            if (keep)
+            {
+                flowNode.kept = true;
+                return false;
+            }
+
+            return true;
+        }
+    }
+
     // trace block as main flow
     public void trace_statements_inline(SyntaxList<StatementSyntax> statements, int start_idx = 0)
     {
@@ -1033,15 +1054,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     case ContinueStatementSyntax:
                     case BreakStatementSyntax:
                         trace = true; // always trace bc they should throw a FlowException
-                        if (flowNode.keep)
-                        {
-                            skip = false;
-                            flowNode.kept = true;
-                        }
-                        else
-                        {
-                            skip = true;
-                        }
+                        skip = check_flow_stmt(stmt);
                         break;
 
                     case BlockSyntax:
@@ -1626,7 +1639,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return result;
     }
 
-    CSharpSyntaxNode getLastStmt(object obj)
+    CSharpSyntaxNode? getLastStmt(object? obj)
     {
         return obj switch
         {
@@ -1640,7 +1653,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     public string ReflowMethod(CSharpSyntaxNode methodNode, string indentation = "", string eol = "")
     {
-        BlockSyntax body = methodNode switch
+        BlockSyntax? body = methodNode switch
         {
             BaseMethodDeclarationSyntax baseMethod => baseMethod.Body,
             LocalFunctionStatementSyntax localFunc => localFunc.Body,
@@ -1724,5 +1737,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             Console.WriteLine($"{key.ToString().PadLeft(6)}: {_flowInfos[key]}");
         }
+        Console.WriteLine();
+        Console.WriteLine("Processed Control Flow Tree:");
+        _flowRoot.PrintTree();
     }
 }

@@ -144,24 +144,27 @@ public class TraceLog
         if (hint_key == -1)
             throw new Exception($"Cannot merge TraceLogs with different hints: {hints2str(hints)} vs {hints2str(other.hints)}");
 
-        int commonStart = 0;
-        while (commonStart < this.entries.Count &&
-               commonStart < other.entries.Count &&
-               eq_stmt(this.entries[commonStart].stmt, other.entries[commonStart].stmt))
-        {
-            if (this.entries[commonStart].stmt.LineNo() == hint_key)
-                break;
+        int commonStart = 0, commonEnd = 0;
 
-            commonStart++;
-        }
-
-        int commonEnd = 0;
-        if (commonStart < this.entries.Count && commonStart < other.entries.Count)
+        if (this.entries.Count > 1 && other.entries.Count > 1)
         {
-            while (commonEnd < this.entries.Count - commonStart &&
-                    commonEnd < other.entries.Count - commonStart &&
-                    eq_stmt(this.entries[this.entries.Count - commonEnd - 1].stmt, other.entries[other.entries.Count - commonEnd - 1].stmt))
-                commonEnd++;
+            while (commonStart < this.entries.Count &&
+                    commonStart < other.entries.Count &&
+                    eq_stmt(this.entries[commonStart].stmt, other.entries[commonStart].stmt))
+            {
+                if (this.entries[commonStart].stmt.LineNo() == hint_key)
+                    break;
+
+                commonStart++;
+            }
+
+            if (commonStart < this.entries.Count && commonStart < other.entries.Count)
+            {
+                while (commonEnd < this.entries.Count - commonStart &&
+                        commonEnd < other.entries.Count - commonStart &&
+                        eq_stmt(this.entries[this.entries.Count - commonEnd - 1].stmt, other.entries[other.entries.Count - commonEnd - 1].stmt))
+                    commonEnd++;
+            }
         }
 
         if (verbosity > 0)
@@ -232,16 +235,14 @@ public class TraceLog
                 throw new Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
             }
 
-            BlockSyntax thenBlock = Block(
-                    this.entries.GetRange(commonStart + 1, this.entries.Count - commonEnd - commonStart - 1)
+            BlockSyntax thenBlock = Block(this.entries
+                    .GetRange(commonStart + 1, Math.Max(0, this.entries.Count - commonEnd - commonStart - 1))
                     .Select(e => e.stmt)
-                    .ToArray()
                     );
 
-            BlockSyntax elseBlock = Block(
-                    other.entries.GetRange(commonStart + 1, other.entries.Count - commonEnd - commonStart - 1)
-                        .Select(e => e.stmt)
-                        .ToArray()
+            BlockSyntax elseBlock = Block(other.entries
+                    .GetRange(commonStart + 1, Math.Max(0, other.entries.Count - commonEnd - commonStart - 1))
+                    .Select(e => e.stmt)
                     );
 
             bool hint = hints[hint_key] switch

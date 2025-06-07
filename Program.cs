@@ -292,17 +292,24 @@ class Program
                     unflattener.Reset();
                     unflattener.SetHints(hints);
                     unflattener.DropVars(opts.dropVars);
+                    var collector = new ControlFlowTreeCollector();
+                    if (opts.dumpFlowInfos)
+                    {
+                        collector.Process(method);
+                        Console.WriteLine("Original Control Flow Tree:");
+                        collector.PrintTree();
+                    }
                     Console.WriteLine(unflattener.ReflowMethod(method));
                     if (opts.dumpFlowInfos)
                     {
                         Console.WriteLine();
                         unflattener.DumpFlowInfos();
 
-                        Console.WriteLine();
-                        var collector = new ControlFlowTreeCollector();
-                        collector.Process(method);
-                        Console.WriteLine("Control Flow Tree:");
-                        collector.PrintTree();
+                        //                        Console.WriteLine();
+                        //                        var collector = new ControlFlowTreeCollector();
+                        //                        collector.Process(method);
+                        //                        Console.WriteLine("Processed Control Flow Tree:");
+                        //                        unflattener._flowRoot.Print();
                     }
                     Console.WriteLine();
                 }

@@ -93,21 +93,6 @@ class ControlFlowNode
         return clone;
     }
 
-    public string ShortFlags()
-    {
-        char[] a = new char[] { '_', '_', '_', '_' };
-
-        if (keep) a[0] = 'K';
-        if (hasBreak) a[1] = 'B';
-        if (hasContinue) a[2] = 'C';
-        if (forceInline) a[3] = 'I';
-
-        string s = new string(a);
-        if (s.All(c => c == '_'))
-            s = s.Replace("_", " ");
-        return s;
-    }
-
     public FlowDictionary ToDictionary()
     {
         FlowDictionary dict = new();
@@ -136,21 +121,40 @@ class ControlFlowNode
         return null;
     }
 
-    public bool IsBreakable()
+    public ControlFlowNode? FindParent(Func<ControlFlowNode, bool> predicate)
     {
-        return Statement is ForStatementSyntax ||
-            Statement is ForEachStatementSyntax ||
-            Statement is WhileStatementSyntax ||
-            Statement is DoStatementSyntax ||
-            Statement is SwitchStatementSyntax;
+        ControlFlowNode? current = this.Parent;
+        while (current != null)
+        {
+            if (predicate(current))
+                return current;
+            current = current.Parent;
+        }
+        return null;
     }
 
-    public bool IsContinuable()
+    public bool IsContinuable() =>
+        Statement is ForStatementSyntax ||
+        Statement is ForEachStatementSyntax ||
+        Statement is WhileStatementSyntax ||
+        Statement is DoStatementSyntax;
+
+    public bool IsBreakable() => IsContinuable() || Statement is SwitchStatementSyntax;
+
+    public string ShortFlags()
     {
-        return Statement is ForStatementSyntax ||
-            Statement is ForEachStatementSyntax ||
-            Statement is WhileStatementSyntax ||
-            Statement is DoStatementSyntax;
+        char[] a = new char[] { '_', '_', '_', '_', '_' };
+
+        if (keep) a[0] = 'K';
+        if (hasBreak) a[1] = 'B';
+        if (hasContinue) a[2] = 'C';
+        if (forceInline) a[3] = 'I';
+        if (kept) a[4] = 'k';
+
+        string s = new string(a);
+        if (s.All(c => c == '_'))
+            s = s.Replace("_", " ");
+        return s;
     }
 
     public override string ToString()
