@@ -14,9 +14,20 @@ public class PostProcessor
     VariableProcessor _varProcessor;
     public int Verbosity = 0;
 
-    public PostProcessor(VariableProcessor varProcessor)
+    SemanticModel? semanticModel = null;
+
+    public PostProcessor(VariableProcessor varProcessor, SyntaxNode? rootNode = null)
     {
         _varProcessor = varProcessor;
+
+        if (rootNode != null)
+        {
+            var compilation = CSharpCompilation.Create("MyAnalysis")
+                .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+                .AddSyntaxTrees(rootNode.SyntaxTree);
+            semanticModel = compilation.GetSemanticModel(rootNode.SyntaxTree);
+            var dataFlow = semanticModel.AnalyzeDataFlow(rootNode);
+        }
     }
 
     bool isSwitchVar(string varName)
@@ -364,11 +375,11 @@ public class PostProcessor
                 case LocalDeclarationStatementSyntax localDecl:
                     var decl = localDecl.Declaration.Variables.First();
                     string varName = decl.Identifier.Text;
-                    if (!isSwitchVar(varName))
-                    {
-                        if (!is_var_used(block, varName) && !is_var_used_(decl, varName, block))
-                            setSwitchVar(varName); // XXX not actually a switch var, but an useless var
-                    }
+                    // if (!isSwitchVar(varName))
+                    // {
+                    //     if (!is_var_used(block, varName) && !is_var_used_(decl, varName, block))
+                    //         setSwitchVar(varName); // XXX not actually a switch var, but an useless var
+                    // }
                     if (RemoveSwitchVars && localDecl.Declaration.Variables.All(v => isSwitchVar(v.Identifier.Text)))
                         continue;
                     break;
@@ -411,8 +422,8 @@ public class PostProcessor
     {
         return root switch
         {
-            BaseMethodDeclarationSyntax method => method.WithBody(PostProcess(method.Body)),
-            LocalFunctionStatementSyntax func => func.WithBody(PostProcess(func.Body)),
+            BaseMethodDeclarationSyntax method => method.WithBody(PostProcessAll(method.Body)),
+            LocalFunctionStatementSyntax func => func.WithBody(PostProcessAll(func.Body)),
             _ => throw new InvalidOperationException($"Unsupported function type: {root.Kind()}")
         };
     }

@@ -632,6 +632,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         int lineno = ifStmt.LineNo();
 
         update_flow_info(ifStmt, value);
+
+        if (value is UnknownValueBase unk)
+            value = unk.Cast(TypeDB.Bool);
+
         switch (value)
         {
             case bool b:
@@ -1686,12 +1690,19 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
 
+        // remove unused vars _before_ main processing
+        UnusedLocalsRemover unusedLocalsRemover = new(body);
+        var body2 = unusedLocalsRemover.ProcessTree(body) as BlockSyntax;
+        if (body2 != body)
+            body2 = body2.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
+
         var collector = new ControlFlowTreeCollector();
-        collector.Process(body);
+        collector.Process(body2);
         _flowRoot = collector.Root;
         _flowDict = collector.Root.ToDictionary();
 
-        var newBody = ReflowBlock(body, isMethod: true);
+        body2 = ReflowBlock(body2, isMethod: true);
+
         if (PostProcess)
         {
             if (Verbosity >= 0)
@@ -1706,28 +1717,53 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
                 }
             }
-            PostProcessor postProcessor = new(_varProcessor);
+
+            PostProcessor postProcessor = new(_varProcessor, methodNode);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
-            newBody = postProcessor.PostProcessAll(newBody);
+            body2 = postProcessor.PostProcessAll(body2);
         }
 
-        SyntaxNode newMethodNode = methodNode switch
+        // again remove unused vars _after_ main processing
+        body = ReplaceAndGetNewNode(body, body2);
+        body2 = new UnusedLocalsRemover(body).ProcessTree(body) as BlockSyntax;
+        if (body != body2)
         {
-            BaseMethodDeclarationSyntax baseMethod => baseMethod.WithBody(newBody),
-            LocalFunctionStatementSyntax localFunc => localFunc.WithBody(newBody),
-            _ => throw new ArgumentException("Unsupported method node type.", nameof(methodNode))
-        };
+            body = ReplaceAndGetNewNode(body, body2);
+        }
+
+        SyntaxNode newMethodNode = body;
+        while (newMethodNode != null)
+        {
+            if (newMethodNode is BaseMethodDeclarationSyntax)
+                break;
+            if (newMethodNode is LocalFunctionStatementSyntax)
+                break;
+            newMethodNode = newMethodNode.Parent;
+        }
 
         string result = GotoSpacer.Process(
                 newMethodNode
                 .NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true)
                 .ToFullString()
                 );
+
         if (linePrefix != "")
         {
             result = linePrefix + result.Replace(eol, eol + linePrefix);
         }
         return result;
+    }
+
+    public static T ReplaceAndGetNewNode<T>(T oldNode, T newNode)
+        where T : SyntaxNode
+    {
+        var annotation = new SyntaxAnnotation();
+        var annotatedNewNode = newNode.WithAdditionalAnnotations(annotation);
+
+        var root = oldNode.SyntaxTree.GetCompilationUnitRoot();
+        var newRoot = root.ReplaceNode(oldNode, annotatedNewNode);
+
+        return newRoot.GetAnnotatedNodes(annotation).OfType<T>().First();
     }
 
     public void DumpFlowInfos()

@@ -187,9 +187,37 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
     public void PrintMethod(string methodName)
     {
-        PrintMethod(root.DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
-            .First(m => m.Identifier.Text == methodName));
+        var methodNode = root.DescendantNodes()
+            .FirstOrDefault(n =>
+                    (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
+                    (n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName));
+
+        switch (methodNode)
+        {
+            case MethodDeclarationSyntax method:
+                PrintMethod(method);
+                break;
+            case LocalFunctionStatementSyntax localFunction:
+                PrintMethod(localFunction);
+                break;
+            default:
+                throw new InvalidOperationException($"Node '{methodName}' is not a method or local function.");
+        }
+    }
+
+    public void PrintMethod(LocalFunctionStatementSyntax method)
+    {
+        Console.WriteLine($"{method.Identifier}()");
+
+        // Check if the method has a body
+        if (method.Body != null)
+        {
+            Print(method.Body, 1);  // Start from indent level 1 for the method body
+        }
+        else
+        {
+            Console.WriteLine("This method doesn't have a body (it might be an abstract or interface method).");
+        }
     }
 
     public void PrintMethod(MethodDeclarationSyntax method)

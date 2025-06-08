@@ -171,4 +171,10 @@ public class ReflowTests
     {
         checkData("while");
     }
+
+    [Fact]
+    public void unused_vars()
+    {
+        checkData("unused_vars");
+    }
 }
