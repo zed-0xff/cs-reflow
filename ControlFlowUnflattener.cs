@@ -44,6 +44,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
+    public bool PreProcess = true;
     public bool PostProcess = true;
     public bool isClone = false;
     public bool showIntermediateLogs = false;
@@ -1678,23 +1679,23 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             lines.RemoveAt(0);
 
         if (indentation == "")
-        {
             indentation = methodStr.Contains("\n\t") ? "\t" : "    ";
-        }
 
         while (lines[0].StartsWith(linePrefix + indentation))
-        {
             linePrefix += indentation;
-        }
 
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
 
-        // remove unused vars _before_ main processing
-        UnusedLocalsRemover unusedLocalsRemover = new(body);
-        var body2 = unusedLocalsRemover.ProcessTree(body) as BlockSyntax;
-        if (body2 != body)
-            body2 = body2.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
+        BlockSyntax body2 = body;
+        if (PreProcess)
+        {
+            // remove unused vars _before_ main processing
+            UnusedLocalsRemover unusedLocalsRemover = new(body);
+            body2 = unusedLocalsRemover.ProcessTree(body) as BlockSyntax;
+            if (body2 != body)
+                body2 = body2.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
+        }
 
         var collector = new ControlFlowTreeCollector();
         collector.Process(body2);
@@ -1709,26 +1710,20 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             {
                 string msg = $"[{ElapsedTime()}] post-processing ..";
                 if (Verbosity == 0)
-                {
                     Console.Error.WriteLine(msg);
-                }
                 else
-                {
                     Console.WriteLine(msg);
-                }
             }
 
             PostProcessor postProcessor = new(_varProcessor, methodNode);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
             body2 = postProcessor.PostProcessAll(body2);
-        }
 
-        // again remove unused vars _after_ main processing
-        body = ReplaceAndGetNewNode(body, body2);
-        body2 = new UnusedLocalsRemover(body).ProcessTree(body) as BlockSyntax;
-        if (body != body2)
-        {
+            // again remove unused vars _after_ main processing
             body = ReplaceAndGetNewNode(body, body2);
+            body2 = new UnusedLocalsRemover(body).ProcessTree(body) as BlockSyntax;
+            if (body != body2)
+                body = ReplaceAndGetNewNode(body, body2);
         }
 
         SyntaxNode newMethodNode = body;

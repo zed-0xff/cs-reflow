@@ -20,6 +20,7 @@ class Program
         bool printTree,
         bool addComments,
         bool removeSwitchVars,
+        PostProcessMode preProcess,
         PostProcessMode postProcess,
         List<string> dropVars,
         bool dumpFlowInfos,
@@ -40,6 +41,7 @@ class Program
             Verbosity = opts.verbosity,
             RemoveSwitchVars = opts.removeSwitchVars,
             AddComments = opts.addComments,
+            PreProcess = (opts.preProcess != PostProcessMode.Disabled),
             PostProcess = (opts.postProcess != PostProcessMode.Disabled),
             showIntermediateLogs = opts.showIntermediateLogs,
         };
@@ -125,6 +127,12 @@ class Program
             description: "Remove switch variables."
         );
 
+        var preProcessOpt = new Option<string>(
+                aliases: new[] { "--pre-process", "-p" },
+                getDefaultValue: () => "true",
+                description: "Pre-process the code. Accepts: 1/on/true, 0/off/false, only (pre-process only)."
+                );
+
         var postProcessOpt = new Option<string>(
                 aliases: new[] { "--post-process", "-P" },
                 getDefaultValue: () => "true",
@@ -167,6 +175,7 @@ class Program
             printTreeOpt,
             addCommentsOpt,
             removeSwitchVarsOpt,
+            preProcessOpt,
             postProcessOpt,
             quietOpt,
             listMethodsOpt,
@@ -188,6 +197,7 @@ class Program
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
+                preProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(preProcessOpt)),
                 postProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(postProcessOpt)),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),

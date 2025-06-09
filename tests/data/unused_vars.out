@@ -18,6 +18,20 @@ void keep_a3()
     foo(a);
 }
 
+void keep_a4()
+{
+    int a;
+    a = 111;
+    foo(a);
+}
+
+void keep_a5()
+{
+    int a;
+    a = 111;
+    foo(a);
+}
+
 void keep_b1()
 {
     int b;
