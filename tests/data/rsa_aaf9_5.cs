@@ -75,6 +75,7 @@
 					IL_0200:
 					return aa966298b6f9473baff9d7a8e3b76841(obj);
 					IL_01f0:
+					byte[] array;
 					if (num2 == 0)
 					{
 						array = a7fdf43bc042466bb877ac8b21cf6b0a(obj2);
