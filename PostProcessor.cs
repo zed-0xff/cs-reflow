@@ -438,7 +438,23 @@ public class PostProcessor
             if (s0 == s1)
                 break; // no changes
         }
+        block = new PostProcessorV2().Visit(block) as BlockSyntax;
         return block;
     }
 }
 
+public class PostProcessorV2 : CSharpSyntaxRewriter
+{
+    // remove empty finally block
+    public override SyntaxNode VisitTryStatement(TryStatementSyntax node)
+    {
+        var newFinally = node.Finally?.WithBlock(Visit(node.Finally.Block) as BlockSyntax);
+        if (newFinally != null && newFinally.Block.Statements.Count == 0)
+            newFinally = null;
+
+        return node
+            .WithBlock(Visit(node.Block) as BlockSyntax)
+            .WithCatches(SyntaxFactory.List(node.Catches.Select(c => { return c.WithBlock(Visit(c.Block) as BlockSyntax); })))
+            .WithFinally(newFinally);
+    }
+}

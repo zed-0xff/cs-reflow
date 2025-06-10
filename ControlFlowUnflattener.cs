@@ -319,7 +319,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var condition = whileStmt.Condition;
         var body = whileStmt.Statement;
 
-        //Console.WriteLine($"[d] {_traceLog.Id} trace_while: {whileStmt.TitleWithLineNo()}");
+        if (Verbosity > 2)
+            Console.WriteLine($"[d] {_traceLog.Id} trace_while: {whileStmt.TitleWithLineNo()}");
 
         while (true)
         {
@@ -666,6 +667,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     WhileStatementSyntax convert_while(WhileStatementSyntax whileStmt, ReturnsDictionary retLabels)
     {
+        if (Verbosity > 2)
+            Console.WriteLine($"[d] convert_while: {whileStmt.TitleWithLineNo()}");
+
         var block = whileStmt.Statement as BlockSyntax;
         if (block == null)
             block = Block(SingletonList(whileStmt.Statement));
@@ -1692,6 +1696,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             // remove unused vars _before_ main processing
             UnusedLocalsRemover unusedLocalsRemover = new(body);
+            unusedLocalsRemover.Verbosity = Verbosity;
             body2 = unusedLocalsRemover.ProcessTree(body) as BlockSyntax;
             if (body2 != body)
                 body2 = body2.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
@@ -1723,7 +1728,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             body = ReplaceAndGetNewNode(body, body2);
             body2 = new UnusedLocalsRemover(body).ProcessTree(body) as BlockSyntax;
             if (body != body2)
+            {
                 body = ReplaceAndGetNewNode(body, body2);
+                postProcessor = new PostProcessor(_varProcessor, body);
+                postProcessor.RemoveSwitchVars = RemoveSwitchVars;
+                body2 = postProcessor.PostProcessAll(body);
+                body = ReplaceAndGetNewNode(body, body2);
+            }
         }
 
         SyntaxNode newMethodNode = body;

@@ -83,7 +83,7 @@ public class ReflowTests
     }
 
     [Fact]
-    public void try_catch()
+    public void synthetic_try_catch()
     {
         checkData("try_catch");
     }
@@ -107,7 +107,7 @@ public class ReflowTests
     }
 
     [Fact]
-    public void logic()
+    public void synthetic_logic()
     {
         checkData("logic");
     }
@@ -149,31 +149,31 @@ public class ReflowTests
     }
 
     [Fact]
-    public void do_()
+    public void synthetic_do()
     {
         checkData("do");
     }
 
     [Fact]
-    public void if_()
+    public void synthetic_if()
     {
         checkData("if");
     }
 
     [Fact]
-    public void if2()
+    public void synthetic_if2()
     {
         checkData("if2");
     }
 
     [Fact]
-    public void while_()
+    public void synthetic_while()
     {
         checkData("while");
     }
 
     [Fact]
-    public void unused_vars()
+    public void synthetic_unused_vars()
     {
         checkData("unused_vars");
     }
