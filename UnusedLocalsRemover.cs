@@ -73,10 +73,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         public readonly List<ExpressionStatementSyntax> StatementsToRemove = new();
         public readonly List<AssignmentExpressionSyntax> AssignmentsToReplace = new();
         public readonly HashSet<SyntaxAnnotation> keepLocals = new();
+        public int Verbosity = 0;
 
-        public Collector(Context ctx)
+        public Collector(Context ctx, int verbosity = 0)
         {
             _ctx = ctx;
+            Verbosity = verbosity;
         }
 
         // assignment inside another statement:
@@ -153,6 +155,8 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                     var ann = variable.GetAnnotations("VAR").FirstOrDefault();
                     if (ann == null)
                         throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VAR' annotation.");
+                    if (Verbosity > 0)
+                        Console.Error.WriteLine($"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
                     keepLocals.Add(ann);
                 }
             }
@@ -333,6 +337,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
             if (assExpr != null)
             {
+                /*
                 switch (assExpr.Parent)
                 {
                     case ExpressionStatementSyntax:
@@ -346,6 +351,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                         read.Add(ann);
                         break;
                 }
+                */
                 if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.IsSameVar(id))
                 {
                     if (Verbosity > 1)
@@ -446,7 +452,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         // First pass: collect assignments to unused locals
         ctx.SetUnusedLocals(unusedLocals);
-        var collector = new Collector(ctx);
+        var collector = new Collector(ctx, Verbosity);
         collector.Visit(block);
 
         if (Verbosity > 0 && collector.keepLocals.Count > 0)
@@ -462,7 +468,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             Console.Error.WriteLine($"[d] unused locals B: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
 
         ctx.SetUnusedLocals(unusedLocals);
-        collector = new Collector(ctx);
+        collector = new Collector(ctx, Verbosity);
         collector.Visit(block);
 
         if (Verbosity > 0)

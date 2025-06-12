@@ -1,63 +1,83 @@
-	public unsafe override void try_catch(PaintEventArgs paintEventArgs_0a)
+	public unsafe override void OnPaint(PaintEventArgs P_0)
 	{
-		int num3 = default(int);
-		uint num4 = default(uint);
+		uint num3 = default(uint);
+		int num4 = default(int);
 		int num = default(int);
 		try
 		{
-			num = 410;
-			if (!Control.GetStyle(this, 8192))
+			while (true)
 			{
-				goto IL_001a;
-			}
-			goto IL_0058;
-			IL_001a:
-			ab5dbb20393b4538b9a05d9405e644d5(paintEventArgs_0a);
-			int num2 = 1750757892;
-			goto IL_002d;
-			IL_002d:
-			num3 = num2;
-			switch ((num4 = (uint)(-(~num3 ^ -243804085) - 807262198)) % 4) // 2
-			{
-			case 0u:
+				num += 410;
+				if (Control.GetStyle(this, 8192))
+				{
+					goto IL_0025;
+				}
+				goto IL_016a;
+				IL_016a:
+				ab5dbb20393b4538b9a05d9405e644d5(P_0);
+				if (((1207959552 * (num * 97 + num * 159)) | 0x24DA) != 9434)
+				{
+					continue;
+				}
+				int num2 = 1750757892;
+				goto IL_0053;
+				IL_013d:
+				((Control)this).OnPaintBackground(P_0);
+				if ((((num3 & 0x1939) - num3) | 0xFFFFFFFEu) != 4294967294u)
+				{
+					continue;
+				}
+				num2 = (int)(num3 * 1903923989) ^ -8789405;
+				goto IL_0053;
+				IL_0053:
+				num4 = num2;
+				if ((num | -5189 | 0x14E6) != -1)
+				{
+					continue;
+				}
+				switch ((num3 = (uint)(-(~num4 ^ (~(~2107002447) + (971432967 * (~(991337816 - 653080029) - 1063704549 * (-950694200 - ~-172386562)) + ~(-1791726087 * -(-1432762050 + 478948210) - (2135180344 - -297177851 + -1994082233) * -1130517793)))) - (626446491 - (~(-376501758 ^ 0x46F55627) - -(0x1C084188 ^ -1195698877))))) % 4)
+				{
+				case 3u:
+					break;
+				default:
+					goto IL_010a;
+				case 1u:
+					goto IL_013d;
+				case 0u:
+					goto IL_016a;
+				case 2u:
+					return;
+				}
+				goto IL_004e;
+				IL_004e:
+				num2 = -1182964399;
+				goto IL_0053;
+				IL_010a:
+				int num5;
+				if ((int)num3 * -1929379840 >>> 21 != -1897800320)
+				{
+					num5 = 700455875;
+					goto IL_002a;
+				}
 				break;
-			case 3u:
-				goto IL_0028;
-			case 1u:
-				goto IL_007c;
-			default:
-				goto IL_0092;
-			case 2u:
-				return;
+				IL_0025:
+				num5 = 1777788882;
+				goto IL_002a;
+				IL_002a:
+				uint num6;
+				switch ((num6 = (uint)(num5 ^ 0x2672A3A7)) % 4)
+				{
+				case 3u:
+					break;
+				case 1u:
+					goto IL_004e;
+				case 0u:
+					return;
+				default:
+					goto IL_013d;
+				}
+				goto IL_0025;
 			}
-			goto IL_001a;
-			IL_0092:
-			int num5 = 700455875;
-			goto IL_005d;
-			IL_005d:
-			uint num6;
-			switch ((num6 = (uint)(num5 ^ 0x2672A3A7)) % 4) // 0
-			{
-			case 1u:
-				break;
-			case 3u:
-				goto IL_0058;
-			default:
-				goto IL_007c;
-			case 0u:
-				return;
-			}
-			goto IL_0028;
-			IL_0028:
-			num2 = -1182964399;
-			goto IL_002d;
-			IL_0058:
-			int num5 = 1777788882;
-			goto IL_005d;
-			IL_007c:
-			((Control)this).OnPaintBackground(paintEventArgs_0a);
-			num2 = (int)(num4 * 1903923989) ^ -8789405;
-			goto IL_002d;
 		}
 		catch
 		{
@@ -72,42 +92,40 @@
 					uint num8 = (num6 = (uint)(num7 ^ 0x2672A3A7));
 					num = (num & -55) | 1;
 					int num9;
-					switch (num8 % 5) // 4
+					switch (num8 % 5)
 					{
 					case 0u:
 						break;
-					case 4u:
-						num9 = 1389954359;
-						goto IL_00ba;
 					case 2u:
-						switch ((num4 = (uint)(-(~num3 ^ -243804085) - 807262198)) % 3) // 0
+						switch ((num3 = (uint)(-(~num4 ^ (~(~2107002447) + (971432967 * (~(991337816 - 653080029) - 1063704549 * (-950694200 - ~-172386562)) + ~(-1791726087 * -(-1432762050 + 478948210) - (2135180344 - -297177851 + -1994082233) * -1130517793)))) - (626446491 - (~(-376501758 ^ 0x46F55627) - -(0x1C084188 ^ -1195698877))))) % 3)
 						{
 						case 2u:
-							break;
+							goto IL_02ae;
 						case 1u:
-							goto IL_0112;
-						default:
-							goto IL_0131;
+							goto IL_02be;
 						case 0u:
-							goto IL_0140;
+							goto IL_02dd;
 						}
-						goto case 4u;
-					default:
-						goto IL_0112;
-					case 1u:
-						goto IL_0140;
-						IL_0140:
-						num += 281;
-						return;
-						IL_0131:
 						num7 = (int)(num6 * 81662989) ^ -1922669427;
 						continue;
-						IL_0112:
+					case 4u:
+						goto IL_02ae;
+					default:
+						goto IL_02be;
+					case 1u:
+						goto IL_02dd;
+						IL_02dd:
+						num += 281;
+						return;
+						IL_02be:
 						Control.Invalidate(this);
-						num9 = ((int)num4 * -1460942011) ^ -1470939749;
-						goto IL_00ba;
-						IL_00ba:
-						num3 = num9;
+						num9 = ((int)num3 * -1460942011) ^ -1470939749;
+						goto IL_02b3;
+						IL_02ae:
+						num9 = 1389954359;
+						goto IL_02b3;
+						IL_02b3:
+						num4 = num9;
 						num7 = 1854990594;
 						continue;
 					}
