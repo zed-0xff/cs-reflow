@@ -260,6 +260,10 @@ public class IfRewriter : CSharpSyntaxRewriter
 {
     public override SyntaxNode VisitIfStatement(IfStatementSyntax ifStmt)
     {
+        // remove empty else
+        if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count == 0)
+            ifStmt = ifStmt.WithElse(null);
+
         // if (!bool_0aw) {} else …
         if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
             ifStmt = ifStmt
@@ -275,10 +279,6 @@ public class IfRewriter : CSharpSyntaxRewriter
         {
             ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
         }
-
-        // remove empty else
-        if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax block3 && block3.Statements.Count == 0)
-            ifStmt = ifStmt.WithElse(null);
 
         return base.VisitIfStatement(ifStmt);
     }

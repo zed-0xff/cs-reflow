@@ -175,6 +175,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             _assignmentsToReplace = new HashSet<AssignmentExpressionSyntax>(assignmentsToReplace);
         }
 
+        SyntaxNode? gen_empty_stmt(SyntaxNode prev)
+        {
+            return EmptyStatement()
+                .WithTrailingTrivia(Comment(" // " + prev.Title()));
+        }
+
         public override SyntaxNode? VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
         {
             var toKeep = new List<VariableDeclaratorSyntax>();
@@ -202,7 +208,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             {
                 // "int a = b = 111;" => "b = 111;"
                 AssignmentExpressionSyntax? assignment = VisitAssignmentExpression(toConvert[0]) as AssignmentExpressionSyntax;
-                return assignment == null ? null : SyntaxFactory.ExpressionStatement(assignment);
+                return assignment == null ? gen_empty_stmt(node) : SyntaxFactory.ExpressionStatement(assignment);
             }
 
             if (toConvert.Count == 0)
@@ -210,7 +216,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 // If all variables are unused: remove the whole statement
                 if (toKeep.Count == 0)
                 {
-                    return null;
+                    return gen_empty_stmt(node);
                 }
 
                 // If only some variables are unused: rewrite declaration
@@ -229,7 +235,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             // Remove collected assignments
             //Console.Error.WriteLine($"[d] {node.Title()} => {_statementsToRemove.Contains(node)}");
             if (_statementsToRemove.Contains(node))
-                return null;
+                return gen_empty_stmt(node);
 
             return base.VisitExpressionStatement(node);
         }

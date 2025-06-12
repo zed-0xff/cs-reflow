@@ -888,6 +888,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             comment += _flowInfos[lineno].ToString();
         }
 
+        // get comment from stmt, set by UnusedLocalsRemover when run as pre-processor
+        if (stmt is EmptyStatementSyntax && string.IsNullOrEmpty(comment))
+        {
+            var cmt = stmt
+                .GetTrailingTrivia()
+                .FirstOrDefault(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia))
+                .ToString();
+
+            line += ANSI_COLOR_GRAY + cmt;
+        }
+
         if (!String.IsNullOrEmpty(comment))
         {
             if (line.Length > commentPadding - 1)
