@@ -31,7 +31,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     // local
     FlowDictionary _localFlowDict = new();
-    VariableProcessor _varProcessor = new();
+    VarProcessor _varProcessor = new();
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
     Dictionary<State, int> _states = new();
@@ -260,7 +260,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.isClone = true;
         clone.PostProcess = false;
         clone._flowHints = new(_flowHints);
-        clone._varProcessor = (VariableProcessor)_varProcessor.Clone();
+        clone._varProcessor = (VarProcessor)_varProcessor.Clone();
 
         clone.Verbosity = Verbosity;
         clone.RemoveSwitchVars = RemoveSwitchVars;
@@ -468,7 +468,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_switch(SwitchStatementSyntax switchStmt, object value)
     {
-        if (value is VariableProcessor.Expression ex)
+        if (value is VarProcessor.Expression ex)
         {
             value = ex.Result;
             flow_info(switchStmt).loopVars.UnionWith(ex.VarsRead);
@@ -772,12 +772,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _varProcessor.EvaluateExpression(expression);
     }
 
-    public VariableProcessor.Expression EvaluateExpressionEx(StatementSyntax expression)
+    public VarProcessor.Expression EvaluateExpressionEx(StatementSyntax expression)
     {
         return _varProcessor.EvaluateExpressionEx(expression);
     }
 
-    public VariableProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression)
+    public VarProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression)
     {
         return _varProcessor.EvaluateExpressionEx(expression);
     }
@@ -948,7 +948,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
 
         // Console.WriteLine($"[d] {statements.First().LineNo()}: labels: {String.Join(", ", labels.Keys)}");
-        VariableProcessor.Expression? ex = null;
+        VarProcessor.Expression? ex = null;
 
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
@@ -1764,7 +1764,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         // collect all declarations from body prior to any processing
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
 
-        var tracker = new VariableTracker();
+        var tracker = new VarTracker();
         var trackedBody = tracker.Track(body) as BlockSyntax;
         body = body.ReplaceAndGetNewNode(trackedBody);
 
@@ -1819,7 +1819,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         if (ShowAnnotations)
         {
-            body2 = new VariableTracker.ShowAnnotationsRewriter().Visit(body) as BlockSyntax;
+            body2 = new VarTracker.ShowAnnotationsRewriter().Visit(body) as BlockSyntax;
             body = body.ReplaceAndGetNewNode(body2);
         }
 

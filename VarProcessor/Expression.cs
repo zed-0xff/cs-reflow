@@ -8,7 +8,7 @@ using System;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-public partial class VariableProcessor
+public partial class VarProcessor
 {
     public class Expression
     {

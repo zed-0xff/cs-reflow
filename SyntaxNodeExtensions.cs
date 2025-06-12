@@ -4,6 +4,8 @@ using Microsoft.CodeAnalysis;
 
 public static class SyntaxNodeExtensions
 {
+    static readonly string[] ANNOTATION_KINDS = new[] { "ID", "VAR", "OriginalLineNo" };
+
     public static int LineNo(this SyntaxNode node)
     {
         var annotation = node.GetAnnotations("OriginalLineNo").FirstOrDefault();
@@ -128,57 +130,31 @@ public static class SyntaxNodeExtensions
     public static string? AnnotationsAsString(this SyntaxNode node)
     {
         List<string> annotations = new List<string>();
-        var id = node.GetAnnotations("ID").FirstOrDefault();
-        if (id != null)
+        foreach (var ann in node.GetAnnotations(ANNOTATION_KINDS))
         {
-            annotations.Add($"ID_{id.Data}");
+            annotations.Add($"{ann.Kind}:{ann.Data}");
         }
-
-        var varAnn = node.GetAnnotations("VAR").FirstOrDefault();
-        if (varAnn != null)
-        {
-            annotations.Add($"VAR_{varAnn.Data}");
-        }
-
         return annotations.Count > 0 ? string.Join(", ", annotations) : null;
     }
 
     public static string? NestedAnnotationsAsString(this SyntaxNode node)
     {
-        var stuff = node.GetAnnotatedNodesAndTokens(new string[] { "ID", "VAR" });
+        var stuff = node.GetAnnotatedNodesAndTokens(ANNOTATION_KINDS);
         if (stuff.Count() == 0)
             return null;
 
-        List<string> annotations = new List<string>();
+        HashSet<string> annotations = new();
         foreach (var item in stuff)
         {
             if (item.IsNode)
             {
-                var id = item.AsNode().GetAnnotations("ID").FirstOrDefault();
-                if (id != null)
-                {
-                    annotations.Add($"ID_{id.Data}");
-                }
-
-                var varAnn = item.AsNode().GetAnnotations("VAR").FirstOrDefault();
-                if (varAnn != null)
-                {
-                    annotations.Add($"VAR_{varAnn.Data}");
-                }
+                foreach (var ann in item.AsNode().GetAnnotations(ANNOTATION_KINDS))
+                    annotations.Add($"{ann.Kind}:{ann.Data}");
             }
             else
             {
-                var id = item.AsToken().GetAnnotations("ID").FirstOrDefault();
-                if (id != null)
-                {
-                    annotations.Add($"ID_{id.Data}");
-                }
-
-                var varAnn = item.AsToken().GetAnnotations("VAR").FirstOrDefault();
-                if (varAnn != null)
-                {
-                    annotations.Add($"VAR_{varAnn.Data}");
-                }
+                foreach (var ann in item.AsToken().GetAnnotations(ANNOTATION_KINDS))
+                    annotations.Add($"{ann.Kind}:{ann.Data}");
             }
         }
         return annotations.Count > 0 ? string.Join(", ", annotations) : null;

@@ -2,18 +2,18 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 
-public partial class VariableProcessor : ICloneable
+public partial class VarProcessor : ICloneable
 {
     public VarDict VariableValues { get; private set; } = new();
     public static VarDict Constants { get; private set; } = new();
     public int Verbosity = 3;
 
-    public VariableProcessor(int verbosity = 0)
+    public VarProcessor(int verbosity = 0)
     {
         Verbosity = verbosity;
     }
 
-    static VariableProcessor()
+    static VarProcessor()
     {
         Constants["string.Empty"] = string.Empty;
         Constants["int.MinValue"] = int.MinValue;
@@ -42,7 +42,7 @@ public partial class VariableProcessor : ICloneable
 
     public object Clone()
     {
-        var clonedProcessor = new VariableProcessor();
+        var clonedProcessor = new VarProcessor();
         clonedProcessor.VariableValues = (VarDict)this.VariableValues.Clone();
         clonedProcessor.Verbosity = this.Verbosity;
         return clonedProcessor;

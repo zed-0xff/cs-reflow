@@ -11,10 +11,10 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 public class PostProcessor
 {
     public bool RemoveSwitchVars = true;
-    VariableProcessor _varProcessor;
+    VarProcessor _varProcessor;
     public int Verbosity = 0;
 
-    public PostProcessor(VariableProcessor varProcessor, SyntaxNode? rootNode = null)
+    public PostProcessor(VarProcessor varProcessor, SyntaxNode? rootNode = null)
     {
         _varProcessor = varProcessor;
     }

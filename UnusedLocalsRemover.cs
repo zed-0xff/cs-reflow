@@ -19,29 +19,15 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
     class Context : SemanticContext
     {
-        HashSet<ISymbol> _unusedLocalSyms = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
-        HashSet<String> _unusedLocalNames = new HashSet<string>(StringComparer.Ordinal);
-        // false = only compare by symbol (stricter, but may miss some cases)
-        // true  = compare by name (more lenient, but may remove some used locals)
-        bool compareByName = false;
+        HashSet<SyntaxAnnotation> _unusedLocals = new();
 
         public Context(SyntaxNode rootNode) : base(rootNode)
         {
         }
 
-        public void SetUnusedLocals(IEnumerable<ISymbol> unusedLocals)
+        public void SetUnusedLocals(HashSet<SyntaxAnnotation> unusedLocals)
         {
-            _unusedLocalSyms.Clear();
-            _unusedLocalNames.Clear();
-
-            foreach (var sym in unusedLocals)
-            {
-                if (sym != null)
-                {
-                    _unusedLocalSyms.Add(sym);
-                    _unusedLocalNames.Add(sym.Name);
-                }
-            }
+            _unusedLocals = unusedLocals;
         }
 
         public bool IsSafeToRemove(ExpressionSyntax node)
@@ -59,28 +45,15 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             return true;
         }
 
-        public bool IsUnusedLocal(IdentifierNameSyntax id)
+        public bool IsUnusedLocal(SyntaxNode node)
         {
-            var symbol = Model.GetSymbolInfo(id).Symbol;
-            if (IsUnusedLocal(symbol))
-                return true;
-            if (compareByName && _unusedLocalNames.Contains(id.Identifier.Text))
-                return true;
-
-            return false;
+            var ann = node.GetAnnotations("VAR").FirstOrDefault();
+            return ann != null && _unusedLocals.Contains(ann);
         }
 
+        // TODO
         public bool IsUnusedLocal(ISymbol symbol)
         {
-            if (symbol == null)
-                return false;
-
-            if (_unusedLocalSyms.Contains(symbol))
-                return true;
-
-            if (compareByName && _unusedLocalNames.Contains(symbol.Name))
-                return true;
-
             return false;
         }
     }
@@ -89,7 +62,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     {
         return node.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any()
             || node.DescendantNodesAndSelf().OfType<ObjectCreationExpressionSyntax>().Any()
-            || node.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(m => !VariableProcessor.Constants.ContainsKey(m.ToString()));
+            || node.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(m => !VarProcessor.Constants.ContainsKey(m.ToString()));
     }
 
     class Collector : CSharpSyntaxWalker
@@ -98,8 +71,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         public readonly List<ExpressionStatementSyntax> StatementsToRemove = new();
         public readonly List<AssignmentExpressionSyntax> AssignmentsToReplace = new();
-        public readonly HashSet<ISymbol> keepLocalSyms = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
-        public readonly HashSet<String> keepLocalNames = new HashSet<String>(StringComparer.Ordinal);
+        public readonly HashSet<SyntaxAnnotation> keepLocals = new();
 
         public Collector(Context ctx)
         {
@@ -137,8 +109,10 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                             if (assignment.Right is not AssignmentExpressionSyntax)
                             {
                                 // If the right side is not a literal, we keep the local variable
-                                keepLocalSyms.Add(_ctx.Model.GetSymbolInfo(idLeft).Symbol);
-                                keepLocalNames.Add(idLeft.Identifier.Text);
+                                var ann = idLeft.GetAnnotations("VAR").FirstOrDefault();
+                                if (ann == null)
+                                    throw new InvalidOperationException($"Identifier {idLeft.Identifier.Text} has no 'VAR' annotation.");
+                                keepLocals.Add(ann);
                             }
                         }
                     }
@@ -168,15 +142,17 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         {
             foreach (var variable in node.Declaration.Variables)
             {
-                var symbol = _ctx.Model.GetDeclaredSymbol(variable); // always present
-                if (!_ctx.IsUnusedLocal(symbol))
+                if (!_ctx.IsUnusedLocal(variable))
                     continue;
 
                 // Check if initializer is present and not a literal
                 var init = variable.Initializer?.Value;
                 if (init != null && !_ctx.IsSafeToRemove(init) && init is not AssignmentExpressionSyntax)
                 {
-                    keepLocalSyms.Add(symbol);
+                    var ann = variable.GetAnnotations("VAR").FirstOrDefault();
+                    if (ann == null)
+                        throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VAR' annotation.");
+                    keepLocals.Add(ann);
                 }
             }
 
@@ -205,11 +181,8 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
             foreach (var variable in node.Declaration.Variables)
             {
-                var symbol = _ctx.Model.GetDeclaredSymbol(variable);
-                if (symbol == null || !_ctx.IsUnusedLocal(symbol))
-                {
+                if (!_ctx.IsUnusedLocal(variable))
                     toKeep.Add(variable);
-                }
 
                 // Check if initializer is present and not a literal
                 var init = variable.Initializer?.Value;
@@ -306,21 +279,21 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     //    }
 
     // same as ReadInside(), but also include ++/--
-    HashSet<ISymbol> FindWriteOnlyVars(Context ctx, SyntaxNode rootNode)
+    (HashSet<SyntaxAnnotation>, HashSet<SyntaxAnnotation>, HashSet<SyntaxAnnotation>) CollectVars(SyntaxNode rootNode)
     {
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(s => s.Declaration.Variables)
-            .Select(v => ctx.Model.GetDeclaredSymbol(v))
-            .Where(s => s != null && s.Kind == SymbolKind.Local)
-            .ToHashSet(SymbolEqualityComparer.Default);
+            .Select(v => v.GetAnnotations("VAR").FirstOrDefault())
+            .Where(v => v != null)
+            .ToHashSet();
 
-        var written = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
-        var read = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        var written = new HashSet<SyntaxAnnotation>();
+        var read = new HashSet<SyntaxAnnotation>();
 
         foreach (var id in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
-            var symbol = ctx.Model.GetSymbolInfo(id).Symbol;
-            if (symbol == null || symbol.Kind != SymbolKind.Local)
+            var ann = id.GetAnnotations("VAR").FirstOrDefault();
+            if (ann == null)
                 continue;
 
             var expr = id.Parent;
@@ -329,11 +302,11 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (expr is PrefixUnaryExpressionSyntax unaryPrefix)
             {
                 if (expr.Parent is not ExpressionStatementSyntax) // y = ++x; / while(++x){ ... }
-                    read.Add(symbol);
+                    read.Add(ann);
                 if (unaryPrefix.IsKind(SyntaxKind.PreIncrementExpression) || unaryPrefix.IsKind(SyntaxKind.PreDecrementExpression))
-                    written.Add(symbol);
+                    written.Add(ann);
                 else
-                    read.Add(symbol);
+                    read.Add(ann);
                 continue;
             }
 
@@ -341,11 +314,11 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (expr is PostfixUnaryExpressionSyntax unaryPostfix)
             {
                 if (expr.Parent is not ExpressionStatementSyntax)
-                    read.Add(symbol);
+                    read.Add(ann);
                 if (unaryPostfix.IsKind(SyntaxKind.PostIncrementExpression) || unaryPostfix.IsKind(SyntaxKind.PostDecrementExpression))
-                    written.Add(symbol);
+                    written.Add(ann);
                 else
-                    read.Add(symbol);
+                    read.Add(ann);
                 continue;
             }
 
@@ -353,12 +326,31 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
             if (assExpr != null)
             {
-                if (assExpr.Parent is not ExpressionStatementSyntax)
-                    read.Add(symbol);
-                if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.Identifier.Text == id.Identifier.Text)
-                    written.Add(symbol); // intentionally do not interpret self-read as 'read'
+                switch (assExpr.Parent)
+                {
+                    case ExpressionStatementSyntax:
+                    case EqualsValueClauseSyntax:
+                    case AssignmentExpressionSyntax:
+                    case ArgumentSyntax:
+                        break;
+                    default:
+                        if (Verbosity > 1)
+                            Console.Error.WriteLine($"[d] CollectVars: READ  {ann.Data} bc parent is {assExpr.Parent.Kind()}");
+                        read.Add(ann);
+                        break;
+                }
+                if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.IsSameVar(id))
+                {
+                    if (Verbosity > 1)
+                        Console.Error.WriteLine($"[d] CollectVars: WRITE {ann.Data}");
+                    written.Add(ann); // intentionally do not interpret self-read as 'read'
+                }
                 else
-                    read.Add(symbol);
+                {
+                    if (Verbosity > 1)
+                        Console.Error.WriteLine($"[d] CollectVars: READ  {ann.Data}");
+                    read.Add(ann);
+                }
                 continue;
             }
 
@@ -366,20 +358,20 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             ArgumentSyntax? argExpr = expr.FirstAncestorOrSelfUntil<ArgumentSyntax, BlockSyntax>();
             if (argExpr != null)
             {
-                read.Add(symbol);
+                if (Verbosity > 1)
+                    Console.Error.WriteLine($"[d] CollectVars: READ  {ann.Data}");
+                read.Add(ann);
                 if (!argExpr.RefOrOutKeyword.IsKind(SyntaxKind.None))
-                    written.Add(symbol); // ref/out arguments are both read and written
+                    written.Add(ann); // ref/out arguments are both read and written
                 continue;
             }
 
-            if (Verbosity > 2)
-                Console.Error.WriteLine($"[d] FindWriteOnlyVars: unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()}");
-            read.Add(symbol); // fallback: treat as read
+            if (Verbosity > 1)
+                Console.Error.WriteLine($"[d] CollectVars: unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}");
+            read.Add(ann); // fallback: treat as read
         }
 
-        // Only keep variables that are written but never read
-        written.ExceptWith(read);
-        return declared.Intersect(written, SymbolEqualityComparer.Default).ToHashSet(SymbolEqualityComparer.Default);
+        return (declared, read, written);
     }
 
     BlockSyntax? RewriteBlock(BlockSyntax block)
@@ -412,24 +404,34 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         if (Verbosity > 1)
         {
-            Console.Error.WriteLine($"[d] dataFlow.VariablesDeclared: {string.Join(", ", dataFlow.VariablesDeclared.Select(s => s.Name))}");
-            Console.Error.WriteLine($"[d] dataFlow.ReadInside       : {string.Join(", ", dataFlow.ReadInside.Select(s => s.Name))}");
+            if (dataFlow.VariablesDeclared.Count() > 0)
+                Console.Error.WriteLine($"[d] dataFlow.VariablesDeclared: {string.Join(", ", dataFlow.VariablesDeclared.Select(s => s.Name))}");
+            if (dataFlow.ReadInside.Count() > 0)
+                Console.Error.WriteLine($"[d] dataFlow.ReadInside       : {string.Join(", ", dataFlow.ReadInside.Select(s => s.Name))}");
+            if (dataFlow.ReadOutside.Count() > 0)
+                Console.Error.WriteLine($"[d] dataFlow.ReadOutside      : {string.Join(", ", dataFlow.ReadOutside.Select(s => s.Name))}");
+            if (dataFlow.WrittenInside.Count() > 0)
+                Console.Error.WriteLine($"[d] dataFlow.WrittenInside    : {string.Join(", ", dataFlow.WrittenInside.Select(s => s.Name))}");
+            if (dataFlow.WrittenOutside.Count() > 0)
+                Console.Error.WriteLine($"[d] dataFlow.WrittenOutside   : {string.Join(", ", dataFlow.WrittenOutside.Select(s => s.Name))}");
         }
 
-        // collect variables that are only declared [and written to] but never read
-        var readInsideNames = dataFlow.ReadInside.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
-        var unusedLocals =
-            dataFlow.VariablesDeclared
-            .Where(v => !readInsideNames.Contains(v.Name))
-            .ToHashSet<ISymbol>(SymbolEqualityComparer.Default);
+        var (declared, read, written) = CollectVars(block);
+        if (Verbosity > 0)
+        {
+            if (declared.Count > 0)
+                Console.Error.WriteLine($"[d] declared: {string.Join(", ", declared.Select(s => s.Data))}");
+            if (read.Count > 0)
+                Console.Error.WriteLine($"[d] read:     {string.Join(", ", read.Select(s => s.Data))}");
+            if (written.Count > 0)
+                Console.Error.WriteLine($"[d] written:  {string.Join(", ", written.Select(s => s.Data))}");
+        }
+        var unusedLocals = declared
+            .Where(s => !read.Contains(s))
+            .ToHashSet();
 
         if (Verbosity > 0 && unusedLocals.Count > 0)
-            Console.Error.WriteLine($"[d] unused locals A: {string.Join(", ", unusedLocals.Select(s => s.Name))}");
-
-        var wrOnly = FindWriteOnlyVars(ctx, block);
-        if (Verbosity > 0 && wrOnly.Count > 0)
-            Console.Error.WriteLine($"[d] write-only vars: {string.Join(", ", wrOnly.Select(s => s.Name))}");
-        unusedLocals.UnionWith(wrOnly);
+            Console.Error.WriteLine($"[d] unused locals A: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
 
         if (unusedLocals.Count == 0)
             return block;
@@ -439,17 +441,29 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         var collector = new Collector(ctx);
         collector.Visit(block);
 
-        // keep only those unused locals that are assigned a literal value
-        unusedLocals.ExceptWith(collector.keepLocalSyms);
+        if (Verbosity > 0 && collector.keepLocals.Count > 0)
+        {
+            Console.Error.WriteLine($"[d] keepLocals: {string.Join(", ", collector.keepLocals.Select(s => s.Data))}");
+        }
+
+        unusedLocals.ExceptWith(collector.keepLocals);
         if (unusedLocals.Count == 0)
             return block;
 
         if (Verbosity > 0)
-            Console.Error.WriteLine($"[d] unused locals B: {string.Join(", ", unusedLocals.Select(s => s.Name))}");
+            Console.Error.WriteLine($"[d] unused locals B: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
 
         ctx.SetUnusedLocals(unusedLocals);
         collector = new Collector(ctx);
         collector.Visit(block);
+
+        if (Verbosity > 0)
+        {
+            if (collector.StatementsToRemove.Count > 0)
+                Console.Error.WriteLine($"[d] Statements to remove: {string.Join(", ", collector.StatementsToRemove.Select(s => s.TitleWithLineNo()))}");
+            if (collector.AssignmentsToReplace.Count > 0)
+                Console.Error.WriteLine($"[d] Assignments to replace: {string.Join(", ", collector.AssignmentsToReplace.Select(s => s.TitleWithLineNo()))}");
+        }
 
         var newNode = new Remover(ctx, collector.StatementsToRemove, collector.AssignmentsToReplace)
             .Visit(block);
