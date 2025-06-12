@@ -7,15 +7,13 @@ public partial class VarTracker
 {
     class VarDeclarationMover : CSharpSyntaxRewriter
     {
-        private VarScopeCollector _collector;
-        private Dictionary<string, BlockSyntax> _targetBlocks;
-        private HashSet<LocalDeclarationStatementSyntax> _toRemove;
+        VarScopeCollector _collector;
+        Dictionary<SyntaxAnnotation, BlockSyntax> _targetBlocks = new();
+        HashSet<LocalDeclarationStatementSyntax> _toRemove = new();
 
         public VarDeclarationMover(VarScopeCollector collector)
         {
             _collector = collector;
-            _toRemove = new HashSet<LocalDeclarationStatementSyntax>();
-            _targetBlocks = new Dictionary<string, BlockSyntax>();
 
             // Calculate target blocks
             foreach (var kvp in _collector.Declarations)

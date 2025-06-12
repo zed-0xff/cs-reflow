@@ -7,8 +7,8 @@ public partial class VarTracker
 {
     class VarScopeCollector : CSharpSyntaxWalker
     {
-        public Dictionary<string, LocalDeclarationStatementSyntax> Declarations = new();
-        public Dictionary<string, HashSet<BlockSyntax>> UsageBlocks = new();
+        public Dictionary<SyntaxAnnotation, LocalDeclarationStatementSyntax> Declarations = new();
+        public Dictionary<SyntaxAnnotation, HashSet<BlockSyntax>> UsageBlocks = new();
 
         private Stack<BlockSyntax> _blockStack = new();
 
@@ -26,8 +26,7 @@ public partial class VarTracker
                 var annotation = v.GetAnnotations("VAR").FirstOrDefault();
                 if (annotation != null)
                 {
-                    var key = annotation.Data;
-                    Declarations[key] = node;
+                    Declarations[annotation] = node;
                 }
             }
             base.VisitLocalDeclarationStatement(node);
@@ -38,13 +37,12 @@ public partial class VarTracker
             var annotation = node.GetAnnotations("VAR").FirstOrDefault();
             if (annotation != null)
             {
-                var key = annotation.Data;
                 if (!_blockStack.Any()) return; // safety
 
-                if (!UsageBlocks.TryGetValue(key, out var blocks))
+                if (!UsageBlocks.TryGetValue(annotation, out var blocks))
                 {
                     blocks = new HashSet<BlockSyntax>();
-                    UsageBlocks[key] = blocks;
+                    UsageBlocks[annotation] = blocks;
                 }
                 blocks.Add(_blockStack.Peek());
             }
