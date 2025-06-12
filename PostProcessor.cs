@@ -74,68 +74,6 @@ public class PostProcessor
         return false;
     }
 
-    // XXX may be incorrect if operators are overridden
-    ExpressionSyntax invert_condition(ExpressionSyntax condition)
-    {
-        switch (condition)
-        {
-            case BinaryExpressionSyntax binaryExpr:
-                switch (binaryExpr.Kind())
-                {
-                    case SyntaxKind.EqualsExpression:
-                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken));
-
-                    case SyntaxKind.NotEqualsExpression:
-                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken));
-
-                    case SyntaxKind.LessThanExpression:
-                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.GreaterThanEqualsToken));
-
-                    case SyntaxKind.LessThanOrEqualExpression:
-                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.GreaterThanToken));
-
-                    case SyntaxKind.GreaterThanExpression:
-                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.LessThanEqualsToken));
-
-                    case SyntaxKind.GreaterThanOrEqualExpression:
-                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.LessThanToken));
-                }
-                break;
-
-            case PrefixUnaryExpressionSyntax unaryExpr:
-                if (unaryExpr.IsKind(SyntaxKind.LogicalNotExpression))
-                    return unaryExpr.Operand;
-                break;
-        }
-
-        return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(condition));
-    }
-
-    IfStatementSyntax postprocess_if(IfStatementSyntax ifStmt)
-    {
-        //      if (!bool_0aw) {} else …
-        if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
-            ifStmt = ifStmt
-                .WithCondition(invert_condition(ifStmt.Condition))
-                .WithStatement(ifStmt.Else.Statement)
-                .WithElse(null);
-
-        //      if (…) {} else { if (…) {} }
-        if (ifStmt.Else != null
-                && ifStmt.Else.Statement is BlockSyntax block2
-                && block2.Statements.Count == 1
-                && block2.Statements[0] is IfStatementSyntax)
-        {
-            ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
-        }
-
-        // remove empty else
-        if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax block3 && block3.Statements.Count == 0)
-            ifStmt = ifStmt.WithElse(null);
-
-        return ifStmt;
-    }
-
     StatementSyntax PostProcess(StatementSyntax stmt)
     {
         var result = PostProcess(stmt as SyntaxNode);
@@ -242,11 +180,6 @@ public class PostProcessor
             if (is_empty_if(stmt))
                 continue;
 
-            if (stmt is IfStatementSyntax ifStmt)
-            {
-                stmt = postprocess_if(ifStmt);
-            }
-
             if (stmt is EmptyStatementSyntax)
                 continue;
 
@@ -293,6 +226,7 @@ public class PostProcessor
         block = new EmptiesRemover().Visit(block) as BlockSyntax;
         block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
         block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
+        block = new IfRewriter().Visit(block) as BlockSyntax;
         return block;
     }
 }
@@ -319,6 +253,71 @@ public class EmptiesRemover : CSharpSyntaxRewriter
             node = node.WithStatements(SyntaxFactory.List(newStatements));
 
         return base.VisitBlock(node);
+    }
+}
+
+public class IfRewriter : CSharpSyntaxRewriter
+{
+    public override SyntaxNode VisitIfStatement(IfStatementSyntax ifStmt)
+    {
+        // if (!bool_0aw) {} else …
+        if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
+            ifStmt = ifStmt
+                .WithCondition(invert_condition(ifStmt.Condition))
+                .WithStatement(ifStmt.Else.Statement)
+                .WithElse(null);
+
+        // if (…) {} else { if (…) {} }
+        if (ifStmt.Else != null
+                && ifStmt.Else.Statement is BlockSyntax block2
+                && block2.Statements.Count == 1
+                && block2.Statements[0] is IfStatementSyntax)
+        {
+            ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
+        }
+
+        // remove empty else
+        if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax block3 && block3.Statements.Count == 0)
+            ifStmt = ifStmt.WithElse(null);
+
+        return base.VisitIfStatement(ifStmt);
+    }
+
+    // XXX may be incorrect if operators are overridden
+    ExpressionSyntax invert_condition(ExpressionSyntax condition)
+    {
+        switch (condition)
+        {
+            case BinaryExpressionSyntax binaryExpr:
+                switch (binaryExpr.Kind())
+                {
+                    case SyntaxKind.EqualsExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.ExclamationEqualsToken));
+
+                    case SyntaxKind.NotEqualsExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.EqualsEqualsToken));
+
+                    case SyntaxKind.LessThanExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.GreaterThanEqualsToken));
+
+                    case SyntaxKind.LessThanOrEqualExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.GreaterThanToken));
+
+                    case SyntaxKind.GreaterThanExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.LessThanEqualsToken));
+
+                    case SyntaxKind.GreaterThanOrEqualExpression:
+                        return binaryExpr.WithOperatorToken(SyntaxFactory.Token(SyntaxKind.LessThanToken));
+                }
+                break;
+
+            case PrefixUnaryExpressionSyntax unaryExpr:
+                if (unaryExpr.IsKind(SyntaxKind.LogicalNotExpression))
+                    return unaryExpr.Operand;
+                break;
+        }
+
+        return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, ParenthesizedExpression(condition));
     }
 }
 

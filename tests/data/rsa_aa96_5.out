@@ -29,9 +29,11 @@
 			{
 				break;
 			}
-	
-			array[num2 + 12] = (byte)String.get_Chars(text, num2);
-			num2++;
+			else
+			{
+				array[num2 + 12] = (byte)String.get_Chars(text, num2);
+				num2++;
+			}
 		}
 	
 		string text2 = get_str(27513, 9243, 76);
@@ -42,9 +44,11 @@
 			{
 				break;
 			}
-	
-			array[num5 + 56] = (byte)String.get_Chars(text2, num5);
-			num5++;
+			else
+			{
+				array[num5 + 56] = (byte)String.get_Chars(text2, num5);
+				num5++;
+			}
 		}
 	
 		string text3 = get_str(38752, 55247, 202);
@@ -55,9 +59,11 @@
 			{
 				break;
 			}
-	
-			array[num6 + 63] = (byte)String.get_Chars(text3, num6);
-			num6++;
+			else
+			{
+				array[num6 + 63] = (byte)String.get_Chars(text3, num6);
+				num6++;
+			}
 		}
 	
 		array[62] = 14;
