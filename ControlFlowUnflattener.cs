@@ -1831,7 +1831,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             {
                 string msg = $"[{ElapsedTime()}] post-processing ..";
                 if (Verbosity == 0)
-                    Console.Error.WriteLine(msg);
+                    Console.Error.Write(msg + "\r");
                 else
                     Console.WriteLine(msg);
             }

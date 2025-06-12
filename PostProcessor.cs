@@ -278,33 +278,47 @@ public class PostProcessor
 
     public BlockSyntax PostProcessAll(BlockSyntax block)
     {
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; ; i++)
         {
+            if (i >= 10)
+            {
+                Console.Error.WriteLine($"[?] PostProcessAll: too many iterations ({i})");
+                break;
+            }
             var block2 = PostProcess(block);
             if (block2.IsEquivalentTo(block))
                 break; // no changes
             block = block2;
         }
-        block = new EmptyFinallyBlockRemover().Visit(block) as BlockSyntax;
+        block = new EmptiesRemover().Visit(block) as BlockSyntax;
         block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
         block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
         return block;
     }
 }
 
-// remove empty finally block
-public class EmptyFinallyBlockRemover : CSharpSyntaxRewriter
+// removes:
+//  - empty finally block
+//  - all EmptyStatementSyntax
+public class EmptiesRemover : CSharpSyntaxRewriter
 {
+    // remove empty finally block
     public override SyntaxNode VisitTryStatement(TryStatementSyntax node)
     {
-        var newFinally = node.Finally?.WithBlock(Visit(node.Finally.Block) as BlockSyntax);
-        if (newFinally != null && newFinally.Block.Statements.Count == 0)
-            newFinally = null;
+        if (node.Finally != null && node.Finally.Block.Statements.Count == 0)
+            node = node.WithFinally(null);
 
-        return node
-            .WithBlock(Visit(node.Block) as BlockSyntax)
-            .WithCatches(SyntaxFactory.List(node.Catches.Select(c => { return c.WithBlock(Visit(c.Block) as BlockSyntax); })))
-            .WithFinally(newFinally);
+        return base.VisitTryStatement(node);
+    }
+
+    // remove all EmptyStatementSyntax
+    public override SyntaxNode VisitBlock(BlockSyntax node)
+    {
+        var newStatements = node.Statements.Where(stmt => !(stmt is EmptyStatementSyntax)).ToList();
+        if (newStatements.Count != node.Statements.Count)
+            node = node.WithStatements(SyntaxFactory.List(newStatements));
+
+        return base.VisitBlock(node);
     }
 }
 
