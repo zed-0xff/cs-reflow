@@ -11,101 +11,72 @@
 		string_1b = string.Empty;
 		string_2c = string.Empty;
 		list = new List<string>();
-		lbl_68:
-			if (String.get_Length(((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_ac86) > 2)
+		if (String.get_Length(((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_ac86) > 2)
+		{
+			obj = string.Empty;
+			try
 			{
-				obj = string.Empty;
+				obj = Text.Encoding.get_UTF8().GetString(Convert.FromBase64String(((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_ac86));
+			}
+			catch
+			{
+			}
+	
+			obj3 = obj;
+			if (!String.Contains(obj3, Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd))
+			{
+				a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+				lbl_150:
+					try
+					{
+						((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+						((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+						((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
+						return;
+					}
+					catch
+					{
+						return;
+					}
+	
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				object obj5 = obj;
+				string[] obj6 = new string[1]
+				{
+					Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+				};
+				collection = String.Split(obj5, obj6, 0);
+				collection = String.Split(obj5, obj6, 0);
+				list.AddRange((IEnumerable<string>)collection);
+				a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+				((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
 				try
 				{
-					obj = Text.Encoding.get_UTF8().GetString(Convert.FromBase64String(((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_ac86));
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
+					return;
 				}
 				catch
 				{
+					return;
 				}
 	
-				obj3 = obj;
-				lbl_88:
-					if (!String.Contains(obj3, Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd))
-					{
-						a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
-						try
-						{
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
-							return;
-						}
-						catch
-						{
-							return;
-						}
-	
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
-						try
-						{
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
-							return;
-						}
-						catch
-						{
-							return;
-						}
-	
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						goto lbl_88;
-					}
-					else
-					{
-						object obj5 = obj;
-						string[] obj6 = new string[1]
-						{
-							Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
-						};
-						collection = String.Split(obj5, obj6, 0);
-						list.AddRange((IEnumerable<string>)collection);
-						lbl_131:
-							a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
-						try
-						{
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
-							return;
-						}
-						catch
-						{
-							return;
-						}
-	
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
-						try
-						{
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
-							((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
-							return;
-						}
-						catch
-						{
-							return;
-						}
-	
-						((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-						goto lbl_131;
-					}
+				goto lbl_150;
 			}
 			else
 			{
+				lbl_242:
+					object obj5 = obj;
+				string[] obj6 = new string[1]
+				{
+					Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+				};
+				collection = String.Split(obj5, obj6, 0);
+				list.AddRange((IEnumerable<string>)collection);
 				a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
 				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
 				((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
@@ -122,8 +93,17 @@
 				}
 	
 				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-				((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+				object obj5 = obj;
+				collection = String.Split(obj5, obj6, 0);
+				goto lbl_242;
+			}
+		}
+		else
+		{
+			a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+			((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+			((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+			lbl_150:
 				try
 				{
 					((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
@@ -136,8 +116,31 @@
 					return;
 				}
 	
-				((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-				goto lbl_68;
+			((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+			object obj5 = obj;
+			string[] obj6 = new string[1]
+			{
+				Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+			};
+			collection = String.Split(obj5, obj6, 0);
+			collection = String.Split(obj5, obj6, 0);
+			list.AddRange((IEnumerable<string>)collection);
+			a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
+			((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
+			((Control)((Form_af54)object_0md).label_af37).Text = (string)string_1b;
+			try
+			{
+				((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a5df = (string)string_0a;
+				((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_aff0 = (string)string_1b;
+				((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8.str_a9f5 = ((Control)((Form_af54)object_0md).comboBox_db7d).Text;
+				return;
 			}
+			catch
+			{
+				return;
+			}
+	
+			goto lbl_150;
+		}
 	}
 
