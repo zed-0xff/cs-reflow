@@ -98,23 +98,36 @@ public static class SyntaxNodeExtensions
         if (node1.IsSameStmt(node2))
             return true;
 
-        var ann1 = node1.GetAnnotations("VAR").FirstOrDefault();
         var ann2 = node2.GetAnnotations("VAR").FirstOrDefault();
+
+        if (ann2 != null && node1.IsSameVar(ann2))
+            return true;
+
+        if (node2 is LocalDeclarationStatementSyntax decl2 && decl2.Declaration.Variables.Count == 1)
+        {
+            node2 = decl2.Declaration.Variables[0];
+            ann2 = node2.GetAnnotations("VAR").FirstOrDefault();
+            if (ann2 != null && node1.IsSameVar(ann2))
+                return true;
+        }
+
+        return false;
+    }
+
+    public static bool IsSameVar(this SyntaxNode node1, SyntaxAnnotation ann2)
+    {
+        var ann1 = node1.GetAnnotations("VAR").FirstOrDefault();
 
         if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
             return true;
 
         if (node1 is LocalDeclarationStatementSyntax decl1 && decl1.Declaration.Variables.Count == 1)
+        {
             node1 = decl1.Declaration.Variables[0];
-
-        if (node2 is LocalDeclarationStatementSyntax decl2 && decl2.Declaration.Variables.Count == 1)
-            node2 = decl2.Declaration.Variables[0];
-
-        ann1 = node1.GetAnnotations("VAR").FirstOrDefault();
-        ann2 = node2.GetAnnotations("VAR").FirstOrDefault();
-
-        if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
-            return true;
+            ann1 = node1.GetAnnotations("VAR").FirstOrDefault();
+            if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
+                return true;
+        }
 
         return false;
     }

@@ -5,8 +5,7 @@
 		obj = P_0;
 		if ((int) /*calli with instance method signature not supportd*/ == 0)
 		{
-			byte[] array;
-			array = dc3cf9129ac04d8c8d54c2324583ff0f(obj);
+			byte[] array = dc3cf9129ac04d8c8d54c2324583ff0f(obj);
 			obj2 = array;
 			if (obj2 != null)
 			{
@@ -19,8 +18,7 @@
 		}
 		else if ((int) /*calli with instance method signature not supportd*/ == 0)
 		{
-			byte[] array;
-			array = dc3cf9129ac04d8c8d54c2324583ff0f(obj);
+			byte[] array = dc3cf9129ac04d8c8d54c2324583ff0f(obj);
 			obj2 = array;
 			if (obj2 != null)
 			{
@@ -33,8 +31,7 @@
 		}
 		else
 		{
-			byte[] array;
-			array = a7fdf43bc042466bb877ac8b21cf6b0a(obj);
+			byte[] array = a7fdf43bc042466bb877ac8b21cf6b0a(obj);
 			obj2 = array;
 			if (obj2 != null)
 			{

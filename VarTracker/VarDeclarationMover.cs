@@ -43,12 +43,16 @@ public partial class VarTracker
 
                 if (targetBlock != declBlock)
                 {
-                    _targetBlocks[key] = targetBlock;
-                    _toRemove.Add(declStmt);
-                }
-                else
-                {
-                    _targetBlocks[key] = declBlock;
+                    // Check if every usage block already declares the variable
+                    bool allBlocksHaveDecl = usageBlocks.All(block =>
+                            block.Statements.OfType<LocalDeclarationStatementSyntax>()
+                            .Any(ld => ld.IsSameVar(key)));
+
+                    if (!allBlocksHaveDecl)
+                    {
+                        _targetBlocks[key] = targetBlock;
+                        _toRemove.Add(declStmt);
+                    }
                 }
             }
         }
