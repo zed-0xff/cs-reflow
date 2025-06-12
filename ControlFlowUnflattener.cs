@@ -28,6 +28,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
+    HashSet<string> keepVars = new();
 
     // local
     FlowDictionary _localFlowDict = new();
@@ -45,6 +46,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
     public bool ShowAnnotations = false;
+    public bool MoveDeclarations = true;
     public bool PreProcess = true;
     public bool PostProcess = true;
     public bool isClone = false;
@@ -189,6 +191,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
+    public void KeepVars(List<string> vars)
+    {
+        keepVars = new(vars);
+    }
+
     public CSharpSyntaxNode GetMethod(string methodName)
     {
         var methods = _tree.GetRoot().DescendantNodes()
@@ -266,6 +273,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.RemoveSwitchVars = RemoveSwitchVars;
         clone.AddComments = AddComments;
         clone.ShowAnnotations = ShowAnnotations;
+        clone.MoveDeclarations = MoveDeclarations;
         clone.showIntermediateLogs = showIntermediateLogs;
 
         clone._tree = _tree;                   // shared, r/o
@@ -1606,7 +1614,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .OfType<LocalDeclarationStatementSyntax>()
                 .SelectMany(ld => ld.Declaration.Variables))
         {
-            var key = variable.Identifier.Text;
+            var key = variable.GetAnnotations("VAR").First().Data;
             var value = variable.Parent as VariableDeclarationSyntax;
 
             if (localDecls0.TryGetValue(key, out var existingDecl))
@@ -1683,26 +1691,44 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var localDecls1 = result.DescendantNodesAndSelf()
             .OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(ld => ld.Declaration.Variables)
-            .Select(v => v.Identifier.Text)
+            .Select(v => v.GetAnnotations("VAR").First().Data)
             .ToHashSet();
+
+        if (Verbosity > 2)
+        {
+            Console.Error.WriteLine($"[d] localDecls0: {String.Join(", ", localDecls0.Keys)}");
+            Console.Error.WriteLine($"[d] localDecls1: {String.Join(", ", localDecls1)}");
+        }
 
         // check if any local declarations are used, but were removed
         var newDecls = new List<LocalDeclarationStatementSyntax>();
         foreach (var id in result.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
-            if (localDecls1.Contains(id.Identifier.Text))
+            var ann = id.GetAnnotations("VAR").FirstOrDefault();
+            if (ann == null)
+            {
+                if (Verbosity > 0)
+                    Console.Error.WriteLine($"[?] Identifier '{id}' has no 'VAR' annotation"); // TODO: check why
                 continue;
-            if (!localDecls0.TryGetValue(id.Identifier.Text, out var decl0))
+            }
+            string key = ann.Data;
+            if (localDecls1.Contains(key))
+                continue;
+            if (!localDecls0.TryGetValue(key, out var decl0))
                 continue;
 
             if (Verbosity > 0)
                 Console.Error.WriteLine($"[d] adding back decl \"{decl0.Type} {id};\" used at {id.Parent.TitleWithLineNo()}");
-            localDecls1.Add(id.Identifier.Text);
+            localDecls1.Add(key);
             newDecls.Add(
                     LocalDeclarationStatement(
                         VariableDeclaration(decl0.Type, SingletonSeparatedList(
                                 VariableDeclarator(id.Identifier)
                                 .WithInitializer(null)
+                                .WithAdditionalAnnotations(
+                                    ann,
+                                    new SyntaxAnnotation("OriginalLineNo", id.LineNo().ToString())
+                                    )
                                 )
                             )
                         )
@@ -1771,7 +1797,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         while (PreProcess)
         {
             // remove unused vars _before_ main processing
-            var body_ = new UnusedLocalsRemover(body, Verbosity).Process(body) as BlockSyntax;
+            var body_ = new UnusedLocalsRemover(body, Verbosity, keepVars).Process(body) as BlockSyntax;
             if (body_.IsEquivalentTo(body))
             {
                 break;
@@ -1792,6 +1818,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         BlockSyntax body2 = ReflowBlock(body, isMethod: true);
         body = body.ReplaceAndGetNewNode(body2);
 
+        if (MoveDeclarations)
+        {
+            body2 = tracker.MoveDeclarations(body) as BlockSyntax;
+            if (!body2.IsEquivalentTo(body))
+                body = body.ReplaceAndGetNewNode(body2);
+        }
+
         while (PostProcess)
         {
             if (Verbosity >= 0)
@@ -1803,7 +1836,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
             }
 
-            body2 = new UnusedLocalsRemover(body, Verbosity).Process(body) as BlockSyntax;
+            body2 = new UnusedLocalsRemover(body, Verbosity, keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varProcessor, body2);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
             var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals

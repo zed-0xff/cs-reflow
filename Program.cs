@@ -21,10 +21,12 @@ class Program
         bool printTree,
         bool addComments,
         bool showAnnotations,
+        bool moveDeclarations,
         bool removeSwitchVars,
         PostProcessMode preProcess,
         PostProcessMode postProcess,
         List<string> dropVars,
+        List<string> keepVars,
         bool dumpFlowInfos,
         bool showIntermediateLogs
     );
@@ -44,6 +46,7 @@ class Program
             RemoveSwitchVars = opts.removeSwitchVars,
             AddComments = opts.addComments,
             ShowAnnotations = opts.showAnnotations,
+            MoveDeclarations = opts.moveDeclarations,
             PreProcess = (opts.preProcess != PostProcessMode.Disabled),
             PostProcess = (opts.postProcess != PostProcessMode.Disabled),
             showIntermediateLogs = opts.showIntermediateLogs,
@@ -132,6 +135,12 @@ class Program
             description: "Show annotations."
         );
 
+        var moveDeclarationsOpt = new Option<bool>(
+            aliases: new[] { "--move-declarations", "-M" },
+            getDefaultValue: () => true,
+            description: "Move variable declarations to the lowest common ancestor."
+        );
+
         var removeSwitchVarsOpt = new Option<bool>(
             name: "--remove-switch-vars",
             getDefaultValue: () => true,
@@ -149,6 +158,12 @@ class Program
                 getDefaultValue: () => "true",
                 description: "Post-process the code. Accepts: 1/on/true, 0/off/false, only (post-process only)."
                 );
+
+        var keepVarsOpt = new Option<List<string>>(
+            aliases: new[] { "--keep-var", "-k" },
+            getDefaultValue: () => new List<string>(),
+            description: "Keep specified variable(s)."
+        );
 
         var dropVarsOpt = new Option<List<string>>(
             name: "--drop-var",
@@ -186,12 +201,14 @@ class Program
             printTreeOpt,
             addCommentsOpt,
             showAnnotationsOpt,
+            moveDeclarationsOpt,
             removeSwitchVarsOpt,
             preProcessOpt,
             postProcessOpt,
             quietOpt,
             listMethodsOpt,
             dropVarsOpt,
+            keepVarsOpt,
             dumpFlowInfosOpt,
             showIntermediateLogsOpt
         };
@@ -209,11 +226,13 @@ class Program
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
                 showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
+                moveDeclarations: context.ParseResult.GetValueForOption(moveDeclarationsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
                 preProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(preProcessOpt)),
                 postProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(postProcessOpt)),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
+                keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
                 showIntermediateLogs: context.ParseResult.GetValueForOption(showIntermediateLogsOpt)
             );
@@ -315,6 +334,7 @@ class Program
                     unflattener.Reset();
                     unflattener.SetHints(hints);
                     unflattener.DropVars(opts.dropVars);
+                    unflattener.KeepVars(opts.keepVars);
                     var collector = new ControlFlowTreeCollector();
                     if (opts.dumpFlowInfos)
                     {

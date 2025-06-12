@@ -29,21 +29,15 @@ public partial class VarTracker
         return rewriter.Visit(rootNode);
     }
 
-    // Helper to find common ancestor block of many blocks
-    static BlockSyntax FindCommonAncestor(IEnumerable<BlockSyntax> blocks)
+    public SyntaxNode MoveDeclarations(SyntaxNode rootNode)
     {
-        // naive approach: pick first block and climb its parents until all blocks contain that parent
-        var first = blocks.FirstOrDefault();
-        if (first == null) return null;
+        // Collect variable declarations and usage blocks
+        var collector = new VarScopeCollector();
+        collector.Visit(rootNode);
 
-        SyntaxNode current = first;
-        while (current != null)
-        {
-            if (blocks.All(b => b.AncestorsAndSelf().Contains(current)))
-                return current as BlockSyntax;
-            current = current.Parent;
-        }
-        return null;
+        // Move declarations to appropriate blocks
+        var mover = new VarDeclarationMover(collector);
+        return mover.Visit(rootNode);
     }
 }
 

@@ -8,13 +8,14 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 {
     public int Verbosity = 0;
     Context? _mainCtx = null;
+    HashSet<string> _keepVars;
 
-    static int aidx = 0;
     bool _needRetry;
 
-    public UnusedLocalsRemover(SyntaxNode rootNode, int verbosity = 0)
+    public UnusedLocalsRemover(SyntaxNode rootNode, int verbosity = 0, HashSet<string>? keepVars = null)
     {
         Verbosity = verbosity;
+        _keepVars = keepVars ?? new HashSet<string>();
     }
 
     class Context : SemanticContext
@@ -428,6 +429,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         }
         var unusedLocals = declared
             .Where(s => !read.Contains(s))
+            .Where(s => !_keepVars.Contains(s.Data))
             .ToHashSet();
 
         if (Verbosity > 0 && unusedLocals.Count > 0)
