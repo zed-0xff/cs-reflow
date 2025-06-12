@@ -48,6 +48,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool ShowAnnotations = false;
     public bool MoveDeclarations = true;
     public bool PreProcess = true;
+    public bool Reflow = true;
     public bool PostProcess = true;
     public bool isClone = false;
     public bool showIntermediateLogs = false;
@@ -265,6 +266,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         var clone = new ControlFlowUnflattener();
         clone.isClone = true;
+        clone.PreProcess = false;
         clone.PostProcess = false;
         clone._flowHints = new(_flowHints);
         clone._varProcessor = (VarProcessor)_varProcessor.Clone();
@@ -1815,8 +1817,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _flowRoot = collector.Root;
         _flowDict = collector.Root.ToDictionary();
 
-        BlockSyntax body2 = ReflowBlock(body, isMethod: true);
-        body = body.ReplaceAndGetNewNode(body2);
+        BlockSyntax body2;
+
+        if (Reflow)
+        {
+            body2 = ReflowBlock(body, isMethod: true);
+            body = body.ReplaceAndGetNewNode(body2);
+        }
 
         if (MoveDeclarations)
         {

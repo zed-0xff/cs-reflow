@@ -23,20 +23,14 @@ class Program
         bool showAnnotations,
         bool moveDeclarations,
         bool removeSwitchVars,
-        PostProcessMode preProcess,
-        PostProcessMode postProcess,
+        bool preProcess,
+        bool reflow,
+        bool postProcess,
         List<string> dropVars,
         List<string> keepVars,
         bool dumpFlowInfos,
         bool showIntermediateLogs
     );
-
-    enum PostProcessMode
-    {
-        Disabled,
-        Enabled,
-        Only
-    }
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints)
     {
@@ -47,31 +41,11 @@ class Program
             AddComments = opts.addComments,
             ShowAnnotations = opts.showAnnotations,
             MoveDeclarations = opts.moveDeclarations,
-            PreProcess = (opts.preProcess != PostProcessMode.Disabled),
-            PostProcess = (opts.postProcess != PostProcessMode.Disabled),
+            PreProcess = opts.preProcess,
+            Reflow = opts.reflow,
+            PostProcess = opts.postProcess,
             showIntermediateLogs = opts.showIntermediateLogs,
         };
-    }
-
-    static PostProcessMode ParsePostProcessMode(string? input)
-    {
-        switch (input?.ToLowerInvariant())
-        {
-            case "1":
-            case "on":
-            case "true":
-                return PostProcessMode.Enabled;
-            case "0":
-            case "off":
-            case "false":
-                return PostProcessMode.Disabled;
-            case "only":
-                return PostProcessMode.Only;
-            default:
-                Console.Error.WriteLine($"Invalid value: {input}. Must be one of: 1, 0, on, off, true, false, only.");
-                Environment.Exit(1);
-                return PostProcessMode.Disabled; // never reached
-        }
     }
 
     public static int Main(string[] args)
@@ -147,16 +121,22 @@ class Program
             description: "Remove switch variables."
         );
 
-        var preProcessOpt = new Option<string>(
+        var preProcessOpt = new Option<bool>(
                 aliases: new[] { "--pre-process", "-p" },
-                getDefaultValue: () => "true",
-                description: "Pre-process the code. Accepts: 1/on/true, 0/off/false, only (pre-process only)."
+                getDefaultValue: () => true,
+                description: "Pre-process the code."
                 );
 
-        var postProcessOpt = new Option<string>(
+        var reflowOpt = new Option<bool>(
+                aliases: new[] { "--reflow", "-R" },
+                getDefaultValue: () => true,
+                description: "Reflow the code."
+                );
+
+        var postProcessOpt = new Option<bool>(
                 aliases: new[] { "--post-process", "-P" },
-                getDefaultValue: () => "true",
-                description: "Post-process the code. Accepts: 1/on/true, 0/off/false, only (post-process only)."
+                getDefaultValue: () => true,
+                description: "Post-process the code."
                 );
 
         var keepVarsOpt = new Option<List<string>>(
@@ -204,6 +184,7 @@ class Program
             moveDeclarationsOpt,
             removeSwitchVarsOpt,
             preProcessOpt,
+            reflowOpt,
             postProcessOpt,
             quietOpt,
             listMethodsOpt,
@@ -228,8 +209,9 @@ class Program
                 showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
                 moveDeclarations: context.ParseResult.GetValueForOption(moveDeclarationsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
-                preProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(preProcessOpt)),
-                postProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(postProcessOpt)),
+                preProcess: context.ParseResult.GetValueForOption(preProcessOpt),
+                reflow: context.ParseResult.GetValueForOption(reflowOpt),
+                postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
                 keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
@@ -317,16 +299,6 @@ class Program
                     foreach (var methodName in opts.methods)
                         printer.PrintMethod(methodName);
             }
-            else if (opts.postProcess == PostProcessMode.Only)
-            {
-                foreach (var method in methods)
-                {
-                    PostProcessor postProcessor = new(new());
-                    postProcessor.Verbosity = opts.verbosity;
-                    var processed = postProcessor.ProcessFunction(method);
-                    Console.Write(processed.ToFullString());
-                }
-            }
             else
             {
                 foreach (var method in methods)
@@ -348,11 +320,11 @@ class Program
                         Console.WriteLine();
                         unflattener.DumpFlowInfos();
 
-                        //                        Console.WriteLine();
-                        //                        var collector = new ControlFlowTreeCollector();
-                        //                        collector.Process(method);
-                        //                        Console.WriteLine("Processed Control Flow Tree:");
-                        //                        unflattener._flowRoot.Print();
+                        // Console.WriteLine();
+                        // var collector = new ControlFlowTreeCollector();
+                        // collector.Process(method);
+                        // Console.WriteLine("Processed Control Flow Tree:");
+                        // unflattener._flowRoot.Print();
                     }
                     Console.WriteLine();
                 }

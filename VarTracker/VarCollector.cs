@@ -26,13 +26,15 @@ public partial class VarTracker
                 string varName = symbol.Name;
                 if (varName.Length > 20)
                 {
-                    varName = varName.Substring(0, 4); // Truncate long names
+                    // Truncate too long names
+                    varName = varName.Substring(0, 1).ToLower() + varName.Substring(1, 3);
                 }
                 int suffix = 2;
                 while (_varNames.Contains(varName))
                 {
                     varName = $"{symbol.Name}_{suffix++}";
                 }
+                _varNames.Add(varName);
                 _dict[symbol] = new SyntaxAnnotation("VAR", varName);
             }
         }

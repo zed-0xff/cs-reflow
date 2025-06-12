@@ -14,10 +14,6 @@ public partial class VarTracker
         return IndexSymbols(rootNode, ctx.Model);
     }
 
-    // Call this to get annotation for a declared variable symbol
-    public SyntaxAnnotation GetAnnotation(ISymbol symbol) =>
-        _varAnnotations.TryGetValue(symbol, out var annotation) ? annotation : null;
-
     public SyntaxNode IndexSymbols(SyntaxNode rootNode, SemanticModel semanticModel)
     {
         // First pass: collect and annotate declarators
