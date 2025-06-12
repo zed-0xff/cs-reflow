@@ -89,7 +89,7 @@ public class LongRange
     }
 
     // XXX >>> misbehaves on negative numbers:
-    //  −2147483648 >>> 1 = 9223372035781033984
+    //  -2147483648 >>> 1 = 9223372035781033984
     //                    = 111111111111111111111111111111111000000000000000000000000000000
     //                                                      1000000000000000000000000000000 - should be
     //    static public LongRange operator >>>(LongRange left, int right)

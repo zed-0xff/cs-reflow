@@ -6,55 +6,55 @@ void keep_a1()
 
 void keep_a2()
 {
-    int a;
-    a = 111;
+    int a = 111;
     foo(a);
 }
 
 void keep_a3()
 {
-    int a;
-    a = 111;
+    int a = 111;
     foo(a);
 }
 
 void keep_a4()
 {
-    int a;
-    a = 111;
+    int a = 111;
     foo(a);
 }
 
 void keep_a5()
 {
-    int a;
-    a = 111;
+    int a = 111;
     foo(a);
 }
 
 void keep_b1()
 {
-    int b;
-    b = 111;
+    int b = 111;
     foo(b);
 }
 
 void keep_b2()
 {
-    int b;
-    b = 111;
+    int b = 111;
     foo(b);
 }
 
 void keep_b3()
 {
-    int b;
-    b = 111;
+    int b = 111;
     foo(b);
 }
 
 void keep_333()
 {
     foo(333);
+}
+
+void block()
+{
+    if (foo())
+    {
+    }
 }
 

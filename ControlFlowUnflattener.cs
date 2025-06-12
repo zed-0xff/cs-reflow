@@ -44,6 +44,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public int Verbosity = 0;
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
+    public bool ShowAnnotations = false;
     public bool PreProcess = true;
     public bool PostProcess = true;
     public bool isClone = false;
@@ -264,6 +265,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.Verbosity = Verbosity;
         clone.RemoveSwitchVars = RemoveSwitchVars;
         clone.AddComments = AddComments;
+        clone.ShowAnnotations = ShowAnnotations;
         clone.showIntermediateLogs = showIntermediateLogs;
 
         clone._tree = _tree;                   // shared, r/o
@@ -1005,6 +1007,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
                     case ExpressionStatementSyntax:
                     case LocalDeclarationStatementSyntax:
+                        // if (stmt is LocalDeclarationStatementSyntax localDecl
+                        //         && _visitedLines[lineno] > 0
+                        //         && localDecl.Declaration.Variables.All(v => v.Initializer == null)
+                        //         && _varProcessor.HasVar(localDecl)
+                        //     )
+                        // {
+                        //     skip = true; // skip repeating local decl
+                        // }
                         ex = EvaluateExpressionEx(stmt);
                         value = ex.Result;
                         string valueStr = value?.ToString();
@@ -1590,6 +1600,28 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (block.Statements.Count == 0) // i.e. empty catch {}
             return block;
 
+        // collect all local decls to dict name => syntaxNode
+        Dictionary<string, VariableDeclarationSyntax> localDecls0 = new(StringComparer.Ordinal);
+        foreach (var variable in block.DescendantNodesAndSelf()
+                .OfType<LocalDeclarationStatementSyntax>()
+                .SelectMany(ld => ld.Declaration.Variables))
+        {
+            var key = variable.Identifier.Text;
+            var value = variable.Parent as VariableDeclarationSyntax;
+
+            if (localDecls0.TryGetValue(key, out var existingDecl))
+            {
+                if (existingDecl.Type.ToString() != value?.Type.ToString())
+                    throw new ArgumentException($"Conflicting local variable declaration for '{key}' at {existingDecl.LineNo()} and {value?.LineNo()}");
+
+                if (Verbosity > 0)
+                    Console.Error.WriteLine($"[?] Duplicate variable decl: '{key}'");
+                continue;
+            }
+
+            localDecls0[key] = value!;
+        }
+
         log ??= TraceBlock(block);
         if (log.entries.Count > 0)
         {
@@ -1618,6 +1650,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 else
                     stmt = stmt.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
             }
+
             statements.Add(stmt);
         }
 
@@ -1635,7 +1668,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 throw new NotSupportedException($"Labeled statement at line {label.LineNo()} does not end with a terminal statement: {lastStmt}");
             }
             statements.Add(
-                label // TODO: trace further
+                label // XXX TODO: trace further
             );
         }
 
@@ -1645,6 +1678,43 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
 
         BlockSyntax result = SyntaxFactory.Block(statements);
+
+        // collect remaining decls
+        var localDecls1 = result.DescendantNodesAndSelf()
+            .OfType<LocalDeclarationStatementSyntax>()
+            .SelectMany(ld => ld.Declaration.Variables)
+            .Select(v => v.Identifier.Text)
+            .ToHashSet();
+
+        // check if any local declarations are used, but were removed
+        var newDecls = new List<LocalDeclarationStatementSyntax>();
+        foreach (var id in result.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
+        {
+            if (localDecls1.Contains(id.Identifier.Text))
+                continue;
+            if (!localDecls0.TryGetValue(id.Identifier.Text, out var decl0))
+                continue;
+
+            if (Verbosity > 0)
+                Console.Error.WriteLine($"[d] adding back decl \"{decl0.Type} {id};\" used at {id.Parent.TitleWithLineNo()}");
+            localDecls1.Add(id.Identifier.Text);
+            newDecls.Add(
+                    LocalDeclarationStatement(
+                        VariableDeclaration(decl0.Type, SingletonSeparatedList(
+                                VariableDeclarator(id.Identifier)
+                                .WithInitializer(null)
+                                )
+                            )
+                        )
+                    );
+        }
+
+        if (newDecls.Count > 0)
+        {
+            statements.InsertRange(0, newDecls);
+            result = SyntaxFactory.Block(statements);
+        }
+
         return result;
     }
 
@@ -1691,25 +1761,38 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
 
-        BlockSyntax body2 = body;
-        if (PreProcess)
+        // collect all declarations from body prior to any processing
+        // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
+
+        var tracker = new VariableTracker();
+        var trackedBody = tracker.Track(body) as BlockSyntax;
+        body = body.ReplaceAndGetNewNode(trackedBody);
+
+        while (PreProcess)
         {
             // remove unused vars _before_ main processing
-            UnusedLocalsRemover unusedLocalsRemover = new(body);
-            unusedLocalsRemover.Verbosity = Verbosity;
-            body2 = unusedLocalsRemover.ProcessTree(body) as BlockSyntax;
-            if (body2 != body)
-                body2 = body2.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
+            var body_ = new UnusedLocalsRemover(body, Verbosity).Process(body) as BlockSyntax;
+            if (body_.IsEquivalentTo(body))
+            {
+                break;
+            }
+            else
+            {
+                body = body.ReplaceAndGetNewNode(
+                        body_.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true)
+                        );
+            }
         }
 
         var collector = new ControlFlowTreeCollector();
-        collector.Process(body2);
+        collector.Process(body);
         _flowRoot = collector.Root;
         _flowDict = collector.Root.ToDictionary();
 
-        body2 = ReflowBlock(body2, isMethod: true);
+        BlockSyntax body2 = ReflowBlock(body, isMethod: true);
+        body = body.ReplaceAndGetNewNode(body2);
 
-        if (PostProcess)
+        while (PostProcess)
         {
             if (Verbosity >= 0)
             {
@@ -1720,21 +1803,24 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
             }
 
-            PostProcessor postProcessor = new(_varProcessor, methodNode);
+            body2 = new UnusedLocalsRemover(body, Verbosity).Process(body) as BlockSyntax;
+            PostProcessor postProcessor = new(_varProcessor, body2);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
-            body2 = postProcessor.PostProcessAll(body2);
-
-            // again remove unused vars _after_ main processing
-            body = ReplaceAndGetNewNode(body, body2);
-            body2 = new UnusedLocalsRemover(body).ProcessTree(body) as BlockSyntax;
-            if (body != body2)
+            var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
+            if (body3.IsEquivalentTo(body))
             {
-                body = ReplaceAndGetNewNode(body, body2);
-                postProcessor = new PostProcessor(_varProcessor, body);
-                postProcessor.RemoveSwitchVars = RemoveSwitchVars;
-                body2 = postProcessor.PostProcessAll(body);
-                body = ReplaceAndGetNewNode(body, body2);
+                break;
             }
+            else
+            {
+                body = body.ReplaceAndGetNewNode(body3);
+            }
+        }
+
+        if (ShowAnnotations)
+        {
+            body2 = new VariableTracker.ShowAnnotationsRewriter().Visit(body) as BlockSyntax;
+            body = body.ReplaceAndGetNewNode(body2);
         }
 
         SyntaxNode newMethodNode = body;
@@ -1758,18 +1844,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             result = linePrefix + result.Replace(eol, eol + linePrefix);
         }
         return result;
-    }
-
-    public static T ReplaceAndGetNewNode<T>(T oldNode, T newNode)
-        where T : SyntaxNode
-    {
-        var annotation = new SyntaxAnnotation();
-        var annotatedNewNode = newNode.WithAdditionalAnnotations(annotation);
-
-        var root = oldNode.SyntaxTree.GetCompilationUnitRoot();
-        var newRoot = root.ReplaceNode(oldNode, annotatedNewNode);
-
-        return newRoot.GetAnnotatedNodes(annotation).OfType<T>().First();
     }
 
     public void DumpFlowInfos()

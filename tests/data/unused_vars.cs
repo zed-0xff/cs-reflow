@@ -64,3 +64,15 @@ void keep_333()
     foo(b = 333);
     b = 444;
 }
+
+void block()
+{
+    if(foo())
+    {
+        int a = 1;
+    }
+    else
+    {
+        int b = 2;
+    }
+}

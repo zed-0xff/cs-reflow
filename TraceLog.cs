@@ -87,9 +87,7 @@ public class TraceLog
             return true;
 
         // converted blocks like try{}
-        string s1 = PostProcessor.RemoveAllComments(stmt1).NormalizeWhitespace().ToString().Trim();
-        string s2 = PostProcessor.RemoveAllComments(stmt2).NormalizeWhitespace().ToString().Trim();
-        if (s1 == s2)
+        if (stmt1.IsEquivalentTo(stmt2))
             return true;
 
         // case: label was added when a loop was detected
@@ -272,7 +270,6 @@ public class TraceLog
 
             // add common tail
             if (commonEnd > 0)
-                //result.entries.AddRange(this.entries.GetRange(this.entries.Count - commonEnd, commonEnd));
                 result.add_with_labels(this, other, this.entries.Count - commonEnd, other.entries.Count - commonEnd, commonEnd);
         }
 

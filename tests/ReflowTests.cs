@@ -47,11 +47,17 @@ public class ReflowTests
             actualOutput += "\n";
         }
 
+        var actualPath = Path.Combine(DataPath, $"{name}.out.actual");
         if (expectedOutput.TrimEnd() != actualOutput.TrimEnd())
         {
             // write to file
-            var outputPath = Path.Combine(DataPath, $"{name}.out.actual");
-            File.WriteAllText(outputPath, actualOutput);
+            File.WriteAllText(actualPath, actualOutput);
+        }
+        else
+        {
+            // delete actual output file if it exists
+            if (File.Exists(actualPath))
+                File.Delete(actualPath);
         }
 
         // Assert

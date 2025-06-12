@@ -70,4 +70,15 @@ public partial class VariableProcessor : ICloneable
         e.Evaluate();
         return e;
     }
+
+    public bool HasVar(LocalDeclarationStatementSyntax decl)
+    {
+        foreach (var v in decl.Declaration.Variables)
+        {
+            // TODO: check type
+            if (!VariableValues.ContainsKey(v.Identifier.ValueText))
+                return false;
+        }
+        return true;
+    }
 }

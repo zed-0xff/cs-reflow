@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -19,6 +20,7 @@ class Program
         bool listMethods,
         bool printTree,
         bool addComments,
+        bool showAnnotations,
         bool removeSwitchVars,
         PostProcessMode preProcess,
         PostProcessMode postProcess,
@@ -41,6 +43,7 @@ class Program
             Verbosity = opts.verbosity,
             RemoveSwitchVars = opts.removeSwitchVars,
             AddComments = opts.addComments,
+            ShowAnnotations = opts.showAnnotations,
             PreProcess = (opts.preProcess != PostProcessMode.Disabled),
             PostProcess = (opts.postProcess != PostProcessMode.Disabled),
             showIntermediateLogs = opts.showIntermediateLogs,
@@ -70,6 +73,8 @@ class Program
 
     public static int Main(string[] args)
     {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
+
         // --- Define arguments and options ---
         var filenameArg = new Argument<string?>("filename", description: "Input .cs file (optional).") { Arity = ArgumentArity.ZeroOrOne };
 
@@ -119,6 +124,12 @@ class Program
             aliases: new[] { "--comments", "-c" },
             getDefaultValue: () => true,
             description: "Add comments."
+        );
+
+        var showAnnotationsOpt = new Option<bool>(
+            aliases: new[] { "--annotations", "-A" },
+            getDefaultValue: () => false,
+            description: "Show annotations."
         );
 
         var removeSwitchVarsOpt = new Option<bool>(
@@ -174,6 +185,7 @@ class Program
             processAllOpt,
             printTreeOpt,
             addCommentsOpt,
+            showAnnotationsOpt,
             removeSwitchVarsOpt,
             preProcessOpt,
             postProcessOpt,
@@ -196,6 +208,7 @@ class Program
                 processAll: context.ParseResult.GetValueForOption(processAllOpt),
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
+                showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
                 removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
                 preProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(preProcessOpt)),
                 postProcess: ParsePostProcessMode(context.ParseResult.GetValueForOption(postProcessOpt)),

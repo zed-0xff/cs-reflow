@@ -1,7 +1,13 @@
+using System.Globalization;
 using Xunit;
 
 public class UnknownValueTests
 {
+    static UnknownValueTests()
+    {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
+    }
+
     [Fact]
     public void Test_Add()
     {
@@ -47,7 +53,7 @@ public class UnknownValueTests
         Assert.Equal("UnknownValue<uint>[0..4194303]", a?.ToString());
         a = a?.Cast(TypeDB.Int) as UnknownValueBase;
         a = a?.Sub(67108864);
-        Assert.Equal("UnknownValue<int>[−67108864..−62914561]", a?.ToString());
+        Assert.Equal("UnknownValue<int>[-67108864..-62914561]", a?.ToString());
 
         var b = UnknownValue.Create(TypeDB.Int);
         b = b.Cast(TypeDB.UInt) as UnknownValueBase;

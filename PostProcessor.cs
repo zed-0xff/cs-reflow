@@ -14,20 +14,9 @@ public class PostProcessor
     VariableProcessor _varProcessor;
     public int Verbosity = 0;
 
-    SemanticModel? semanticModel = null;
-
     public PostProcessor(VariableProcessor varProcessor, SyntaxNode? rootNode = null)
     {
         _varProcessor = varProcessor;
-
-        if (rootNode != null)
-        {
-            var compilation = CSharpCompilation.Create("MyAnalysis")
-                .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-                .AddSyntaxTrees(rootNode.SyntaxTree);
-            semanticModel = compilation.GetSemanticModel(rootNode.SyntaxTree);
-            var dataFlow = semanticModel.AnalyzeDataFlow(rootNode);
-        }
     }
 
     bool isSwitchVar(string varName)
@@ -52,131 +41,6 @@ public class PostProcessor
                     ? default
                     : trivia
         );
-    }
-
-    static readonly string[] assignmentOperators = { "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=" };
-    static readonly string[] simpleTypes = { "int", "uint", "nint", "nuint", "long", "ulong", "bool", "float", "double", "char", "string", "object", "byte", "sbyte" };
-    static readonly Regex defaultsRE = new Regex($@"default\(\s*({String.Join("|", simpleTypes.Select(type => type))})\s*\)", RegexOptions.Compiled);
-
-    Dictionary<int, string[]> _blockStrCache = new();
-
-    bool has_var(SyntaxNode node, string varName)
-    {
-        return node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(id => id.Identifier.Text == varName);
-    }
-
-    // TODO: better name
-    bool is_var_used_(SyntaxNode child, string varName, BlockSyntax root)
-    {
-        var parent = child.Parent;
-
-        // note: check semanticModel.GetSymbolInfo(id1).Symbol for more precise comparison
-        while (parent != null && parent != root)
-        {
-            if (Verbosity > 1)
-                // Console.Error.WriteLine($"[d] parent: [{parent.Kind()}] [{parent.GetType()}] {parent.Title()}");
-                Console.Error.WriteLine($"[d] parent: [{parent.Kind()}] {parent.Title()}");
-
-            switch (parent)
-            {
-                case AssignmentExpressionSyntax assignExpr:
-                    // … = … func() … - keep them all
-                    if (assignExpr.Right.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any())
-                        return true;
-
-                    // x = … needle … [where x is not needle]
-                    // obj.y = … needle …
-                    if (
-                            assignExpr.Left.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(id => id.Identifier.Text != varName) &&
-                            has_var(assignExpr.Right, varName)
-                       )
-                    {
-                        return true;
-                    }
-                    break;
-
-                case ArgumentSyntax arg:
-                    // func(… needle …) [where x is not needle]
-                    if (has_var(arg, varName))
-                        return true;
-                    break;
-
-                case ConditionalExpressionSyntax condExpr:
-                    if (has_var(condExpr.Condition, varName)) // (… needle …) ? … : …
-                        return true;
-                    break;
-
-                case DoStatementSyntax doStmt:
-                    if (has_var(doStmt.Condition, varName)) // do { … } while (… needle …)
-                        return true;
-                    break;
-
-                case ElementAccessExpressionSyntax elemAccessExpr:
-                    if (has_var(elemAccessExpr.Expression, varName)) // arr[… needle …], but not needle[…]
-                        return true;
-                    break;
-
-                case ForStatementSyntax forStmt:
-                    if (has_var(forStmt.Condition, varName)) // for (… needle …) { … }
-                        return true;
-                    break;
-
-                case IfStatementSyntax ifStmt:
-                    if (has_var(ifStmt.Condition, varName)) // if (… needle …) { … }
-                        return true;
-                    break;
-
-                case InvocationExpressionSyntax invocExpr:
-                    if (has_var(invocExpr, varName)) // func(… needle …)
-                        return true;
-                    break;
-
-                case LambdaExpressionSyntax lambdaExpr:
-                    if (has_var(lambdaExpr, varName)) // () => { … needle … } XXX maybe too wide
-                        return true;
-                    break;
-
-                case VariableDeclarationSyntax varDecl:
-                    // int needle = … func() … - keep all bc function call might be important
-                    if (varDecl.Variables.Any(v => v.Identifier.Text == varName) && varDecl.DescendantNodes().OfType<InvocationExpressionSyntax>().Any())
-                        return true;
-
-                    // note: Any(!=) is not an else case for Any(==)
-
-                    // int x = … needle … [where x is not needle]
-                    if (varDecl.Variables.Any(v => v.Identifier.Text != varName) && has_var(varDecl, varName))
-                        return true;
-
-                    break;
-
-                case ReturnStatementSyntax returnStmt:
-                    if (has_var(returnStmt.Expression, varName)) // return needle …
-                        return true;
-                    break;
-
-                case WhileStatementSyntax whileStmt:
-                    if (has_var(whileStmt.Condition, varName)) // while (… needle …) { … }
-                        return true;
-                    break;
-            }
-            parent = parent.Parent;
-        }
-
-        return false;
-    }
-
-    bool is_var_used(BlockSyntax block, string varName)
-    {
-        foreach (var id in block.DescendantNodes().OfType<IdentifierNameSyntax>())
-        {
-            if (id.Identifier.Text != varName)
-                continue;
-
-            if (is_var_used_(id, varName, block))
-                return true;
-        }
-
-        return false;
     }
 
     bool is_simple_expr(ExpressionSyntax expr)
@@ -318,17 +182,6 @@ public class PostProcessor
                 }
                 break;
 
-            case TryStatementSyntax tryStmt:
-                var newFinally = tryStmt.Finally?.WithBlock(PostProcess(tryStmt.Finally.Block));
-                if (newFinally != null && newFinally.Block.Statements.Count == 0)
-                    newFinally = null; // remove empty finally block
-
-                return tryStmt
-                    .WithBlock(PostProcess(tryStmt.Block))
-                    .WithCatches(SyntaxFactory.List(tryStmt.Catches.Select(c => { return c.WithBlock(PostProcess(c.Block)); })))
-                    .WithFinally(newFinally);
-                break;
-
             case BlockSyntax blockStmt:
                 stmt = PostProcess(blockStmt);
                 break;
@@ -375,11 +228,6 @@ public class PostProcessor
                 case LocalDeclarationStatementSyntax localDecl:
                     var decl = localDecl.Declaration.Variables.First();
                     string varName = decl.Identifier.Text;
-                    // if (!isSwitchVar(varName))
-                    // {
-                    //     if (!is_var_used(block, varName) && !is_var_used_(decl, varName, block))
-                    //         setSwitchVar(varName); // XXX not actually a switch var, but an useless var
-                    // }
                     if (RemoveSwitchVars && localDecl.Declaration.Variables.All(v => isSwitchVar(v.Identifier.Text)))
                         continue;
                     break;
@@ -432,20 +280,21 @@ public class PostProcessor
     {
         for (int i = 0; i < 10; i++)
         {
-            string s0 = RemoveAllComments(block).NormalizeWhitespace().ToString();
-            block = PostProcess(block);
-            string s1 = RemoveAllComments(block).NormalizeWhitespace().ToString();
-            if (s0 == s1)
+            var block2 = PostProcess(block);
+            if (block2.IsEquivalentTo(block))
                 break; // no changes
+            block = block2;
         }
-        block = new PostProcessorV2().Visit(block) as BlockSyntax;
+        block = new EmptyFinallyBlockRemover().Visit(block) as BlockSyntax;
+        block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
+        block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
         return block;
     }
 }
 
-public class PostProcessorV2 : CSharpSyntaxRewriter
+// remove empty finally block
+public class EmptyFinallyBlockRemover : CSharpSyntaxRewriter
 {
-    // remove empty finally block
     public override SyntaxNode VisitTryStatement(TryStatementSyntax node)
     {
         var newFinally = node.Finally?.WithBlock(Visit(node.Finally.Block) as BlockSyntax);
@@ -456,5 +305,121 @@ public class PostProcessorV2 : CSharpSyntaxRewriter
             .WithBlock(Visit(node.Block) as BlockSyntax)
             .WithCatches(SyntaxFactory.List(node.Catches.Select(c => { return c.WithBlock(Visit(c.Block) as BlockSyntax); })))
             .WithFinally(newFinally);
+    }
+}
+
+// remove duplicate declarations left after flow tree unflattening
+public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
+{
+    public override SyntaxNode VisitBlock(BlockSyntax node)
+    {
+        var groups = node.Statements
+            .OfType<LocalDeclarationStatementSyntax>()
+            .Where(decl => decl.HasAnnotations("ID"))
+            .GroupBy(decl => decl.GetAnnotations("ID").First().Data)
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        var newNode = node;
+
+        foreach (var group in groups)
+        {
+            // Keep the first declaration, remove the rest
+            var toRemove = group.Skip(1).ToList();
+            newNode = newNode.RemoveNodes(toRemove, SyntaxRemoveOptions.KeepNoTrivia);
+        }
+
+        // "int a; int a=2;"   => "int a=2;"
+        // "int a=2; int a;"   => "int a=2;"
+        // "int a; int a;"     => "int a;"
+        // "int a=1; int a=2;" => "int a=1; int a=2;"
+        bool was = false;
+        var newStatements = new List<StatementSyntax>();
+        var stmts = newNode.Statements;
+        for (int i = 0; i < stmts.Count; i++)
+        {
+            if (
+                    i + 1 < stmts.Count &&
+                    stmts[i] is LocalDeclarationStatementSyntax decl1 &&
+                    stmts[i + 1] is LocalDeclarationStatementSyntax decl2 &&
+                    (decl1.IsSameStmt(decl2) || decl1.IsSameVar(decl2))
+                )
+            {
+                if (decl1.IsSameStmt(decl2) || (decl1.Declaration.Variables[0].Initializer == null && decl2.Declaration.Variables[0].Initializer == null))
+                {
+                    newStatements.Add(decl1);
+                }
+                else
+                {
+                    if (decl1.Declaration.Variables[0].Initializer != null)
+                        newStatements.Add(decl1);
+                    if (decl2.Declaration.Variables[0].Initializer != null)
+                        newStatements.Add(decl2);
+                }
+                was = true;
+                i++;
+            }
+            else
+            {
+                newStatements.Add(stmts[i]);
+            }
+        }
+
+        if (was)
+            newNode = newNode.WithStatements(SyntaxFactory.List(newStatements));
+
+        // Visit the modified node further down the tree if needed
+        return base.VisitBlock(newNode);
+    }
+}
+
+// convert declaration followed by assignment into a single declaration with initializer
+// i.e.:
+//   byte[] array;
+//   array = fun(obj2);
+// =>
+//   byte[] array = fun(obj2);
+//
+// XXX FIXME may hide default initializer call for objects
+public class DeclarationAssignmentMerger : CSharpSyntaxRewriter
+{
+    public override SyntaxNode VisitBlock(BlockSyntax node)
+    {
+        var newStatements = new List<StatementSyntax>();
+        var stmts = node.Statements;
+
+        bool was = false;
+        int i = 0;
+        while (i < stmts.Count)
+        {
+            // Try to match pattern: declaration + assignment
+            if (i + 1 < stmts.Count &&
+                stmts[i] is LocalDeclarationStatementSyntax declStmt && declStmt.Declaration.Variables.Count == 1 &&
+                declStmt.Declaration.Variables[0].Initializer == null &&
+                stmts[i + 1] is ExpressionStatementSyntax assignStmt &&
+                assignStmt.Expression is AssignmentExpressionSyntax assignExpr &&
+                assignExpr.Left is IdentifierNameSyntax leftId &&
+                leftId.IsSameVar(declStmt))
+            {
+                // Build combined declaration
+                var variable = declStmt.Declaration.Variables[0]
+                    .WithInitializer(SyntaxFactory.EqualsValueClause(assignExpr.Right))
+                    .WithTrailingTrivia(assignStmt.GetTrailingTrivia());
+
+                var newDecl = declStmt.WithDeclaration(
+                    declStmt.Declaration.WithVariables(SyntaxFactory.SingletonSeparatedList(variable)));
+
+                newStatements.Add(newDecl);
+                i += 2; // Skip both
+                was = true;
+            }
+            else
+            {
+                newStatements.Add(stmts[i]);
+                i++;
+            }
+        }
+
+        return base.VisitBlock(was ? node.WithStatements(SyntaxFactory.List(newStatements)) : node);
     }
 }
