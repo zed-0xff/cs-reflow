@@ -183,4 +183,10 @@ public class ReflowTests
     {
         checkData("unused_vars");
     }
+
+    [Fact]
+    public void nested_whiles()
+    {
+        checkData("nested_whiles");
+    }
 }

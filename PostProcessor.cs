@@ -283,6 +283,97 @@ public class IfRewriter : CSharpSyntaxRewriter
         return base.VisitIfStatement(ifStmt);
     }
 
+    // remove unnecessary nested blocks
+    public override SyntaxNode VisitBlock(BlockSyntax node)
+    {
+        node = (BlockSyntax)base.VisitBlock(node);
+        if (node.Statements.Any(stmt => stmt is BlockSyntax))
+        {
+            var statements = new List<StatementSyntax>();
+            foreach (var stmt in node.Statements)
+            {
+                if (stmt is BlockSyntax innerBlock)
+                {
+                    statements.AddRange(innerBlock.Statements);
+                }
+                else
+                {
+                    statements.Add(stmt);
+                }
+            }
+            node = node.WithStatements(SyntaxFactory.List(statements));
+        }
+        return node;
+    }
+
+    // convert 'if' to 'while'
+    public override SyntaxNode VisitLabeledStatement(LabeledStatementSyntax node)
+    {
+        if (node.Statement is not IfStatementSyntax ifStmt)
+            return base.VisitLabeledStatement(node);
+
+        // lbl_372:
+        //   if (num6 < int_0nk)
+        //   {
+        //     ((short[])obj)[num6] = (short)(ushort)((Random)obj4).Next(65, 90);
+        //     num6++;
+        //     goto lbl_372;
+        //   }
+        // else ...
+        if (
+                ifStmt.Else != null
+                && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 1
+                && !thenBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
+                && !thenBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
+                && thenBlk.Statements[^1] is GotoStatementSyntax gotoStmt1 && gotoStmt1.Expression is IdentifierNameSyntax gotoId1
+                && gotoId1.Identifier.ValueText == node.Identifier.ValueText
+           )
+        {
+            List<StatementSyntax> newStatements = new List<StatementSyntax>(
+                    ifStmt.Else.Statement is BlockSyntax eb ? eb.Statements : SingletonList(ifStmt.Else.Statement)
+                    );
+            newStatements.Insert(0,
+                    WhileStatement(
+                        ifStmt.Condition,
+                        Block(thenBlk.Statements.Take(thenBlk.Statements.Count - 1))
+                        )
+                    );
+            return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+        }
+
+        // lbl_336:
+        //    if (num10 >= int_1nl)
+        //       ...
+        //    else
+        //    {
+        //        ((short[])obj2)[num10] = (short)(ushort)((Random)obj4).Next(97, 122);
+        //        num10++;
+        //        goto lbl_336;
+        //    }
+        if (
+                ifStmt.Else != null
+                && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 1
+                && !elseBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
+                && !elseBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
+                && elseBlk.Statements[^1] is GotoStatementSyntax gotoStmt2 && gotoStmt2.Expression is IdentifierNameSyntax gotoId2
+                && gotoId2.Identifier.ValueText == node.Identifier.ValueText
+           )
+        {
+            List<StatementSyntax> newStatements = new List<StatementSyntax>(
+                    ifStmt.Statement is BlockSyntax tb ? tb.Statements : SingletonList(ifStmt.Statement)
+                    );
+            newStatements.Insert(0,
+                    WhileStatement(
+                        invert_condition(ifStmt.Condition),
+                        Block(elseBlk.Statements.Take(elseBlk.Statements.Count - 1))
+                        )
+                    );
+            return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+        }
+
+        return base.VisitLabeledStatement(node);
+    }
+
     // XXX may be incorrect if operators are overridden
     ExpressionSyntax invert_condition(ExpressionSyntax condition)
     {
