@@ -13,7 +13,7 @@ public partial class VarTracker
             {
                 string? ann_str = node.NestedAnnotationsAsString();
                 if (ann_str != null && ann_str.Length < 100)
-                    node = node.WithTrailingTrivia(SyntaxFactory.Comment(" // " + ann_str));
+                    node = node.WithComment(ann_str);
             }
             return node;
         }

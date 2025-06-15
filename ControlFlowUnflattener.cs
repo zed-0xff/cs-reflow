@@ -1669,7 +1669,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 else if ((comment == "True" || comment == "False") && stmt.Title().ToLower().Contains($"({comment.ToLower()})")) // e.g. while (true) { ... }
                     ;
                 else
-                    stmt = stmt.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
+                    stmt = stmt.WithComment(comment);
             }
 
             statements.Add(stmt);

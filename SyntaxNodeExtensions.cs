@@ -172,4 +172,9 @@ public static class SyntaxNodeExtensions
         }
         return annotations.Count > 0 ? string.Join(", ", annotations) : null;
     }
+
+    public static T WithComment<T>(this T node, string comment) where T : SyntaxNode
+    {
+        return node.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
+    }
 }

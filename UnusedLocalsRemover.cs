@@ -182,7 +182,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         SyntaxNode? gen_empty_stmt(SyntaxNode prev)
         {
             return EmptyStatement()
-                .WithTrailingTrivia(Comment(" // " + prev.Title()));
+                .WithComment(prev.Title());
         }
 
         public override SyntaxNode? VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
