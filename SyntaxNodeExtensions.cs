@@ -173,8 +173,31 @@ public static class SyntaxNodeExtensions
         return annotations.Count > 0 ? string.Join(", ", annotations) : null;
     }
 
+    public static string EscapeNonPrintable(string input)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in input)
+        {
+            if (char.IsControl(ch) && ch != '\t')
+            {
+                switch (ch)
+                {
+                    case '\n': sb.Append(ch); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default: sb.Append($"\\x{(int)ch:X2}"); break;
+                }
+            }
+            else
+            {
+                sb.Append(ch);
+            }
+        }
+        return sb.ToString();
+    }
+
     public static T WithComment<T>(this T node, string comment) where T : SyntaxNode
     {
-        return node.WithTrailingTrivia(SyntaxFactory.Comment(" // " + comment));
+        return node.WithTrailingTrivia(SyntaxFactory.Comment(" // " + EscapeNonPrintable(comment)));
     }
 }
