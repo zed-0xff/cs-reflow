@@ -146,7 +146,7 @@ public class UnknownValueBits : UnknownTypedValue
         }
 
         int floatingCount = floatingBits.Count;
-        long combinations = 1L << floatingCount;
+        long combinations = 1L << floatingCount; // cardinality
 
         for (long i = 0; i < combinations; i++)
         {
@@ -157,7 +157,7 @@ public class UnknownValueBits : UnknownTypedValue
                     dynamicPart |= (1L << floatingBits[j]);
             }
 
-            yield return (val & ~mask) | (dynamicPart & mask);
+            yield return val | dynamicPart;
         }
     }
 

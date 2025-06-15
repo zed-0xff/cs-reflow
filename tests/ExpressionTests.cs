@@ -15,6 +15,21 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_int_unk_assign()
+    {
+        string stmt_str = "int x = Foo.bar";
+        VarProcessor processor = new();
+        try
+        {
+            processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+        }
+        catch (NotSupportedException ex)
+        {
+        }
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.VariableValues["x"]);
+    }
+
+    [Fact]
     public void Test_int_negate()
     {
         int x = 123;
@@ -293,6 +308,18 @@ public partial class ExpressionTests
         VarProcessor processor = new();
         processor.VariableValues["x"] = UnknownValue.Create("int");
         processor.VariableValues["QRR11"] = 0;
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprK()
+    {
+        string expr_str = "(int)num8 - x * -1275068416 != -1135615528";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VarProcessor processor = new();
+        processor.VariableValues["num8"] = new UnknownValueRange(TypeDB.UInt, 0, 1194);
+        processor.VariableValues["x"] = UnknownValue.Create("int");
         var result = processor.EvaluateExpression(expr);
         Assert.Equal(true, result);
     }

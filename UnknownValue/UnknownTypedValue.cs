@@ -124,7 +124,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (TryConvertToLong(right, out l))
-            return new UnknownValueList(type, Values().Select(v => MaskWithSign(v * l)).Distinct().OrderBy(x => x).ToList());
+            return new UnknownValueList(type, Values().Select(v => MaskWithSign(v * l)));
 
         if (right is not UnknownTypedValue ru)
             return UnknownValue.Create(type);
@@ -168,7 +168,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueList(type, Values().Select(v => v & mask).Distinct().OrderBy(x => x).ToList());
+            return new UnknownValueList(type, Values().Select(v => v & mask));
 
         return UnknownValueBits.CreateFromAnd(type, mask);
     }
@@ -179,9 +179,23 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueList(type, Values().Select(v => v | mask).Distinct().OrderBy(x => x).ToList());
+            return new UnknownValueList(type, Values().Select(v => v | mask));
 
         return UnknownValueBits.CreateFromOr(type, mask);
+    }
+
+    public override UnknownValueBase Sub(object right)
+    {
+        if (right is not UnknownTypedValue otherTyped)
+            return UnknownValue.Create(type);
+
+        long resultCardinality = Cardinality() * otherTyped.Cardinality();
+        if (resultCardinality > MAX_DISCRETE_CARDINALITY)
+            return UnknownValue.Create(type);
+
+        return new UnknownValueList(type,
+                Values()
+                .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
     }
 
     public override UnknownValueBase Merge(object other)

@@ -62,6 +62,9 @@ public partial class VarProcessor
 
         object ProcessLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
         {
+            if (Verbosity > 2)
+                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: {localDeclaration}");
+
             // Extract the variable declaration
             var decl = localDeclaration.Declaration.Variables.First();
             //if (decl == null) return;
@@ -73,11 +76,17 @@ public partial class VarProcessor
             // Extract the right-hand side expression (e.g., "(num4 = (uint)(num2 ^ 0x76ED016F))")
             var initializerExpression = decl.Initializer?.Value;
 
-            var value = initializerExpression == null
-                ? UnknownValue.Create(localDeclaration.Declaration.Type)
-                : EvaluateExpression(initializerExpression);
+            object value = new UnknownValue();
+            if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
+                value = UnknownValue.Create(localDeclaration.Declaration.Type);
 
-            // if the variable type is known, use it
+            if (initializerExpression != null)
+            {
+                setVar(varName, value); // set to UnknownValue first, because EvaluateExpression() may throw an exception
+                value = EvaluateExpression(initializerExpression);
+            }
+
+            // narrow returned value type, when possible
             if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
             {
                 switch (value)

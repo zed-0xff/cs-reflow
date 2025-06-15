@@ -13,6 +13,44 @@ public class UnknownValueBitsTest
     }
 
     [Fact]
+    public void Test_Cardinality()
+    {
+        var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
+        Assert.Equal(1, a.Cardinality());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
+        Assert.Equal(1, a.Cardinality());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 1, 1, 1, 1, 1, 1, 1, 1 });
+        Assert.Equal(1, a.Cardinality());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, 0, 0, 0, 0, 0, 0, 0 });
+        Assert.Equal(2, a.Cardinality());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, 0, 0, 0, 0, 0, 0, -1 });
+        Assert.Equal(4, a.Cardinality());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, -1, -1, -1, -1, -1, -1, -1 });
+        Assert.Equal(256, a.Cardinality());
+    }
+
+    [Fact]
+    public void Test_Values()
+    {
+        var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, -1, 0, 0, 0, 0, 0, 0 });
+        Assert.Equal(new List<long> { 0, 1, 2, 3 }, a.Values());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, -1, -1, 0, 0, 0, 0 });
+        Assert.Equal(new List<long> { 0, 4, 8, 12 }, a.Values());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, 0, 0, 0, 0, 0, -1 });
+        Assert.Equal(new List<long> { 0, 128 }, a.Values());
+
+        a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 1, 0, 0, 0, 0, 0, 0, -1 });
+        Assert.Equal(new List<long> { 1, 129 }, a.Values());
+    }
+
+    [Fact]
     public void Test_Min_byte()
     {
         var a = new UnknownValueBits(TypeDB.Byte);

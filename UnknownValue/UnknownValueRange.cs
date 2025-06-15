@@ -69,11 +69,11 @@ public class UnknownValueRange : UnknownTypedValue
             : new UnknownValueRange(type);
     }
 
-    public override UnknownValueRange Sub(object right)
+    public override UnknownValueBase Sub(object right)
     {
         return TryConvertToLong(right, out long l)
             ? new UnknownValueRange(type, Range - l)
-            : new UnknownValueRange(type);
+            : base.Sub(right);
     }
 
     public override UnknownValueBase ShiftLeft(object right)
