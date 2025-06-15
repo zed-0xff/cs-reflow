@@ -48,6 +48,23 @@ class Program
         };
     }
 
+    static int calc_verbosity(InvocationContext context, Option<bool> quietOpt)
+    {
+        bool quiet = context.ParseResult.GetValueForOption(quietOpt);
+        if (quiet)
+            return -1; // quiet mode, no verbosity
+
+        int nv = context.ParseResult.Tokens.Count(t => t.Value == "-v");
+        if (nv > 0)
+            return nv; // verbosity level is the number of -v options
+
+        // check if env vars VIMRUNTIME and VIM are set
+        if (Environment.GetEnvironmentVariable("VIMRUNTIME") != null || Environment.GetEnvironmentVariable("VIM") != null)
+            return -1; // default verbosity when running as filter in vim
+
+        return 0; // default verbosity
+    }
+
     public static int Main(string[] args)
     {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
@@ -202,7 +219,7 @@ class Program
                 methods: context.ParseResult.GetValueForArgument(methodsArg),
                 expr: context.ParseResult.GetValueForOption(exprArg),
                 hintList: context.ParseResult.GetValueForOption(hintOpt),
-                verbosity: context.ParseResult.GetValueForOption(quietOpt) ? -1 : context.ParseResult.Tokens.Count(t => t.Value == "-v"),
+                verbosity: calc_verbosity(context, quietOpt),
                 processAll: context.ParseResult.GetValueForOption(processAllOpt),
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
@@ -275,7 +292,11 @@ class Program
             {
                 foreach (var methodName in opts.methods)
                 {
-                    methods.Add(unflattener.GetMethod(methodName));
+                    // if methodName is integer
+                    if (int.TryParse(methodName, out int lineno))
+                        methods.Add(unflattener.GetMethod(lineno));
+                    else
+                        methods.Add(unflattener.GetMethod(methodName));
                 }
             }
 

@@ -1689,7 +1689,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 throw new NotSupportedException($"Labeled statement at line {label.LineNo()} does not end with a terminal statement: {lastStmt}");
             }
             statements.Add(
-                label // XXX TODO: trace further
+                label.WithComment("XXX: not fully implemented")
             );
         }
 
