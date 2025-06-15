@@ -269,7 +269,7 @@ class Program
             if (opts.methods == null || opts.methods.Count == 0)
             {
                 printAll = true;
-                methods = unflattener.Methods.Values.Select(m => unflattener.GetMethod(m)).ToList();
+                methods = unflattener.Methods.Keys.Select(k => unflattener.GetMethod(k)).ToList();
             }
             else
             {
