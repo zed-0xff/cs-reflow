@@ -116,31 +116,50 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         VisitControlFlow(node, () => base.VisitGotoStatement(node));
     }
 
+    public override void VisitUsingStatement(UsingStatementSyntax node)
+    {
+        VisitControlFlow(node, () => base.VisitUsingStatement(node));
+    }
+
     public override void VisitYieldStatement(YieldStatementSyntax node)
     {
         VisitControlFlow(node, () => base.VisitYieldStatement(node));
     }
 
+    // same as ControlFlowNode.PrintTree(), but draw up/down arrows on labels
     public void PrintTree(ControlFlowNode node, int depth = 0)
     {
         var stmt = node.Statement;
-        if (stmt != null)
+        switch (stmt)
         {
-            string line = $"{node.ShortFlags()} {stmt.LineNo().ToString().PadLeft(6)}: {new string(' ', depth * IndentSpaces)}{stmt.Title()}";
-            if (stmt is GotoStatementSyntax gotoStmt && gotoStmt.Expression is IdentifierNameSyntax id && _labels.TryGetValue(id.Identifier.ToString(), out var label))
-            {
-                line = line.PadRight(CommentPadding);
-                if (label.LineNo() > stmt.LineNo())
+            case null:
+                break;
+            case LabeledStatementSyntax labelStmt:
+                if (node.ShortFlags().Trim() != "")
+                    goto default;
+                Console.WriteLine(stmt.Title().Gray());
+                break;
+            default:
+                string flags = node.ShortFlags();
+                if (flags.Trim() != "")
+                    flags = flags.Yellow();
+                string line = $"{flags} {stmt.LineNo().ToString().PadLeft(6)}: {new string(' ', depth * IndentSpaces)}{stmt.Title()}";
+                if (stmt is GotoStatementSyntax gotoStmt && gotoStmt.Expression is IdentifierNameSyntax id && _labels.TryGetValue(id.Identifier.ToString(), out var label))
                 {
-                    line += $" // ▼ {label.LineNo()}";
+                    line = line.PadRight(CommentPadding);
+                    if (label.LineNo() > stmt.LineNo())
+                    {
+                        line += $" // ▼ {label.LineNo()}";
+                    }
+                    else if (label.LineNo() < stmt.LineNo())
+                    {
+                        line += $" //   {label.LineNo()} ▲";
+                    }
                 }
-                else if (label.LineNo() < stmt.LineNo())
-                {
-                    line += $" //   {label.LineNo()} ▲";
-                }
-            }
-            Console.WriteLine(line);
+                Console.WriteLine(line);
+                break;
         }
+
         foreach (var child in node.Children)
         {
             PrintTree(child, depth + 1);

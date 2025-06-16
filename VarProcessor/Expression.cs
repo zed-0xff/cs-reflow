@@ -49,7 +49,7 @@ public partial class VarProcessor
                     result = EvaluateExpression(expressionStatement.Expression);
                     break;
                 default:
-                    throw new NotSupportedException($"Syntax node type '{node.GetType()}' is not supported.");
+                    throw new NotSupportedException($"Syntax node type '{node?.GetType()}' is not supported.");
             }
             if (result is IntConstExpr ice)
             {
@@ -251,10 +251,18 @@ public partial class VarProcessor
 
                 case ConditionalExpressionSyntax conditionalExpr: // ternary operator: num3 == 0 ? num4 : num5
                     var condition = EvaluateExpression(conditionalExpr.Condition);
-                    if (Convert.ToBoolean(condition))
-                        return EvaluateExpression(conditionalExpr.WhenTrue);
-                    else
-                        return EvaluateExpression(conditionalExpr.WhenFalse);
+                    try
+                    {
+                        if (Convert.ToBoolean(condition))
+                            return EvaluateExpression(conditionalExpr.WhenTrue);
+                        else
+                            return EvaluateExpression(conditionalExpr.WhenFalse);
+                    }
+                    catch (InvalidCastException)
+                    {
+                        Console.Error.WriteLine($"[?] cannot cast '{condition}' to bool in: {conditionalExpr}");
+                        return UnknownValue.Create();
+                    }
 
                 case DefaultExpressionSyntax defaultExpr:
                     // Handle default expressions (e.g., default(uint))

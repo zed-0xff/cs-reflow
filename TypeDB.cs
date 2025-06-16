@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Numerics;
 
 public static class TypeDB
@@ -25,7 +26,9 @@ public static class TypeDB
 
     public static IntInfo Find(string typeName) => TryFind(typeName) ?? throw new NotImplementedException($"TypeDB: {typeName} not supported.");
     public static IntInfo Find(System.Type type) => Find(type.ToString());
+    public static IntInfo Find(TypeSyntax type) => Find(type.ToString());
 
+    public static IntInfo? TryFind(TypeSyntax type) => TryFind(type.ToString());
     public static IntInfo? TryFind(System.Type type) => TryFind(type.ToString());
     public static IntInfo? TryFind(string typeName)
     {

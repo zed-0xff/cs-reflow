@@ -40,6 +40,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     DefaultDict<int, int> _visitedLines = new();
     ReturnsDictionary _parentReturns = new();
     Stopwatch _stopWatch = Stopwatch.StartNew();
+    ControlFlowUnflattener? _parent = null;
+    string _status;
 
     // configuration
     public int Verbosity = 0;
@@ -266,6 +268,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         var clone = new ControlFlowUnflattener();
         clone.isClone = true;
+        clone._parent = this;
         clone.PreProcess = false;
         clone.PostProcess = false;
         clone._flowHints = new(_flowHints);
@@ -471,9 +474,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         throw new NotImplementedException($"For statement at line {forStmt.LineNo()} is not supported yet.");
     }
 
-    StatementSyntax convert_foreach(ForEachStatementSyntax forEachStmt)
+    StatementSyntax convert_foreach(ForEachStatementSyntax forEachStmt, ReturnsDictionary retLabels)
     {
-        throw new NotImplementedException($"ForEach statement at line {forEachStmt.LineNo()} is not supported yet.");
+        var clone = Clone().WithParentReturns(retLabels);
+        BlockSyntax block = forEachStmt.Statement as BlockSyntax ?? Block(SingletonList(forEachStmt.Statement));
+        var newBlock = clone.ReflowBlock(block);
+        _varProcessor.VariableValues.MergeExisting(clone._varProcessor.VariableValues);
+
+        return forEachStmt
+            .WithStatement(newBlock)
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("OriginalLineNo", forEachStmt.LineNo().ToString())
+                    );
     }
 
     void trace_switch(SwitchStatementSyntax switchStmt, object value)
@@ -777,6 +789,20 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     );
     }
 
+    UsingStatementSyntax convert_using(UsingStatementSyntax usingStmt, ReturnsDictionary retLabels)
+    {
+        var clone = Clone().WithParentReturns(retLabels);
+        BlockSyntax block = usingStmt.Statement as BlockSyntax ?? Block(SingletonList(usingStmt.Statement));
+        var newBlock = clone.ReflowBlock(block);
+        _varProcessor.VariableValues.UpdateExisting(clone._varProcessor.VariableValues);
+
+        return usingStmt
+            .WithStatement(newBlock)
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("OriginalLineNo", usingStmt.LineNo().ToString())
+                    );
+    }
+
     public object EvaluateExpression(ExpressionSyntax expression)
     {
         return _varProcessor.EvaluateExpression(expression);
@@ -896,7 +922,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .FirstOrDefault(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia))
                 .ToString();
 
-            line += ANSI_COLOR_GRAY + cmt;
+            line += ANSI.COLOR_GRAY + cmt;
         }
 
         if (!String.IsNullOrEmpty(comment))
@@ -909,16 +935,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             {
                 comment = comment.Substring(0, commentPadding - 1) + "…";
             }
-            line = line.PadRight(commentPadding) + ANSI_COLOR_GRAY + " // " + comment + ANSI_COLOR_RESET;
+            line = line.PadRight(commentPadding) + ANSI.COLOR_GRAY + " // " + comment + ANSI.COLOR_RESET;
         }
 
         if (skip)
-            Console.Write(ANSI_COLOR_GRAY);
+            Console.Write(ANSI.COLOR_GRAY);
         Console.Write(_traceLog.Id);
         Console.Write($"{stmt.LineNo().ToString().PadLeft(6)}: ");
         Console.Write(line);
         if (skip)
-            Console.Write(ANSI_COLOR_RESET);
+            Console.Write(ANSI.COLOR_RESET);
         Console.WriteLine();
         if (Verbosity > 1)
             Console.WriteLine($"    vars: {_varProcessor.VariableValues}");
@@ -955,9 +981,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     // trace block as main flow
     public void trace_statements_inline(SyntaxList<StatementSyntax> statements, int start_idx = 0)
     {
+        // scan labels
         Dictionary<string, int> labels = new();
         ReturnsDictionary retLabels = new();
-
         foreach (var stmt in statements.OfType<LabeledStatementSyntax>())
         {
             var labelName = stmt.Identifier.Text;
@@ -968,12 +994,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
         }
 
-        // Console.WriteLine($"[d] {statements.First().LineNo()}: labels: {String.Join(", ", labels.Keys)}");
-        VarProcessor.Expression? ex = null;
+        // scan decls for types (but not initializers yet!)
+        foreach (var stmt in statements.OfType<LocalDeclarationStatementSyntax>())
+        {
+            _varProcessor.SetVarTypes(stmt);
+        }
 
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
         {
+            VarProcessor.Expression? ex = null;
             StatementSyntax stmt = statements[i];
             string comment = "";
             object? value = UnknownValue.Create();
@@ -1086,8 +1116,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case UsingStatementSyntax usingStmt:
-                        value = EvaluateExpression(usingStmt.Expression);
-                        comment = value.ToString();
+                        stmt = convert_using(usingStmt, retLabels);
+                        skip = false;
+                        trace = false;
                         break;
 
                     case GotoStatementSyntax:
@@ -1107,7 +1138,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case ForEachStatementSyntax forEachStmt:
-                        stmt = convert_foreach(forEachStmt);
+                        stmt = convert_foreach(forEachStmt, retLabels);
                         break;
 
                     case ForStatementSyntax forStmt:
@@ -1341,6 +1372,22 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return TraceBlock(block.Statements, start_idx, block.LineNo());
     }
 
+    string nested_statuses()
+    {
+        List<string> statuses = new();
+        ControlFlowUnflattener? processor = this;
+        while (processor != null)
+        {
+            if (processor._status != null)
+            {
+                statuses.Add(processor._status);
+            }
+            processor = processor._parent;
+        }
+        statuses.Reverse();
+        return String.Join(" ", statuses);
+    }
+
     // does not update variables nor _traceLog
     public TraceLog TraceBlock(SyntaxList<StatementSyntax> statements, int start_idx = 0, int lineno = -1)
     {
@@ -1362,11 +1409,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 ControlFlowUnflattener clone = Clone().WithHints(hints);
                 if (Verbosity > -1)
                 {
-                    string msg = $"[{ElapsedTime()}] tracing branches: {logs.Count}/{logs.Count + queue.Count}";
+                    string msg = $"[{ElapsedTime()}] tracing branches: ";
+                    _status = $"{logs.Count + 1}/{logs.Count + queue.Count + 1}";
+                    msg += nested_statuses();
                     if (Verbosity == 0)
                     {
-                        if (!isClone)
-                            Console.Error.Write(msg + "\r");
+                        Console.Error.Write(msg + ANSI.ERASE_TILL_EOL + "\r");
                     }
                     else
                     {
@@ -1623,7 +1671,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         // collect all local decls to dict name => syntaxNode
         Dictionary<string, VariableDeclarationSyntax> localDecls0 = new(StringComparer.Ordinal);
-        foreach (var variable in block.DescendantNodesAndSelf()
+        foreach (var variable in block.DescendantNodes()
                 .OfType<LocalDeclarationStatementSyntax>()
                 .SelectMany(ld => ld.Declaration.Variables))
         {
@@ -1874,7 +1922,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             body = body.ReplaceAndGetNewNode(body2);
         }
 
-        SyntaxNode newMethodNode = body;
+        SyntaxNode? newMethodNode = body;
         while (newMethodNode != null)
         {
             if (newMethodNode is BaseMethodDeclarationSyntax)
@@ -1883,6 +1931,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 break;
             newMethodNode = newMethodNode.Parent;
         }
+
+        if (newMethodNode == null)
+            throw new InvalidOperationException("Could not find method node in the syntax tree.");
 
         string result = GotoSpacer.Process(
                 newMethodNode

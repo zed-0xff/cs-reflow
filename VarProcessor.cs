@@ -81,4 +81,19 @@ public partial class VarProcessor : ICloneable
         }
         return true;
     }
+
+    public void SetVarTypes(LocalDeclarationStatementSyntax decl)
+    {
+        foreach (var v in decl.Declaration.Variables)
+        {
+            if (VariableValues.ContainsKey(v.Identifier.ValueText))
+            {
+                // TODO: check type
+            }
+            else
+            {
+                VariableValues[v.Identifier.ValueText] = UnknownValue.Create(decl.Declaration.Type);
+            }
+        }
+    }
 }

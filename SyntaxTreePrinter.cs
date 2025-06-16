@@ -51,16 +51,16 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
             switch (node)
             {
                 case LocalDeclarationStatementSyntax l:
-                    color = ANSI_COLOR_LIGHT_BLUE;
+                    color = ANSI.COLOR_LIGHT_BLUE;
                     variableProcessor.EvaluateExpression(l);
                     break;
                 case ExpressionStatementSyntax e:
-                    color = ANSI_COLOR_LIGHT_CYAN;
+                    color = ANSI.COLOR_LIGHT_CYAN;
                     var r1 = variableProcessor.EvaluateExpression(e.Expression);
                     line += $" => {r1}";
                     break;
                 case SwitchStatementSyntax sw:
-                    color = ANSI_COLOR_LIGHT_MAGENTA;
+                    color = ANSI.COLOR_LIGHT_MAGENTA;
                     var r2 = variableProcessor.EvaluateExpression(sw.Expression);
                     line += $" => {r2}";
                     break;
@@ -68,7 +68,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         }
         catch (Exception ex)
         {
-            line += $" => {ANSI_COLOR_LIGHT_RED}{ex.Message}{ANSI_COLOR_RESET}";
+            line += $" => {ANSI.COLOR_LIGHT_RED}{ex.Message}{ANSI.COLOR_RESET}";
         }
 
         // Print the node type and its text representation
@@ -79,7 +79,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         Console.WriteLine($"{lineNumber.ToString().PadRight(8)}{indent_str}{node.GetType().Name}: {line}");
         if (color != null)
         {
-            Console.Write(ANSI_COLOR_RESET);
+            Console.Write(ANSI.COLOR_RESET);
         }
 
         if (node is ExpressionStatementSyntax && Verbosity < 1)

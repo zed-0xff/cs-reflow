@@ -23,7 +23,7 @@ public partial class ExpressionTests
         {
             processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
         }
-        catch (NotSupportedException ex)
+        catch (NotSupportedException)
         {
         }
         Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.VariableValues["x"]);

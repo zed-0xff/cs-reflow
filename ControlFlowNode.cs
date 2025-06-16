@@ -154,7 +154,7 @@ class ControlFlowNode
         string s = new string(a);
         if (s.All(c => c == '_'))
             s = s.Replace("_", " ");
-        return s;
+        return s.PadRight(8);
     }
 
     public override string ToString()
@@ -167,11 +167,21 @@ class ControlFlowNode
     public void PrintTree(int depth = 0)
     {
         var stmt = Statement;
-        if (stmt != null)
+        switch (stmt)
         {
-            string line = $"{ShortFlags()} {stmt.LineNo().ToString().PadLeft(6)}: {new string(' ', depth * IndentSpaces)}{stmt.Title()}";
-            Console.WriteLine(line);
+            case null:
+                break;
+            case LabeledStatementSyntax labelStmt:
+                if (ShortFlags().Trim() != "")
+                    goto default;
+                Console.WriteLine(stmt.Title());
+                break;
+            default:
+                string line = $"{ShortFlags()} {stmt.LineNo().ToString().PadLeft(6)}: {new string(' ', depth * IndentSpaces)}{stmt.Title()}";
+                Console.WriteLine(line);
+                break;
         }
+
         foreach (var child in Children)
         {
             child.PrintTree(depth + 1);
