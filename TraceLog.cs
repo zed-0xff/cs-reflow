@@ -255,10 +255,7 @@ public class TraceLog
 
             StatementSyntax newIfStmt = ifStmt
                 .WithStatement(thenBlock1)
-                .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null)
-                .WithAdditionalAnnotations(
-                        new SyntaxAnnotation("OriginalLineNo", ifStmt.LineNo().ToString())
-                        );
+                .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null);
 
             if (labelStmt != null)
             {
@@ -279,21 +276,46 @@ public class TraceLog
         return result;
     }
 
-    public void Print(string prefix = "", int start = 0, int end = -1, bool title = true, bool full = false, bool addEmptyLine = true)
+    public void Print(
+            string prefix = "",
+            int start = 0,
+            int end = -1,
+            bool title = true,
+            bool full = false,
+            bool id = true,
+            bool addEmptyLine = true,
+            TextWriter writer = null)
     {
+        writer ??= Console.Out; // Default to Console.Out if no writer provided
+
         if (title)
-            Console.WriteLine($"{(prefix == "" ? "" : $"{prefix}: ")}{this}");
+            writer.WriteLine($"{(prefix == "" ? "" : $"{prefix}: ")}{this}");
 
         if (end == -1)
             end = entries.Count;
 
         for (int i = start; i < end && i < entries.Count; i++)
         {
-            string line = $"{Id} ";
+            string line = "";
+            if (id)
+                line += $"{Id} ";
             line += full ? entries[i].FormatStmtWithLineNo() : entries[i].TitleWithLineNo();
-            Console.WriteLine(line);
+            writer.WriteLine(line);
         }
+
         if (addEmptyLine)
-            Console.WriteLine();
+            writer.WriteLine();
+    }
+
+    public void DumpTo(string dir)
+    {
+        if (!Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
+        string filePath = Path.Combine(dir, $"{Id}.txt");
+        using (StreamWriter writer = new(filePath))
+        {
+            Print(writer: writer, title: false, id: false);
+        }
     }
 }

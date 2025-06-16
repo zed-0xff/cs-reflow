@@ -53,7 +53,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool Reflow = true;
     public bool PostProcess = true;
     public bool isClone = false;
-    public bool showIntermediateLogs = false;
+    public string dumpIntermediateLogs;
     public int commentPadding = 90;
 
     public void Reset()
@@ -68,15 +68,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _flowInfos = new();
         _stopWatch = Stopwatch.StartNew();
     }
-
-
-    //    class Context
-    //    {
-    //        VarDict vars;
-    //        int lineno;
-    //        TraceLog traceLog;
-    //        // TODO: stack
-    //    }
 
     public class State
     {
@@ -279,7 +270,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone.AddComments = AddComments;
         clone.ShowAnnotations = ShowAnnotations;
         clone.MoveDeclarations = MoveDeclarations;
-        clone.showIntermediateLogs = showIntermediateLogs;
+        clone.dumpIntermediateLogs = dumpIntermediateLogs;
 
         clone._tree = _tree;                   // shared, r/o
         clone._flowRoot = _flowRoot;           // shared, r/o, but may have clone's own override(s)
@@ -455,8 +446,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     }
                     // TraceLog loopLog = _traceLog.CutFrom(lastCount);
                     //                    var newDoStmt = doStmt
-                    //                        .WithStatement(ReflowBlock(body, log: loopLog))
-                    //                        .WithAdditionalAnnotations(new SyntaxAnnotation("OriginalLineNo", doStmt.LineNo().ToString()));
+                    //                        .WithStatement(ReflowBlock(body, log: loopLog));
                     //
                     //                    loopLog.entries.Last().comment = unk.ToString();
                     //                    _traceLog.entries.Add(new TraceEntry(newDoStmt, unk, _varProcessor.VariableValues));
@@ -482,10 +472,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _varProcessor.VariableValues.MergeExisting(clone._varProcessor.VariableValues);
 
         return forEachStmt
-            .WithStatement(newBlock)
-            .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("OriginalLineNo", forEachStmt.LineNo().ToString())
-                    );
+            .WithStatement(newBlock);
     }
 
     void trace_switch(SwitchStatementSyntax switchStmt, object value)
@@ -699,10 +686,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             block = Block(SingletonList(whileStmt.Statement));
 
         return whileStmt
-            .WithStatement(ReflowBlock(block)) // XXX retLabels not used
-            .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("OriginalLineNo", whileStmt.LineNo().ToString())
-                    );
+            .WithStatement(ReflowBlock(block)); // XXX retLabels not used
     }
 
     // returns
@@ -712,8 +696,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         if (_localFlowDict.TryGetValue(whileStmt, out ControlFlowNode flowNode) && flowNode.forceInline)
         {
-            if (Verbosity > 0)
-                Console.WriteLine($"[d] --- local forceInline: {whileStmt.LineNo()}");
+            Logger.info($"--- local forceInline: {whileStmt.LineNo()}");
             return null;
         }
 
@@ -783,10 +766,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return tryStmt
             .WithBlock(newBlock)
             .WithCatches(newCatches)
-            .WithFinally(newFinally)
-            .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("OriginalLineNo", tryStmt.LineNo().ToString())
-                    );
+            .WithFinally(newFinally);
     }
 
     UsingStatementSyntax convert_using(UsingStatementSyntax usingStmt, ReturnsDictionary retLabels)
@@ -797,10 +777,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _varProcessor.VariableValues.UpdateExisting(clone._varProcessor.VariableValues);
 
         return usingStmt
-            .WithStatement(newBlock)
-            .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("OriginalLineNo", usingStmt.LineNo().ToString())
-                    );
+            .WithStatement(newBlock);
     }
 
     public object EvaluateExpression(ExpressionSyntax expression)
@@ -1021,11 +998,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 {
                     if (l0.Statement is not EmptyStatementSyntax)
                     {
-                        l0 = l0
-                            .WithStatement(EmptyStatement())
-                            .WithAdditionalAnnotations(
-                                    new SyntaxAnnotation("OriginalLineNo", l0.LineNo().ToString())
-                                    );
+                        l0 = l0.WithStatement(EmptyStatement());
                     }
                     _traceLog.entries.Add(new TraceEntry(l0, null, _varProcessor.VariableValues));
                     flowNode.kept = true;
@@ -1391,6 +1364,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     // does not update variables nor _traceLog
     public TraceLog TraceBlock(SyntaxList<StatementSyntax> statements, int start_idx = 0, int lineno = -1)
     {
+        Logger.info(statements.First().TitleWithLineNo());
+
         if (lineno == -1)
             lineno = statements.First().LineNo();
 
@@ -1503,13 +1478,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             label_lineno = clone._traceLog.entries[idx - 1].stmt.LineNo() + 1;
                         }
                         labelId = SyntaxFactory.Identifier($"lbl_{label_lineno}");
-                        targetStmt = targetStmt
-                            .WithAdditionalAnnotations(
-                                    new SyntaxAnnotation("OriginalLineNo", label_lineno.ToString())
-                                    );
                         clone._traceLog.entries[idx].stmt = LabeledStatement(labelId, targetStmt)
                             .WithAdditionalAnnotations(
-                                    new SyntaxAnnotation("OriginalLineNo", label_lineno.ToString())
+                                    new SyntaxAnnotation("LineNo", label_lineno.ToString())
                                     );
                     }
 
@@ -1617,16 +1588,24 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         }
                     }
 
-                    if (showIntermediateLogs)
+                    if (!string.IsNullOrEmpty(dumpIntermediateLogs))
                     {
-                        logs[maxIdx].Print("A");
-                        logs[i].Print("B");
+                        logs[maxIdx].DumpTo(dumpIntermediateLogs);
+                        logs[i].DumpTo(dumpIntermediateLogs);
                     }
 
-                    logs[i] = logs[i].Merge(logs[maxIdx], Verbosity);
+                    try
+                    {
+                        logs[i] = logs[i].Merge(logs[maxIdx], Verbosity);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine($"[!] Error merging logs {logs[i].Id} and {logs[maxIdx].Id}");
+                        throw;
+                    }
 
-                    if (showIntermediateLogs)
-                        logs[i].Print("C");
+                    if (!string.IsNullOrEmpty(dumpIntermediateLogs))
+                        logs[i].DumpTo(dumpIntermediateLogs);
 
                     logs.RemoveAt(maxIdx);
                     break;
@@ -1666,6 +1645,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     // updates _varProcessor.VariableValues
     public BlockSyntax ReflowBlock(BlockSyntax block, TraceLog? log = null, bool isMethod = false)
     {
+        Logger.info(block.TitleWithLineNo());
+
         if (block.Statements.Count == 0) // i.e. empty catch {}
             return block;
 
@@ -1768,7 +1749,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             var ann = id.GetAnnotations("VAR").FirstOrDefault();
             if (ann == null)
             {
-                if (Verbosity > 0)
+                if (Verbosity > 1)
                     Console.Error.WriteLine($"[?] Identifier '{id}' has no 'VAR' annotation"); // TODO: check why
                 continue;
             }
@@ -1788,7 +1769,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                                 .WithInitializer(null)
                                 .WithAdditionalAnnotations(
                                     ann,
-                                    new SyntaxAnnotation("OriginalLineNo", id.LineNo().ToString())
+                                    new SyntaxAnnotation("LineNo", id.LineNo().ToString())
                                     )
                                 )
                             )
@@ -1848,9 +1829,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
 
+        // annotate body with original line numbers
+        body = body.ReplaceAndGetNewNode(new OriginalLineNoAnnotator().Visit(body) as BlockSyntax);
+
         // collect all declarations from body prior to any processing
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
-
         var tracker = new VarTracker();
         var trackedBody = tracker.Track(body) as BlockSyntax;
         body = body.ReplaceAndGetNewNode(trackedBody);

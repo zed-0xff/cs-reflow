@@ -29,7 +29,8 @@ class Program
         List<string> dropVars,
         List<string> keepVars,
         bool dumpFlowInfos,
-        bool showIntermediateLogs
+        string dumpIntermediateLogs,
+        List<string> debugTags
     );
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints)
@@ -44,7 +45,7 @@ class Program
             PreProcess = opts.preProcess,
             Reflow = opts.reflow,
             PostProcess = opts.postProcess,
-            showIntermediateLogs = opts.showIntermediateLogs,
+            dumpIntermediateLogs = opts.dumpIntermediateLogs,
         };
     }
 
@@ -180,11 +181,23 @@ class Program
             description: "Evaluate an expression."
         );
 
-        var showIntermediateLogsOpt = new Option<bool>(
-            aliases: new[] { "--show-intermediate-logs", "-I" },
-            getDefaultValue: () => false,
-            description: "Show intermediate logs during processing."
+        var dumpIntermediateLogsOpt = new Option<string>(
+            aliases: new[] { "--dump-intermediate-logs", "-D" },
+            getDefaultValue: () => string.Empty,
+            description: "Dump intermediate logs into specified dir."
         );
+
+        var debugTagsOpt = new Option<List<string>>(
+                aliases: new[] { "--log-tags", "-L" },
+                description: "Comma-separated list of logging tags (method names) to enable",
+                parseArgument: result =>
+                {
+                    var combined = string.Join(",", result.Tokens.Select(t => t.Value));
+                    return combined.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+                })
+        {
+            Arity = ArgumentArity.OneOrMore,
+        };
 
         // --- Define the root command ---
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
@@ -208,7 +221,8 @@ class Program
             dropVarsOpt,
             keepVarsOpt,
             dumpFlowInfosOpt,
-            showIntermediateLogsOpt
+            dumpIntermediateLogsOpt,
+            debugTagsOpt
         };
 
         // --- Set the handler ---
@@ -233,9 +247,11 @@ class Program
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
                 keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
-                showIntermediateLogs: context.ParseResult.GetValueForOption(showIntermediateLogsOpt)
+                dumpIntermediateLogs: context.ParseResult.GetValueForOption(dumpIntermediateLogsOpt),
+                debugTags: context.ParseResult.GetValueForOption(debugTagsOpt)
             );
 
+            Logger.EnableTags(opts.debugTags);
             var hints = new HintsDictionary();
 
             foreach (var entry in opts.hintList ?? Enumerable.Empty<string>())

@@ -4,20 +4,16 @@ using Microsoft.CodeAnalysis;
 
 public static class SyntaxNodeExtensions
 {
-    static readonly string[] ANNOTATION_KINDS = new[] { "ID", "VAR", "OriginalLineNo" };
+    static readonly string[] ANNOTATION_KINDS = new[] { "ID", "VAR", "LineNo" };
 
     public static int LineNo(this SyntaxNode node)
     {
-        var annotation = node.GetAnnotations("OriginalLineNo").FirstOrDefault();
+        var annotation = node.GetAnnotations("LineNo").FirstOrDefault();
         if (annotation != null && int.TryParse(annotation.Data, out int originalLine))
-        {
             return originalLine;
-        }
 
         if (node is LabeledStatementSyntax labeledStatement)
-        {
             return labeledStatement.Statement.LineNo();
-        }
 
         return node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
     }
@@ -199,5 +195,16 @@ public static class SyntaxNodeExtensions
     public static T WithComment<T>(this T node, string comment) where T : SyntaxNode
     {
         return node.WithTrailingTrivia(SyntaxFactory.Comment(" // " + EscapeNonPrintable(comment)));
+    }
+
+    public static SyntaxNode WithUniqueAnnotation(this SyntaxNode node, SyntaxAnnotation newAnnotation)
+    {
+        // Remove all annotations of the same kind
+        var existing = node.GetAnnotations(newAnnotation.Kind);
+        if (existing.Any())
+            node = node.WithoutAnnotations(existing.ToArray());
+
+        // Add the new annotation
+        return node.WithAdditionalAnnotations(newAnnotation);
     }
 }

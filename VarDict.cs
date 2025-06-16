@@ -72,8 +72,16 @@ public class VarDict : Dictionary<string, object>
             if (object.Equals(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
-            this[other_kvp.Key] = other_kvp.Value; // Update with the new value
+            UpdateVar(other_kvp.Key, other_kvp.Value);
         }
+    }
+
+    void UpdateVar(string key, object newValue)
+    {
+        if (Logger.HasTag("UpdateVar"))
+            Logger.info($"{key,-10} {this[key],-20} => {newValue}");
+
+        this[key] = newValue;
     }
 
     public void MergeExisting(VarDict other)
@@ -86,7 +94,7 @@ public class VarDict : Dictionary<string, object>
             if (object.Equals(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
-            this[other_kvp.Key] = MergeVars(thisValue, other_kvp.Value);
+            this[other_kvp.Key] = MergeVar(other_kvp.Key, thisValue, other_kvp.Value);
         }
     }
 
@@ -104,14 +112,14 @@ public class VarDict : Dictionary<string, object>
     }
 
     // input: value1 != value2 and both of them are not null
-    object MergeVars(object value1, object value2)
+    object MergeVar(string key, object value1, object value2)
     {
         if (value2 is UnknownValueBase && value1 is not UnknownValueBase)
         {
-            return MergeVars(value2, value1); // Ensure UnknownValueBase is always first
+            return MergeVar(key, value2, value1); // Ensure UnknownValueBase is always first
         }
 
-        return value1 switch
+        object result = value1 switch
         {
             byte b1 when value2 is byte b2 => new UnknownValueList(TypeDB.Byte, new() { b1, b2 }),
             sbyte sb1 when value2 is sbyte sb2 => new UnknownValueList(TypeDB.SByte, new() { sb1, sb2 }),
@@ -124,6 +132,11 @@ public class VarDict : Dictionary<string, object>
             UnknownValueBase unk1 => unk1.Merge(value2),
             _ => new UnknownValue()
         };
+
+        if (Logger.HasTag("MergeVar"))
+            Logger.info($" {key,-10} {value1,-20} {value2,-20} => {result}");
+
+        return result;
     }
 
     public override bool Equals(object obj)
