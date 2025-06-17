@@ -370,6 +370,8 @@ class Program
                     unflattener.KeepVars(opts.keepVars);
                     unflattener.TraceVars(opts.traceVars);
                     unflattener.TraceUniqVars(opts.traceUniqVars);
+                    unflattener.ShowProgress = !Console.IsOutputRedirected;
+
                     var collector = new ControlFlowTreeCollector();
                     if (opts.dumpFlowInfos)
                     {

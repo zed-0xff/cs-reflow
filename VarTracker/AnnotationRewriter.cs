@@ -45,12 +45,26 @@ public partial class VarTracker
             return node;
         }
 
-        public override SyntaxNode VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
+        public override SyntaxNode Visit(SyntaxNode node)
         {
-            return base.VisitLocalDeclarationStatement(node)
-                .WithAdditionalAnnotations(
-                        new SyntaxAnnotation("ID", $"{_id++}")
-                        );
+            node = base.Visit(node);
+            switch (node)
+            {
+                case DoStatementSyntax:
+                case ForEachStatementSyntax:
+                case ForStatementSyntax:
+                case IfStatementSyntax:
+                case LocalDeclarationStatementSyntax:
+                case SwitchStatementSyntax:
+                case TryStatementSyntax:
+                case UsingStatementSyntax:
+                case WhileStatementSyntax:
+                    node = node.WithAdditionalAnnotations(
+                            new SyntaxAnnotation("ID", $"{_id++}")
+                            );
+                    break;
+            }
+            return node;
         }
     }
 }

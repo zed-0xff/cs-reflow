@@ -86,7 +86,7 @@ void goto_from_try()
     return;
 
     l2:
-        baz();  // XXX: not fully implemented
+        baz();                                                                                        // XXX: not fully implemented
 }
 
 void goto_from_catch1()
@@ -106,7 +106,7 @@ void goto_from_catch1()
     return;
 
     l2:
-        baz();  // XXX: not fully implemented
+        baz();                                                                                        // XXX: not fully implemented
 }
 
 void goto_from_catch2()
@@ -127,7 +127,7 @@ void goto_from_catch2()
     return;
 
     l2:
-        baz();  // XXX: not fully implemented
+        baz();                                                                                        // XXX: not fully implemented
 }
 
 void goto_from_catch3()
@@ -148,7 +148,7 @@ void goto_from_catch3()
     return;
 
     l2:
-        baz();  // XXX: not fully implemented
+        baz();                                                                                        // XXX: not fully implemented
 }
 
 void set_outer_var()

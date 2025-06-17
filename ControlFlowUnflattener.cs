@@ -45,6 +45,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     // configuration
     public int Verbosity = 0;
+    public bool ShowProgress = true;
     public bool RemoveSwitchVars = true;
     public bool AddComments = true;
     public bool ShowAnnotations = false;
@@ -54,7 +55,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool PostProcess = true;
     public bool isClone = false;
     public string dumpIntermediateLogs;
-    public int commentPadding = 90;
+    public int commentPadding = 100;
 
     public void Reset()
     {
@@ -269,6 +270,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone._varProcessor = (VarProcessor)_varProcessor.Clone();
 
         clone.Verbosity = Verbosity;
+        clone.ShowProgress = ShowProgress;
         clone.RemoveSwitchVars = RemoveSwitchVars;
         clone.AddComments = AddComments;
         clone.ShowAnnotations = ShowAnnotations;
@@ -721,8 +723,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             // all breaks/continues/returns need to be catched!
             var log = clone.TraceBlock(SingletonList<StatementSyntax>(whileStmt));
             keep = log.entries.FirstOrDefault() is TraceEntry te && te.stmt is LabeledStatementSyntax;
-            if (Verbosity > 0)
-                Console.WriteLine($"[d] {_traceLog.Id} tracing while() in clone => {(keep ? "keep" : "inline")}");
+            Logger.info($"{_traceLog.Id} tracing {whileStmt.TitleWithLineNo()} in clone => {(keep ? "keep" : "inline")}");
         }
 
         if (keep)
@@ -1387,7 +1388,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             while (true)
             {
                 ControlFlowUnflattener clone = Clone().WithHints(hints);
-                if (Verbosity > -1)
+                if (Verbosity > -1 && ShowProgress)
                 {
                     string msg = $"[{ElapsedTime()}] tracing branches: ";
                     _status = $"{logs.Count + 1}/{logs.Count + queue.Count + 1}";
@@ -1529,7 +1530,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             nPrevLogs = logs.Count;
             nIter++;
 
-            if (Verbosity >= 0)
+            if (Verbosity >= 0 && ShowProgress)
             {
                 string msg = $"[{ElapsedTime()}] merging trace logs: {nIter}/{nLogs}          ";
                 if (Verbosity == 0)
@@ -1631,6 +1632,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             Console.WriteLine($"[=] final vars: {finalLog.entries[^1].vars}");
         if (Verbosity > 0)
             Console.WriteLine($"[=] final log: {finalLog}");
+
+        if (!string.IsNullOrEmpty(dumpIntermediateLogs))
+            finalLog.DumpTo(dumpIntermediateLogs);
 
         return finalLog;
     }
@@ -1883,7 +1887,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         while (PostProcess)
         {
-            if (Verbosity >= 0)
+            if (Verbosity >= 0 && ShowProgress)
             {
                 string msg = $"[{ElapsedTime()}] post-processing ..";
                 if (Verbosity == 0)
@@ -1925,16 +1929,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (newMethodNode == null)
             throw new InvalidOperationException("Could not find method node in the syntax tree.");
 
-        string result = GotoSpacer.Process(
-                newMethodNode
-                .NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true)
-                .ToFullString()
-                );
+        newMethodNode = newMethodNode.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
+        string result = PostProcessor.ExpandTabs(GotoSpacer.Process(newMethodNode.ToFullString()));
+
+        // align comments
+        var newTree = CSharpSyntaxTree.ParseText(result);
+        newMethodNode = new CommentAligner(newTree.GetText(), commentPadding).Visit(newTree.GetRoot());
+        result = newMethodNode.ToFullString();
 
         if (linePrefix != "")
-        {
             result = linePrefix + result.Replace(eol, eol + linePrefix);
-        }
         return result;
     }
 

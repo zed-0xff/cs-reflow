@@ -1,19 +1,19 @@
 	public unsafe override void OnPaint(PaintEventArgs P_0)
 	{
-		try
-		{
-			if (Control.GetStyle(this, 8192))
-			{
-				((Control)this).OnPaintBackground(P_0);
-			}
+	    try
+	    {
+	        if (Control.GetStyle(this, 8192))
+	        {
+	            ((Control)this).OnPaintBackground(P_0);
+	        }
 	
-			ab5dbb20393b4538b9a05d9405e644d5(P_0);
-			return;
-		}
-		catch
-		{
-			Control.Invalidate(this);
-			return;
-		}
+	        ab5dbb20393b4538b9a05d9405e644d5(P_0);
+	        return;
+	    }
+	    catch
+	    {
+	        Control.Invalidate(this);
+	        return;
+	    }
 	}
 

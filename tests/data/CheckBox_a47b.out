@@ -1,13 +1,13 @@
 	public override void Dispose(bool bool_0ah)
 	{
-		if (bool_0ah)
-		{
-			if (ab66b1d2a7154433908fa26a69d7855e != null)
-			{
-				((IDisposable)ab66b1d2a7154433908fa26a69d7855e).Dispose();
-			}
-		}
+	    if (bool_0ah)
+	    {
+	        if (ab66b1d2a7154433908fa26a69d7855e != null)
+	        {
+	            ((IDisposable)ab66b1d2a7154433908fa26a69d7855e).Dispose();
+	        }
+	    }
 	
-		((ButtonBase)this).Dispose(bool_0ah);
+	    ((ButtonBase)this).Dispose(bool_0ah);
 	}
 

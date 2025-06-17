@@ -1,59 +1,59 @@
 	public unsafe static string get_icon_a661(object object_0a)
 	{
-		string text = get_str(72129, 73044, 169);
-		string text2 = get_str(8975, 9889, 160);
-		string text3 = get_str(44130, 45101, 188);
-		bool ab759f63c28b4fceadd28e63ce8bde = Class_ae29.flag_ab75;
-		if (!ab759f63c28b4fceadd28e63ce8bde)
-		{
-			Class_ae29.flag_ab75 = true;
-			Class_ae29.ae97e074e9e7420fa7898158aca772e9 = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QCyRXhpZgAATU0AKgAAAA";
-			Class_ae29.a715a55768504143ad6674958663538e = "/9j/4AAQSkZJRgABAQEAAAAAAAD/4QAqRXhpZgAATU0AKgAAAA";
-			Class_ae29.b64_a16d = "AAEAAAAOAIAAAwBgT1MvMm+hhd4AAADsAAAAVmNtYXBA5XCVAA";
-			Class_ae29.b64_axisPay_jpg = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QCSRXhpZgAATU0AKgAAAA";
-			Class_ae29.b46_secureOTP_jpg = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QCSRXhpZgAATU0AKgAAAA";
-			Class_ae29.b64_a6c1 = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBaRXhpZgAATU0AKgAAAA";
-			Class_ae29.b64_ac6a = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBaRXhpZgAATU0AKgAAAA";
-			Class_ae29.b64_ac6a = "iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAABG";
-			Class_ae29.b64_fae3 = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBaRXhpZgAATU0AKgAAAA";
-			Class_ae29.phones_dict.Add("Samsung Galaxy S24 Ultra 5G", "Samsung Galaxy S24 Ultra 5G|Samsung|S928BZ|6.8|8GB|Android|14");
-			Class_ae29.phones_dict.Add("Samsung Galaxy A15 5G", "Samsung Galaxy A15 5G|Samsung|A156E|6.5|8GB|Android|14");
-			Class_ae29.phones_dict.Add("Samsung Galaxy M14 5G", "Samsung Galaxy M14 5G|Samsung|M146B|6.6|8GB|Android|13");
-			Class_ae29.phones_dict.Add("Samsung M04", "Samsung M04|Samsung|M045F|6.5|8GB|Android|12");
-			Class_ae29.phones_dict.Add("Samsung Galaxy Flip5 5G", "Samsung Galaxy Flip5 5G|Samsung|F731B|6.5|8GB|Android|13");
-			Class_ae29.phones_dict.Add("Samsung Galaxy F54 5G", "Samsung Galaxy F54 5G|Samsung|E546BZSHINS|6.7|8GB|Android|13");
-			Dictionary<string, string> phones_dict_ = Class_ae29.phones_dict;
-			string key = "Samsung Galaxy A54 5G";
-			phones_dict_.Add(key, "Samsung Galaxy A54 5G|Samsung|A546|6.4|8GB|Android|13");
-			Class_ae29.phones_dict.Add("Samsung Galaxy M34 5G", "Samsung Galaxy M34 5G|Samsung|M346B|6.5|8GB|Android|13");
-			Class_ae29.phones_dict.Add("Samsung Galaxy A35 5G", "Samsung Galaxy A35 5G|Samsung|A356E|6.6|8GB|Android|14");
-			Class_ae29.phones_dict.Add("Samsung Galaxy S22 5G", "Samsung Galaxy S22 5G|Samsung|S901EZGDINU|6.1|8GB|Android|12");
-			Class_ae29.phones_dict.Add("Samsung Galaxy S20 FE 5G", "Samsung Galaxy S20 FE 5G|Samsung|G781BZBGINS|6.5|8GB|Android|11");
-			Dictionary<string, string> phones_dict_2 = Class_ae29.phones_dict;
-			string key2 = "Samsung Galaxy A23 5G";
-			phones_dict_2.Add(key2, "Samsung Galaxy A23 5G|Samsung|A236E|6.6|8GB|Android|12");
-			Class_ae29.phones_dict.Add("OnePlus 7TPro", "OnePlus 7TPro|OnePlus|HD1911|6.6|8GB|Android|11");
-		}
+	    string text = get_str(72129, 73044, 169);
+	    string text2 = get_str(8975, 9889, 160);
+	    string text3 = get_str(44130, 45101, 188);
+	    bool ab759f63c28b4fceadd28e63ce8bde = Class_ae29.flag_ab75;
+	    if (!ab759f63c28b4fceadd28e63ce8bde)
+	    {
+	        Class_ae29.flag_ab75 = true;
+	        Class_ae29.ae97e074e9e7420fa7898158aca772e9 = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QCyRXhpZgAATU0AKgAAAA";
+	        Class_ae29.a715a55768504143ad6674958663538e = "/9j/4AAQSkZJRgABAQEAAAAAAAD/4QAqRXhpZgAATU0AKgAAAA";
+	        Class_ae29.b64_a16d = "AAEAAAAOAIAAAwBgT1MvMm+hhd4AAADsAAAAVmNtYXBA5XCVAA";
+	        Class_ae29.b64_axisPay_jpg = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QCSRXhpZgAATU0AKgAAAA";
+	        Class_ae29.b46_secureOTP_jpg = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QCSRXhpZgAATU0AKgAAAA";
+	        Class_ae29.b64_a6c1 = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBaRXhpZgAATU0AKgAAAA";
+	        Class_ae29.b64_ac6a = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBaRXhpZgAATU0AKgAAAA";
+	        Class_ae29.b64_ac6a = "iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAABG";
+	        Class_ae29.b64_fae3 = "/9j/4AAQSkZJRgABAQEAYABgAAD/4QBaRXhpZgAATU0AKgAAAA";
+	        Class_ae29.phones_dict.Add("Samsung Galaxy S24 Ultra 5G", "Samsung Galaxy S24 Ultra 5G|Samsung|S928BZ|6.8|8GB|Android|14");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy A15 5G", "Samsung Galaxy A15 5G|Samsung|A156E|6.5|8GB|Android|14");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy M14 5G", "Samsung Galaxy M14 5G|Samsung|M146B|6.6|8GB|Android|13");
+	        Class_ae29.phones_dict.Add("Samsung M04", "Samsung M04|Samsung|M045F|6.5|8GB|Android|12");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy Flip5 5G", "Samsung Galaxy Flip5 5G|Samsung|F731B|6.5|8GB|Android|13");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy F54 5G", "Samsung Galaxy F54 5G|Samsung|E546BZSHINS|6.7|8GB|Android|13");
+	        Dictionary<string, string> phones_dict_ = Class_ae29.phones_dict;
+	        string key = "Samsung Galaxy A54 5G";
+	        phones_dict_.Add(key, "Samsung Galaxy A54 5G|Samsung|A546|6.4|8GB|Android|13");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy M34 5G", "Samsung Galaxy M34 5G|Samsung|M346B|6.5|8GB|Android|13");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy A35 5G", "Samsung Galaxy A35 5G|Samsung|A356E|6.6|8GB|Android|14");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy S22 5G", "Samsung Galaxy S22 5G|Samsung|S901EZGDINU|6.1|8GB|Android|12");
+	        Class_ae29.phones_dict.Add("Samsung Galaxy S20 FE 5G", "Samsung Galaxy S20 FE 5G|Samsung|G781BZBGINS|6.5|8GB|Android|11");
+	        Dictionary<string, string> phones_dict_2 = Class_ae29.phones_dict;
+	        string key2 = "Samsung Galaxy A23 5G";
+	        phones_dict_2.Add(key2, "Samsung Galaxy A23 5G|Samsung|A236E|6.6|8GB|Android|12");
+	        Class_ae29.phones_dict.Add("OnePlus 7TPro", "OnePlus 7TPro|OnePlus|HD1911|6.6|8GB|Android|11");
+	    }
 	
-		if (String.op_Equality((string)object_0a, "in.org.npci.upiapp"))
-		{
-			return Class_ae29.ae97e074e9e7420fa7898158aca772e9;
-		}
-		else if (String.op_Equality((string)object_0a, "com.sbi.upi"))
-		{
-			return Class_ae29.a715a55768504143ad6674958663538e;
-		}
-		else if (String.op_Equality((string)object_0a, "com.upi.axispay"))
-		{
-			return Class_ae29.b64_axisPay_jpg;
-		}
-		else if (!String.op_Equality((string)object_0a, "com.sbi.SBISecure"))
-		{
-			return string.Empty;
-		}
-		else
-		{
-			return Class_ae29.b46_secureOTP_jpg;
-		}
+	    if (String.op_Equality((string)object_0a, "in.org.npci.upiapp"))
+	    {
+	        return Class_ae29.ae97e074e9e7420fa7898158aca772e9;
+	    }
+	    else if (String.op_Equality((string)object_0a, "com.sbi.upi"))
+	    {
+	        return Class_ae29.a715a55768504143ad6674958663538e;
+	    }
+	    else if (String.op_Equality((string)object_0a, "com.upi.axispay"))
+	    {
+	        return Class_ae29.b64_axisPay_jpg;
+	    }
+	    else if (!String.op_Equality((string)object_0a, "com.sbi.SBISecure"))
+	    {
+	        return string.Empty;
+	    }
+	    else
+	    {
+	        return Class_ae29.b46_secureOTP_jpg;
+	    }
 	}
 

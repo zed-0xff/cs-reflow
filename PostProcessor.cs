@@ -1,10 +1,12 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System;
+using System.Text;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -228,6 +230,29 @@ public class PostProcessor
         block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
         block = new IfRewriter().Visit(block) as BlockSyntax;
         return block;
+    }
+
+    public static string ExpandTabs(string input, int tabSize = 4)
+    {
+        var result = new StringBuilder();
+        int column = 0;
+
+        foreach (char c in input)
+        {
+            if (c == '\t')
+            {
+                int spaces = tabSize - (column % tabSize);
+                result.Append(' ', spaces);
+                column += spaces;
+            }
+            else
+            {
+                result.Append(c);
+                column = (c == '\n' || c == '\r') ? 0 : column + 1;
+            }
+        }
+
+        return result.ToString();
     }
 }
 
@@ -525,5 +550,47 @@ public class DeclarationAssignmentMerger : CSharpSyntaxRewriter
         }
 
         return base.VisitBlock(was ? node.WithStatements(SyntaxFactory.List(newStatements)) : node);
+    }
+}
+
+public class CommentAligner : CSharpSyntaxRewriter
+{
+    private readonly SourceText _text;
+    private readonly int _targetColumn;
+
+    public CommentAligner(SourceText text, int targetColumn = 80)
+    {
+        _text = text;
+        _targetColumn = targetColumn;
+    }
+
+    public override SyntaxToken VisitToken(SyntaxToken token)
+    {
+        if (!token.TrailingTrivia.Any(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia)))
+            return token;
+
+        var newTrivia = new List<SyntaxTrivia>();
+        bool aligned = false;
+
+        foreach (var trivia in token.TrailingTrivia)
+        {
+            if (!aligned && trivia.IsKind(SyntaxKind.SingleLineCommentTrivia))
+            {
+                var tokenEnd = token.Span.End;
+                var line = _text.Lines.GetLineFromPosition(tokenEnd);
+                int offsetInLine = tokenEnd - line.Start;
+
+                int paddingSpaces = Math.Max(1, _targetColumn - offsetInLine);
+                newTrivia.Add(SyntaxFactory.Whitespace(new string(' ', paddingSpaces)));
+                newTrivia.Add(trivia);
+                aligned = true;
+            }
+            else
+            {
+                newTrivia.Add(trivia);
+            }
+        }
+
+        return token.WithTrailingTrivia(newTrivia);
     }
 }

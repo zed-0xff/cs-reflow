@@ -30,8 +30,26 @@ public class UnknownValueRanges : UnknownTypedValue
     public override long Max() => _rangeSet.Max;
     public bool IsFullRange() => _rangeSet.Count == 1 && _rangeSet.First().Equals(type.Range);
 
+    // TODO: DRY with UnknownValueRange.Cast()
     public override object Cast(TypeDB.IntInfo toType)
     {
+        if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
+        {
+            if (_rangeSet.Min >= 0 && _rangeSet.Max <= int.MaxValue)
+                return new UnknownValueRanges(TypeDB.Int, _rangeSet);
+            if (_rangeSet.Min > int.MaxValue)
+                return new UnknownValueRanges(TypeDB.Int, _rangeSet.Ranges.Select(r => new LongRange((int)r.Min, (int)r.Max)));
+            return new UnknownValueRange(TypeDB.Int);
+        }
+
+        if (type == TypeDB.Int && toType == TypeDB.UInt) // int -> uint
+        {
+            if (_rangeSet.Min >= 0 && _rangeSet.Max >= 0)
+                return new UnknownValueRanges(TypeDB.UInt, _rangeSet);
+            if (_rangeSet.Max < 0)
+                return new UnknownValueRanges(TypeDB.UInt, _rangeSet.Ranges.Select(r => new LongRange((uint)r.Min, (uint)r.Max)));
+            return new UnknownValueRange(TypeDB.UInt);
+        }
         return base.Cast(toType);
     }
 

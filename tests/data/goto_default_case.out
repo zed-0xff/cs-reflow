@@ -1,9 +1,9 @@
 	public unsafe override void goto_default_case(EventArgs eventArgs_0b)
 	{
-		flag_acf3 = false;
-		flag_a60c = false;
-		flag_a913 = false;
-		Control.Invalidate(this);
-		((ButtonBase)this).OnLostFocus(eventArgs_0b);
+	    flag_acf3 = false;
+	    flag_a60c = false;
+	    flag_a913 = false;
+	    Control.Invalidate(this);
+	    ((ButtonBase)this).OnLostFocus(eventArgs_0b);
 	}
 

@@ -1,49 +1,49 @@
 	public unsafe static RSACryptoServiceProvider rsa_aaf9(object object_0beb)
 	{
-		object obj = default(object);
-		object obj2 = default(object);
-		obj2 = object_0beb;
-		if (String.StartsWith(obj2, Strings_a392.a61152b364724562909882c1c581e1e6))
-		{
-			if (String.EndsWith(obj2, Strings_a392.ac17ada76b14486c83f1e0819fe49a19))
-			{
-				byte[] array = a7fdf43bc042466bb877ac8b21cf6b0a(obj2);
-				obj = array;
-				if (obj == null)
-				{
-					return null;
-				}
-				else
-				{
-					return aa966298b6f9473baff9d7a8e3b76841(obj);
-				}
-			}
-			else
-			{
-				byte[] array = dc3cf9129ac04d8c8d54c2324583ff0f(obj2);
-				obj = array;
-				if (obj == null)
-				{
-					return null;
-				}
-				else
-				{
-					return rsa_a143(obj);
-				}
-			}
-		}
-		else
-		{
-			byte[] array = dc3cf9129ac04d8c8d54c2324583ff0f(obj2);
-			obj = array;
-			if (obj == null)
-			{
-				return null;
-			}
-			else
-			{
-				return rsa_a143(obj);
-			}
-		}
+	    object obj = default(object);
+	    object obj2 = default(object);
+	    obj2 = object_0beb;
+	    if (String.StartsWith(obj2, Strings_a392.a61152b364724562909882c1c581e1e6))
+	    {
+	        if (String.EndsWith(obj2, Strings_a392.ac17ada76b14486c83f1e0819fe49a19))
+	        {
+	            byte[] array = a7fdf43bc042466bb877ac8b21cf6b0a(obj2);
+	            obj = array;
+	            if (obj == null)
+	            {
+	                return null;
+	            }
+	            else
+	            {
+	                return aa966298b6f9473baff9d7a8e3b76841(obj);
+	            }
+	        }
+	        else
+	        {
+	            byte[] array = dc3cf9129ac04d8c8d54c2324583ff0f(obj2);
+	            obj = array;
+	            if (obj == null)
+	            {
+	                return null;
+	            }
+	            else
+	            {
+	                return rsa_a143(obj);
+	            }
+	        }
+	    }
+	    else
+	    {
+	        byte[] array = dc3cf9129ac04d8c8d54c2324583ff0f(obj2);
+	        obj = array;
+	        if (obj == null)
+	        {
+	            return null;
+	        }
+	        else
+	        {
+	            return rsa_a143(obj);
+	        }
+	    }
 	}
 
