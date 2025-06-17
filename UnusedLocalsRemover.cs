@@ -340,21 +340,6 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
             if (assExpr != null)
             {
-                /*
-                switch (assExpr.Parent)
-                {
-                    case ExpressionStatementSyntax:
-                    case EqualsValueClauseSyntax:
-                    case AssignmentExpressionSyntax:
-                    case ArgumentSyntax:
-                        break;
-                    default:
-                        if (Verbosity > 1)
-                            Console.Error.WriteLine($"[d] CollectVars: READ  {ann.Data} bc parent is {assExpr.Parent.Kind()}");
-                        read.Add(ann);
-                        break;
-                }
-                */
                 if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.IsSameVar(id))
                 {
                     Logger.debug($"CollectVars: WRITE {ann.Data}", "UnusedLocalsRemover");
