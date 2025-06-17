@@ -21,12 +21,12 @@ public class PostProcessor
 
     bool isSwitchVar(string varName)
     {
-        return _varProcessor.VariableValues.IsSwitchVar(varName);
+        return _varProcessor.IsSwitchVar(varName);
     }
 
     void setSwitchVar(string varName, bool isSwitch = true)
     {
-        _varProcessor.VariableValues.SetSwitchVar(varName, isSwitch);
+        _varProcessor.SetSwitchVar(varName, isSwitch);
     }
 
     public static SyntaxNode RemoveAllComments(SyntaxNode root)

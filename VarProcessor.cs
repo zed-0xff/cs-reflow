@@ -2,13 +2,14 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
+using System.Runtime.CompilerServices;
 
 public partial class VarProcessor : ICloneable
 {
-    public VarDict VariableValues { get; private set; } = new();
     public static VarDict Constants { get; private set; } = new();
     public int Verbosity = 0;
 
+    VarDict _vars = new();
     Dictionary<string, bool> _traceVars = new(); // value is true if trace only unique
     Dictionary<string, HashSet<object>> _uniqValues = new(); // shared, r/w
 
@@ -47,7 +48,7 @@ public partial class VarProcessor : ICloneable
     public object Clone()
     {
         var clonedProcessor = new VarProcessor();
-        clonedProcessor.VariableValues = (VarDict)this.VariableValues.Clone();
+        clonedProcessor._vars = (VarDict)this._vars.Clone();
         clonedProcessor.Verbosity = this.Verbosity;
         clonedProcessor._traceVars = this._traceVars; // shared, r/o
         clonedProcessor._uniqValues = this._uniqValues; // shared, r/w
@@ -57,16 +58,18 @@ public partial class VarProcessor : ICloneable
     class TraceScope : IDisposable
     {
         readonly VarProcessor _processor;
-        readonly SyntaxNode _node;
+        readonly SyntaxNode? _node;
+        readonly string _caller;
         readonly Dictionary<string, object> _original = null;
 
-        public TraceScope(VarProcessor processor, SyntaxNode node)
+        public TraceScope(VarProcessor processor, SyntaxNode? node, [CallerMemberName] string caller = "")
         {
             if (processor._traceVars.Count > 0)
             {
+                _caller = caller;
                 _processor = processor;
                 _node = node;
-                _original = processor.VariableValues
+                _original = processor._vars
                     .Where(kvp => processor._traceVars.ContainsKey(kvp.Key))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
@@ -83,7 +86,7 @@ public partial class VarProcessor : ICloneable
                 if (_original.TryGetValue(key, out var value))
                     oldValue = value;
                 object? newValue = null;
-                if (_processor.VariableValues.TryGetValue(key, out var newVal))
+                if (_processor._vars.TryGetValue(key, out var newVal))
                     newValue = newVal;
 
                 if (Equals(oldValue, newValue))
@@ -107,10 +110,15 @@ public partial class VarProcessor : ICloneable
                 }
 
                 if (log)
-                    Logger.log($"[d] {_node.TitleWithLineNo(),-90} // {key}: {oldValue,-12} => {newValue,-12}");
+                    Logger.log($"[d] {_node?.TitleWithLineNo() ?? _caller,-90} // {key}: {oldValue,-12} => {newValue,-12}");
             }
         }
     }
+
+    public VarDict VariableValues() => _vars;
+    public bool IsSwitchVar(string varName) => _vars.IsSwitchVar(varName);
+    public void SetSwitchVar(string varName, bool value = true) => _vars.SetSwitchVar(varName, value);
+    public void SetLoopVar(string varName, bool value = true) => _vars.SetLoopVar(varName, value);
 
     public void TraceVars(List<string> vars)
     {
@@ -124,11 +132,35 @@ public partial class VarProcessor : ICloneable
             _traceVars[varName] = true; // trace only unique occurrences
     }
 
+    public void MergeExisting(VarProcessor other)
+    {
+        using (new TraceScope(this, null))
+        {
+            _vars.MergeExisting(other._vars);
+        }
+    }
+
+    public void UpdateExisting(VarDict other)
+    {
+        using (new TraceScope(this, null))
+        {
+            _vars.UpdateExisting(other);
+        }
+    }
+
+    public void UpdateExisting(VarProcessor other)
+    {
+        using (new TraceScope(this, null))
+        {
+            _vars.UpdateExisting(other._vars);
+        }
+    }
+
     public object EvaluateExpression(CSharpSyntaxNode node)
     {
         using (new TraceScope(this, node))
         {
-            return new Expression(node, VariableValues)
+            return new Expression(node, _vars)
                 .SetVerbosity(Verbosity)
                 .Evaluate();
         }
@@ -138,7 +170,7 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, stmt))
         {
-            var e = new Expression(stmt, VariableValues);
+            var e = new Expression(stmt, _vars);
             e.SetVerbosity(Verbosity);
             e.Evaluate();
             return e;
@@ -149,7 +181,7 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, expr))
         {
-            var e = new Expression(expr, VariableValues);
+            var e = new Expression(expr, _vars);
             e.SetVerbosity(Verbosity);
             e.Evaluate();
             return e;
@@ -161,23 +193,36 @@ public partial class VarProcessor : ICloneable
         foreach (var v in decl.Declaration.Variables)
         {
             // TODO: check type
-            if (!VariableValues.ContainsKey(v.Identifier.ValueText))
+            if (!_vars.ContainsKey(v.Identifier.ValueText))
                 return false;
         }
         return true;
+    }
+
+    public void SetVar(string name, object? value)
+    {
+        _vars[name] = value;
+    }
+
+    public object? GetVar(string name)
+    {
+        if (_vars.TryGetValue(name, out var value))
+            return value;
+
+        return UnknownValue.Create();
     }
 
     public void SetVarTypes(LocalDeclarationStatementSyntax decl)
     {
         foreach (var v in decl.Declaration.Variables)
         {
-            if (VariableValues.ContainsKey(v.Identifier.ValueText))
+            if (_vars.ContainsKey(v.Identifier.ValueText))
             {
                 // TODO: check type
             }
             else
             {
-                VariableValues[v.Identifier.ValueText] = UnknownValue.Create(decl.Declaration.Type);
+                _vars[v.Identifier.ValueText] = UnknownValue.Create(decl.Declaration.Type);
             }
         }
     }

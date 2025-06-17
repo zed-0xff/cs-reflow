@@ -472,7 +472,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var clone = Clone().WithParentReturns(retLabels);
         BlockSyntax block = forEachStmt.Statement as BlockSyntax ?? Block(SingletonList(forEachStmt.Statement));
         var newBlock = clone.ReflowBlock(block);
-        _varProcessor.VariableValues.MergeExisting(clone._varProcessor.VariableValues);
+        _varProcessor.MergeExisting(clone._varProcessor);
 
         return forEachStmt
             .WithStatement(newBlock);
@@ -492,7 +492,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
         if (value is UnknownValueBase)
         {
-            Console.Error.WriteLine($"[d] vars: {_varProcessor.VariableValues}");
+            Console.Error.WriteLine($"[d] vars: {_varProcessor.VariableValues()}");
             throw new NotImplementedException($"Switch statement with {value}: {switchStmt.TitleWithLineNo()}");
         }
 
@@ -746,7 +746,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         var clone = Clone().WithParentReturns(retLabels);
                         var newBlock = clone.ReflowBlock(c.Block);
                         hasSingleReturnCatch = (newBlock.Statements.Count == 1 && newBlock.Statements.First() is ReturnStatementSyntax);
-                        _varProcessor.VariableValues.MergeExisting(clone._varProcessor.VariableValues);
+                        _varProcessor.MergeExisting(clone._varProcessor);
                         return c.WithBlock(newBlock);
                     })
                 );
@@ -756,9 +756,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         // TODO: handle break/continue/goto/return
 
         if (newCatches.Count == 1 && hasSingleReturnCatch)
-            _varProcessor.VariableValues.UpdateExisting(clone._varProcessor.VariableValues);
+            _varProcessor.UpdateExisting(clone._varProcessor);
         else
-            _varProcessor.VariableValues.MergeExisting(clone._varProcessor.VariableValues);
+            _varProcessor.MergeExisting(clone._varProcessor);
 
         FinallyClauseSyntax? newFinally = null;
         if (tryStmt.Finally != null)
@@ -766,7 +766,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             var cloneF = Clone().WithParentReturns(retLabels);
             newFinally = tryStmt.Finally.WithBlock(cloneF.ReflowBlock(tryStmt.Finally.Block));
             // 'finally' always get executed, so all variables set there overwrite existing ones
-            _varProcessor.VariableValues.UpdateExisting(cloneF._varProcessor.VariableValues);
+            _varProcessor.UpdateExisting(cloneF._varProcessor);
         }
 
         return tryStmt
@@ -780,7 +780,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var clone = Clone().WithParentReturns(retLabels);
         BlockSyntax block = usingStmt.Statement as BlockSyntax ?? Block(SingletonList(usingStmt.Statement));
         var newBlock = clone.ReflowBlock(block);
-        _varProcessor.VariableValues.UpdateExisting(clone._varProcessor.VariableValues);
+        _varProcessor.UpdateExisting(clone._varProcessor);
 
         return usingStmt
             .WithStatement(newBlock);
@@ -852,12 +852,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     bool isSwitchVar(string varName)
     {
-        return _varProcessor.VariableValues.IsSwitchVar(varName);
+        return _varProcessor.IsSwitchVar(varName);
     }
 
     void setSwitchVar(string varName, bool isSwitch = true)
     {
-        _varProcessor.VariableValues.SetSwitchVar(varName, isSwitch);
+        _varProcessor.SetSwitchVar(varName, isSwitch);
     }
 
     public void trace_statements_inline(StatementSyntax stmt)
@@ -930,7 +930,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             Console.Write(ANSI.COLOR_RESET);
         Console.WriteLine();
         if (Verbosity > 1)
-            Console.WriteLine($"    vars: {_varProcessor.VariableValues}");
+            Console.WriteLine($"    vars: {_varProcessor.VariableValues()}");
     }
 
     // return: bool skip?
@@ -1006,7 +1006,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     {
                         l0 = l0.WithStatement(EmptyStatement());
                     }
-                    _traceLog.entries.Add(new TraceEntry(l0, null, _varProcessor.VariableValues));
+                    _traceLog.entries.Add(new TraceEntry(l0, null, _varProcessor.VariableValues()));
                     flowNode.kept = true;
                 }
             }
@@ -1022,7 +1022,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 {
                     case IfStatementSyntax ifStmt:
                         _condStates.TryAdd(lineno, new List<State>());
-                        _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues));
+                        _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues()));
                         if (NodeTitle(ifStmt).Contains("calli with instance method signature not support") && !_flowHints.ContainsKey(lineno))
                             value = UnknownValue.Create();
                         else
@@ -1145,9 +1145,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
             log_stmt(stmt, comment, skip);
             if (!skip)
-                _traceLog.entries.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues, comment));
+                _traceLog.entries.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues(), comment));
 
-            var state = new State(stmt.LineNo(), _varProcessor.VariableValues);
+            var state = new State(stmt.LineNo(), _varProcessor.VariableValues());
             if (_states.TryGetValue(state, out int idx))
             {
                 throw new LoopException($"Loop detected at line {stmt.LineNo()}: \"{stmt.Title()}\" (state: {idx})", stmt.LineNo(), idx);
@@ -1457,7 +1457,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         Console.WriteLine($"[d] {l.GetType()}: {l.Message}");
 
                     int idx = l.idx;
-                    VarDict varValues = clone._varProcessor.VariableValues;
+                    VarDict varValues = clone._varProcessor.VariableValues();
                     while (idx > 0 && clone._traceLog.entries.Last().stmt.StripLabel() == clone._traceLog.entries[idx].stmt)
                     {
                         varValues = clone._traceLog.entries.Last().vars;
@@ -1507,7 +1507,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     {
                         if (Verbosity > 0)
                             Console.WriteLine($"[.] conditional loop at line {e.lineno}, loopVar: {loopVar}");
-                        _varProcessor.VariableValues.SetLoopVar(loopVar);
+                        _varProcessor.SetLoopVar(loopVar);
                     }
                     continue;
                 }
@@ -1688,7 +1688,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
             else
             {
-                _varProcessor.VariableValues.UpdateExisting(lastEntry.vars);
+                _varProcessor.UpdateExisting(lastEntry.vars);
             }
         }
 
@@ -1756,7 +1756,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             if (ann == null)
             {
                 if (Verbosity > 1)
-                    Console.Error.WriteLine($"[?] Identifier '{id}' has no 'VAR' annotation"); // TODO: check why
+                    Logger.once($"[?] Identifier '{id}' has no 'VAR' annotation"); // TODO: check why
                 continue;
             }
             string key = ann.Data;

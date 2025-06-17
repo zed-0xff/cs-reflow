@@ -174,17 +174,53 @@ public partial class VarProcessor
             };
         }
 
-        object EvaluateExpression(ExpressionSyntax expression)
+        [ThreadStatic]
+        static bool _excLogged;
+
+        [ThreadStatic]
+        static int _evalDepth;
+
+        object EvaluateExpression(ExpressionSyntax expr)
         {
-            object result = EvaluateExpression_(expression);
-            if (Verbosity > 0 || Logger.HasTag("EvaluateExpression"))
+            _evalDepth++;
+            try
             {
-                if (Verbosity > 1)
-                    Console.Error.WriteLine($"[EvaluateExpression] {expression} => ({result?.GetType()}) {result}");
-                else
-                    Console.Error.WriteLine($"[EvaluateExpression] {expression} => {result}");
+                object result = EvaluateExpression_(expr);
+                if (Verbosity > 0 || Logger.HasTag("EvaluateExpression"))
+                {
+                    if (Verbosity > 1)
+                        Console.Error.WriteLine($"[EvaluateExpression] {expr} => ({result?.GetType()}) {result}");
+                    else
+                        Console.Error.WriteLine($"[EvaluateExpression] {expr} => {result}");
+                }
+                return result;
             }
-            return result;
+            catch (Exception ex)
+            {
+                if (ex is not NotSupportedException && !_excLogged) // log only from the deepest level
+                {
+                    List<string> vars = new();
+                    foreach (var id in expr.DescendantNodes().OfType<IdentifierNameSyntax>())
+                        vars.Add($"{id.Identifier.Text}={variableValues.GetValueOrDefault(id.Identifier.Text, "")}");
+
+                    string msg = $"Error evaluating expr '{expr.TitleWithLineNo()}': {ex.GetType()}";
+                    if (vars.Count > 0)
+                        msg += $" (" + string.Join(", ", vars) + ")";
+
+                    Logger.error(msg);
+                    _excLogged = true;
+                }
+                throw;
+            }
+            finally
+            {
+                _evalDepth--;
+                if (_evalDepth == 0 && _excLogged)
+                {
+                    // Reset the flag to avoid logging multiple times in the same thread
+                    _excLogged = false;
+                }
+            }
         }
 
         object EvaluateExpression_(ExpressionSyntax expression)
