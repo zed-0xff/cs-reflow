@@ -23,11 +23,7 @@ public class UnknownValueRange : UnknownTypedValue
 
     public override long Min() => Range.Min;
     public override long Max() => Range.Max;
-
-    public bool IsFullRange()
-    {
-        return Range.Equals(type.Range);
-    }
+    public bool IsFullRange() => Range.Equals(type.Range);
 
     public override object Cast(TypeDB.IntInfo toType)
     {
@@ -36,7 +32,7 @@ public class UnknownValueRange : UnknownTypedValue
             if (Range.Min >= 0 && Range.Max <= int.MaxValue)
                 return new UnknownValueRange(TypeDB.Int, Range);
             if (Range.Min > int.MaxValue)
-                return new UnknownValueRange(TypeDB.Int, new LongRange(unchecked((int)Range.Min), unchecked((int)Range.Max)));
+                return new UnknownValueRange(TypeDB.Int, new LongRange((int)Range.Min, (int)Range.Max));
             return new UnknownValueRange(TypeDB.Int);
         }
 
@@ -45,7 +41,7 @@ public class UnknownValueRange : UnknownTypedValue
             if (Range.Min >= 0 && Range.Max >= 0)
                 return new UnknownValueRange(TypeDB.UInt, Range);
             if (Range.Max < 0)
-                return new UnknownValueRange(TypeDB.UInt, new LongRange(unchecked((uint)Range.Max), unchecked((uint)Range.Min)));
+                return new UnknownValueRange(TypeDB.UInt, new LongRange((uint)Range.Min, (uint)Range.Max));
             return new UnknownValueRange(TypeDB.UInt);
         }
 
