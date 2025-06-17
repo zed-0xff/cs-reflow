@@ -11,10 +11,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public static readonly long MAX_DISCRETE_CARDINALITY = 1_000_000L;
 
-    public long MaskNoSign(long value)
-    {
-        return value & type.Mask;
-    }
+    public bool IsOverflow(long value) => !type.CanFit(value);
+    public long MaskNoSign(long value) => value & type.Mask;
 
     public long MaskWithSign(long value)
     {
@@ -186,6 +184,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public override UnknownValueBase Sub(object right)
     {
+        if (right == this)
+            return new UnknownValueRange(type, 0, 0);
+
         if (right is not UnknownTypedValue otherTyped)
             return UnknownValue.Create(type);
 

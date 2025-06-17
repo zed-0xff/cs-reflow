@@ -19,6 +19,39 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
+    public void Test_int_negate()
+    {
+        UnknownValueRange a, b, c;
+
+        a = new(TypeDB.Int);
+        Assert.Equal(a, a.Negate());
+
+        a = new(TypeDB.Int, -100, 100);
+        Assert.Equal(a, a.Negate());
+
+        a = new(TypeDB.Int, -200, 100);
+        b = new(TypeDB.Int, -100, 200);
+        Assert.Equal(b, a.Negate());
+
+        a = new(TypeDB.Int, -200, -100);
+        b = new(TypeDB.Int, 100, 200);
+        Assert.Equal(b, a.Negate());
+
+        a = new(TypeDB.Int, 0, int.MaxValue);
+        b = new(TypeDB.Int, -int.MaxValue, 0);
+        Assert.Equal(b, a.Negate());
+
+        a = new(TypeDB.Int, int.MinValue, 0); // [-2147483648, 0]
+        Assert.Equal(a, a.Negate().Negate());
+
+        a = new(TypeDB.Int, int.MinValue, 100);
+        Assert.Equal(a, a.Negate().Negate());
+
+        a = new(TypeDB.Int, int.MinValue, -100);
+        Assert.Equal(a, a.Negate().Negate());
+    }
+
+    [Fact]
     public void Test_mul_uv()
     {
         UnknownValueRange a = new(TypeDB.UInt, 0, 1194);
@@ -81,6 +114,17 @@ public class UnknownValueRangeTests
         var b = a.Add(0x10);
         List<long> values = b.Values().ToList();
         Assert.Equal(new List<long> { 0x11, 0x12, 0x13, 0x14, 0x15 }, values);
+
+        a = new(TypeDB.Int);
+        Assert.Equal(a, a.Add(1));
+
+        a = new(TypeDB.Int, 0, int.MaxValue);
+        b = a.Add(1); // UnknownValueRanges
+        Assert.Equal(a, b.Sub(1));
+
+        a = new(TypeDB.Int, 0, int.MaxValue);
+        b = a.Add(10); // UnknownValueRanges
+        Assert.Equal(a, b.Sub(10));
     }
 
     [Fact]
@@ -90,6 +134,14 @@ public class UnknownValueRangeTests
         var b = a.Sub(10);
         List<long> values = b.Values().ToList();
         Assert.Equal(new List<long> { 0, 1, 2, 3, 4, 5 }, values);
+
+        a = new(TypeDB.Int, int.MinValue, 0);
+        b = a.Sub(1); // UnknownValueRanges
+        Assert.Equal(a, b.Add(1));
+
+        a = new(TypeDB.Int, int.MinValue, 0);
+        b = a.Sub(10); // UnknownValueRanges
+        Assert.Equal(a, b.Add(10));
     }
 
     [Fact]

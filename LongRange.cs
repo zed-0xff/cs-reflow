@@ -1,8 +1,8 @@
 // both min and max are inclusive
 public class LongRange
 {
-    public long Min { get; }
-    public long Max { get; }
+    public readonly long Min;
+    public readonly long Max;
 
     public LongRange(long min, long max)
     {

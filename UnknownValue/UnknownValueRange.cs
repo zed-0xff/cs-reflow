@@ -1,6 +1,6 @@
 public class UnknownValueRange : UnknownTypedValue
 {
-    public LongRange Range { get; }
+    public readonly LongRange Range;
 
     public UnknownValueRange(TypeDB.IntInfo type, LongRange? range = null) : base(type)
     {
@@ -60,16 +60,65 @@ public class UnknownValueRange : UnknownTypedValue
         if (right as UnknownValueRange == this)
             return ShiftLeft(1);
 
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValueRange(type, Range + l)
-            : new UnknownValueRange(type);
+        if (IsFullRange())
+            return new UnknownValueRange(type);
+
+        if (!TryConvertToLong(right, out long l))
+            return new UnknownValueRange(type);
+
+        var newMin = MaskWithSign(Range.Min + l);
+        var newMax = MaskWithSign(Range.Max + l);
+
+        if (newMin <= newMax)
+        {
+            return new UnknownValueRange(type, newMin, newMax);
+        }
+        else
+        {
+            if (type == TypeDB.ULong)
+                throw new NotImplementedException();
+
+            return new UnknownValueRanges(type,
+                    new List<LongRange>(){
+                        new LongRange(type.MinValue, newMax),
+                        new LongRange(newMin, type.MaxSignedValue)
+                    }
+                );
+        }
     }
 
     public override UnknownValueBase Sub(object right)
     {
-        return TryConvertToLong(right, out long l)
-            ? new UnknownValueRange(type, Range - l)
-            : base.Sub(right);
+        if (right as UnknownValueRange == this)
+            return new UnknownValueRange(type, 0, 0);
+
+        if (IsFullRange())
+            return new UnknownValueRange(type);
+
+        if (!TryConvertToLong(right, out long l))
+            return base.Sub(right);
+
+        var newMin = MaskWithSign(Range.Min - l);
+        var newMax = MaskWithSign(Range.Max - l);
+
+        if (newMin <= newMax)
+        {
+            return new UnknownValueRange(type, newMin, newMax);
+        }
+        else
+        {
+            if (type == TypeDB.ULong)
+                throw new NotImplementedException();
+
+            return new UnknownValueRanges(type,
+                    new List<LongRange>(){
+                        new LongRange(type.MinValue, newMax),
+                        new LongRange(newMin, type.MaxSignedValue)
+                    }
+                );
+        }
+
+        return new UnknownValueRange(type, MaskWithSign(Range.Min - l), MaskWithSign(Range.Max - l));
     }
 
     public override UnknownValueBase ShiftLeft(object right)
@@ -175,10 +224,23 @@ public class UnknownValueRange : UnknownTypedValue
         if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
-        return new UnknownValueList(type, Values().Select(v => v ^ l).OrderBy(x => x).ToList());
+        return new UnknownValueList(type, Values().Select(v => v ^ l));
     }
 
-    public override UnknownValueBase Negate() => new UnknownValueRange(type, new LongRange(-Range.Max, -Range.Min));
+    public override UnknownValueBase Negate()
+    {
+        if (IsFullRange())
+            return new UnknownValueRange(type);
+
+        if (type.signed && Contains(type.MinValue))
+            return new UnknownValueRanges(type,
+                    new List<LongRange>(){
+                        new LongRange(type.MinValue, type.MinValue), // edge case: -128 for sbyte, -32768 for short, etc.
+                        new LongRange(-Range.Max, Math.Min(-Range.Min, type.MaxSignedValue))
+                    });
+
+        return new UnknownValueRange(type, new LongRange(-Range.Max, -Range.Min));
+    }
 
     public override IEnumerable<long> Values()
     {
