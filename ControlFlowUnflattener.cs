@@ -28,7 +28,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
-    HashSet<string> keepVars = new();
+    HashSet<string> _keepVars = new(); // not copied to clones bc used only in post/preprocessor
 
     // local
     FlowDictionary _localFlowDict = new();
@@ -187,8 +187,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     public void KeepVars(List<string> vars)
     {
-        keepVars = new(vars);
+        _keepVars = new(vars);
     }
+
+    public void TraceVars(List<string> vars) => _varProcessor.TraceVars(vars);
+    public void TraceUniqVars(List<string> vars) => _varProcessor.TraceUniqVars(vars);
 
     public CSharpSyntaxNode GetMethod(string methodName)
     {
@@ -488,7 +491,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (value == null)
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
         if (value is UnknownValueBase)
+        {
+            Console.Error.WriteLine($"[d] vars: {_varProcessor.VariableValues}");
             throw new NotImplementedException($"Switch statement with {value}: {switchStmt.TitleWithLineNo()}");
+        }
 
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
 
@@ -1841,7 +1847,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         while (PreProcess)
         {
             // remove unused vars _before_ main processing
-            var body_ = new UnusedLocalsRemover(body, Verbosity, keepVars).Process(body) as BlockSyntax;
+            var body_ = new UnusedLocalsRemover(body, Verbosity, _keepVars).Process(body) as BlockSyntax;
             if (body_.IsEquivalentTo(body))
             {
                 break;
@@ -1885,7 +1891,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
             }
 
-            body2 = new UnusedLocalsRemover(body, Verbosity, keepVars).Process(body) as BlockSyntax;
+            body2 = new UnusedLocalsRemover(body, Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varProcessor, body2);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
             var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals

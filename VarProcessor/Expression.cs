@@ -177,12 +177,12 @@ public partial class VarProcessor
         object EvaluateExpression(ExpressionSyntax expression)
         {
             object result = EvaluateExpression_(expression);
-            if (Verbosity > 0)
+            if (Verbosity > 0 || Logger.HasTag("EvaluateExpression"))
             {
                 if (Verbosity > 1)
-                    Console.WriteLine($"[d] {expression} => ({result?.GetType()}) {result}");
+                    Console.Error.WriteLine($"[EvaluateExpression] {expression} => ({result?.GetType()}) {result}");
                 else
-                    Console.WriteLine($"[d] {expression} => {result}");
+                    Console.Error.WriteLine($"[EvaluateExpression] {expression} => {result}");
             }
             return result;
         }

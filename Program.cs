@@ -28,6 +28,8 @@ class Program
         bool postProcess,
         List<string> dropVars,
         List<string> keepVars,
+        List<string> traceVars,
+        List<string> traceUniqVars,
         bool dumpFlowInfos,
         string dumpIntermediateLogs,
         List<string> debugTags
@@ -163,6 +165,18 @@ class Program
             description: "Keep specified variable(s)."
         );
 
+        var traceVarsOpt = new Option<List<string>>(
+            aliases: new[] { "--trace-var", "-V" },
+            getDefaultValue: () => new List<string>(),
+            description: "Trace specified variable(s)."
+        );
+
+        var traceUniqVarsOpt = new Option<List<string>>(
+            aliases: new[] { "--trace-var-uniq", "-U" },
+            getDefaultValue: () => new List<string>(),
+            description: "Trace specified variable(s) - unique values only."
+        );
+
         var dropVarsOpt = new Option<List<string>>(
             name: "--drop-var",
             getDefaultValue: () => new List<string>(),
@@ -220,6 +234,8 @@ class Program
             listMethodsOpt,
             dropVarsOpt,
             keepVarsOpt,
+            traceVarsOpt,
+            traceUniqVarsOpt,
             dumpFlowInfosOpt,
             dumpIntermediateLogsOpt,
             debugTagsOpt
@@ -246,6 +262,8 @@ class Program
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
                 keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
+                traceVars: context.ParseResult.GetValueForOption(traceVarsOpt),
+                traceUniqVars: context.ParseResult.GetValueForOption(traceUniqVarsOpt),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
                 dumpIntermediateLogs: context.ParseResult.GetValueForOption(dumpIntermediateLogsOpt),
                 debugTags: context.ParseResult.GetValueForOption(debugTagsOpt)
@@ -338,12 +356,20 @@ class Program
             }
             else
             {
+                bool first = true;
                 foreach (var method in methods)
                 {
+                    if (first)
+                        first = false;
+                    else
+                        Console.WriteLine();
+
                     unflattener.Reset();
                     unflattener.SetHints(hints);
                     unflattener.DropVars(opts.dropVars);
                     unflattener.KeepVars(opts.keepVars);
+                    unflattener.TraceVars(opts.traceVars);
+                    unflattener.TraceUniqVars(opts.traceUniqVars);
                     var collector = new ControlFlowTreeCollector();
                     if (opts.dumpFlowInfos)
                     {
@@ -363,7 +389,6 @@ class Program
                         // Console.WriteLine("Processed Control Flow Tree:");
                         // unflattener._flowRoot.Print();
                     }
-                    Console.WriteLine();
                 }
             }
 

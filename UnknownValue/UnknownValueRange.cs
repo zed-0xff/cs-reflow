@@ -45,7 +45,7 @@ public class UnknownValueRange : UnknownTypedValue
             if (Range.Min >= 0 && Range.Max >= 0)
                 return new UnknownValueRange(TypeDB.UInt, Range);
             if (Range.Max < 0)
-                return new UnknownValueRange(TypeDB.UInt, new LongRange(unchecked((uint)Range.Min), unchecked((uint)Range.Max)));
+                return new UnknownValueRange(TypeDB.UInt, new LongRange(unchecked((uint)Range.Max), unchecked((uint)Range.Min)));
             return new UnknownValueRange(TypeDB.UInt);
         }
 

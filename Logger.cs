@@ -10,7 +10,7 @@ public static class Logger
         if (!HasTag(caller))
             return;
 
-        Console.Error.WriteLine($"[.] [{caller}] {message}");
+        log($"[.] [{caller}] {message}");
     }
 
     public static void debug(string message, [CallerMemberName] string caller = "")
@@ -18,7 +18,12 @@ public static class Logger
         if (!HasTag(caller))
             return;
 
-        Console.Error.WriteLine($"[d] [{caller}] {message}");
+        log($"[d] [{caller}] {message}");
+    }
+
+    public static void log(string message)
+    {
+        Console.Error.WriteLine(message);
     }
 
     public static void EnableTags(IEnumerable<string> tags)
