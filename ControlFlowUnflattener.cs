@@ -492,7 +492,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
         if (value is UnknownValueBase)
         {
-            Console.Error.WriteLine($"[d] vars: {_varProcessor.VariableValues()}");
+            Console.Error.WriteLine($"[d] vars: {_varProcessor.VariableValues().VarsFromNode(switchStmt.Expression)}");
             throw new NotImplementedException($"Switch statement with {value}: {switchStmt.TitleWithLineNo()}");
         }
 
@@ -1379,7 +1379,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         queue.Enqueue(_flowHints);
         List<TraceLog> logs = new();
         FlowInfo flowInfo = new FlowInfo(SyntaxKind.Block, lineno);
-        int flags = 0;
 
         while (queue.Count > 0)
         {
@@ -1604,7 +1603,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     {
                         logs[i] = logs[i].Merge(logs[maxIdx], Verbosity);
                     }
-                    catch (Exception e)
+                    catch
                     {
                         Console.Error.WriteLine($"[!] Error merging logs {logs[i].Id} and {logs[maxIdx].Id}");
                         throw;
@@ -1697,14 +1696,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             var stmt = entry.stmt;
             var comment = entry.comment;
-            if (AddComments && !string.IsNullOrEmpty(comment))
+            while (AddComments && !string.IsNullOrEmpty(comment))
             {
+                // do not make obvious comments
                 if (stmt.ToString().EndsWith($" = {comment};"))
-                    ;
-                else if ((comment == "True" || comment == "False") && stmt.Title().ToLower().Contains($"({comment.ToLower()})")) // e.g. while (true) { ... }
-                    ;
-                else
-                    stmt = stmt.WithComment(comment);
+                    break;
+                if ((comment == "True" || comment == "False") && stmt.Title().ToLower().Contains($"({comment.ToLower()})")) // e.g. while (true) { ... }
+                    break;
+
+                stmt = stmt.WithComment(comment);
+                break;
             }
 
             statements.Add(stmt);
@@ -1894,7 +1895,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             body2 = new UnusedLocalsRemover(body, Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varProcessor, body2);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
-            var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
+            var body3 = postProcessor.PostProcessAll(body2!); // removes empty finally{} after UnusedLocalsRemover removed some locals
             if (body3.IsEquivalentTo(body))
             {
                 break;
@@ -1908,7 +1909,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (ShowAnnotations)
         {
             body2 = new VarTracker.ShowAnnotationsRewriter().Visit(body) as BlockSyntax;
-            body = body.ReplaceAndGetNewNode(body2);
+            body = body.ReplaceAndGetNewNode(body2!);
         }
 
         SyntaxNode? newMethodNode = body;

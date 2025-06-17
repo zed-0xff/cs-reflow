@@ -199,13 +199,10 @@ public partial class VarProcessor
             {
                 if (ex is not NotSupportedException && !_excLogged) // log only from the deepest level
                 {
-                    List<string> vars = new();
-                    foreach (var id in expr.DescendantNodes().OfType<IdentifierNameSyntax>())
-                        vars.Add($"{id.Identifier.Text}={variableValues.GetValueOrDefault(id.Identifier.Text, "")}");
-
                     string msg = $"Error evaluating expr '{expr.TitleWithLineNo()}': {ex.GetType()}";
+                    var vars = variableValues.VarsFromNode(expr);
                     if (vars.Count > 0)
-                        msg += $" (" + string.Join(", ", vars) + ")";
+                        msg += $" ({vars})";
 
                     Logger.error(msg);
                     _excLogged = true;
@@ -691,7 +688,7 @@ public partial class VarProcessor
                 {
                     r = iceR.Cast(TypeDB.UInt);
                 }
-                else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL.Value >= 0)
+                else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL!.Value >= 0)
                 {
                     l = iceL.Cast(TypeDB.UInt);
                 }

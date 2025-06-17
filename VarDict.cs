@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 
 public class VarDict : Dictionary<string, object>
@@ -137,6 +139,15 @@ public class VarDict : Dictionary<string, object>
             Logger.info($" {key,-10} {value1,-20} {value2,-20} => {result}");
 
         return result;
+    }
+
+    public VarDict VarsFromNode(SyntaxNode node)
+    {
+        VarDict vars = new VarDict();
+        foreach (var id in node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
+            if (ContainsKey(id.Identifier.ValueText))
+                vars[id.Identifier.ValueText] = this[id.Identifier.ValueText];
+        return vars;
     }
 
     public override bool Equals(object obj)
