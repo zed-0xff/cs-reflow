@@ -5,6 +5,13 @@ public static class Logger
 {
     public static HashSet<string> EnabledTags { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+    static HashSet<string> _onceMessages = new();
+
+    public static void error(string message, [CallerMemberName] string caller = "")
+    {
+        log($"[!] [{caller}] {message}".Red());
+    }
+
     public static void info(string message, [CallerMemberName] string caller = "")
     {
         if (!HasTag(caller))
@@ -24,6 +31,15 @@ public static class Logger
     public static void log(string message)
     {
         Console.Error.WriteLine(message);
+    }
+
+    public static void once(string message)
+    {
+        if (_onceMessages.Contains(message))
+            return;
+
+        _onceMessages.Add(message);
+        log(message);
     }
 
     public static void EnableTags(IEnumerable<string> tags)
