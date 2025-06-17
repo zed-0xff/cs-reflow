@@ -704,17 +704,22 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         if (_localFlowDict.TryGetValue(whileStmt, out ControlFlowNode flowNode) && flowNode.forceInline)
         {
-            Logger.info($"--- local forceInline: {whileStmt.LineNo()}");
+            Logger.info($"{whileStmt.TitleWithLineNo()} => null  [local forceInline]");
             return null;
         }
 
         if (_flowDict[whileStmt].forceInline)
         {
+            Logger.info($"{whileStmt.TitleWithLineNo()} => null  [global forceInline]");
             return null;
         }
 
         bool keep = _flowDict[whileStmt].keep;
-        if (!keep)
+        if (keep)
+        {
+            Logger.info($"{whileStmt.TitleWithLineNo()} => keep  [cached]");
+        }
+        else
         {
             var clone = Clone()
                 .WithFlowDictOverride(whileStmt, (node) => node.forceInline = true)
@@ -723,7 +728,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             // all breaks/continues/returns need to be catched!
             var log = clone.TraceBlock(SingletonList<StatementSyntax>(whileStmt));
             keep = log.entries.FirstOrDefault() is TraceEntry te && te.stmt is LabeledStatementSyntax;
-            Logger.info($"{_traceLog.Id} tracing {whileStmt.TitleWithLineNo()} in clone => {(keep ? "keep" : "inline")}");
+            Logger.info($"{whileStmt.TitleWithLineNo()} => {(keep ? "keep" : "inline")}  --   {log.Id}: {log.entries.FirstOrDefault()?.stmt}");
         }
 
         if (keep)

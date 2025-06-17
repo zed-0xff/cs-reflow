@@ -48,21 +48,11 @@ public partial class VarTracker
         public override SyntaxNode Visit(SyntaxNode node)
         {
             node = base.Visit(node);
-            switch (node)
+            if (node is StatementSyntax)
             {
-                case DoStatementSyntax:
-                case ForEachStatementSyntax:
-                case ForStatementSyntax:
-                case IfStatementSyntax:
-                case LocalDeclarationStatementSyntax:
-                case SwitchStatementSyntax:
-                case TryStatementSyntax:
-                case UsingStatementSyntax:
-                case WhileStatementSyntax:
-                    node = node.WithAdditionalAnnotations(
-                            new SyntaxAnnotation("ID", $"{_id++}")
-                            );
-                    break;
+                node = node.WithAdditionalAnnotations(
+                        new SyntaxAnnotation("ID", (++_id).ToString("X4"))
+                        );
             }
             return node;
         }
