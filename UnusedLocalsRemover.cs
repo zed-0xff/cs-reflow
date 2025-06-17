@@ -417,7 +417,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         if (!dataFlow.Succeeded)
             return block;
 
-        if (Verbosity > 1)
+        if (Verbosity > 1 && Logger.HasTag("UnusedLocalsRemover"))
         {
             if (dataFlow.VariablesDeclared.Count() > 0)
                 Console.Error.WriteLine($"[d] dataFlow.VariablesDeclared: {string.Join(", ", dataFlow.VariablesDeclared.Select(s => s.Name))}");
