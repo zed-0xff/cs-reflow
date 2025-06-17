@@ -143,7 +143,7 @@ public static class SyntaxNodeExtensions
         {
             annotations.Add($"{ann.Kind}:{ann.Data}");
         }
-        return annotations.Count > 0 ? string.Join(", ", annotations) : null;
+        return annotations.Count > 0 ? ("[" + string.Join(", ", annotations) + "]") : null;
     }
 
     public static string? NestedAnnotationsAsString(this SyntaxNode node)
