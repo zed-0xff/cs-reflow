@@ -28,7 +28,7 @@ public class UnknownValueTests
     public void Test_create_null()
     {
         string? str = null;
-        var a = UnknownValue.Create(str);
+        var a = UnknownValue.Create(str!);
         Assert.True(a is UnknownValue);
 
         Type? type = null;
@@ -69,6 +69,6 @@ public class UnknownValueTests
         Assert.Equal(2030041088, b?.Max());
 
         Assert.NotNull(a);
-        Assert.Equal(false, a.Eq(b));
+        Assert.Equal(false, a.Eq(b!));
     }
 }
