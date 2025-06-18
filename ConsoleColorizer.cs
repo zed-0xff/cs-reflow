@@ -52,35 +52,35 @@ public static class ConsoleColorizer
 
         switch (token.Kind())
         {
-            case SyntaxKind.EqualsToken:             // =
-            case SyntaxKind.EqualsEqualsToken:       // ==
-            case SyntaxKind.ExclamationEqualsToken:  // !=
-            case SyntaxKind.LessThanToken:            // <
-            case SyntaxKind.GreaterThanToken:         // >
-            case SyntaxKind.AmpersandAmpersandToken:  // &&
-            case SyntaxKind.BarBarToken:              // ||
-            case SyntaxKind.PlusToken:                // +
-            case SyntaxKind.MinusToken:               // -
-            case SyntaxKind.AsteriskToken:            // *
-            case SyntaxKind.SlashToken:               // /
-            case SyntaxKind.PercentToken:             // %
-            case SyntaxKind.PlusPlusToken:            // ++
-            case SyntaxKind.MinusMinusToken:          // --
-            case SyntaxKind.LessThanEqualsToken:      // <=
-            case SyntaxKind.GreaterThanEqualsToken:   // >=
-            case SyntaxKind.AmpersandToken:            // &
-            case SyntaxKind.BarToken:                  // |
-            case SyntaxKind.CaretToken:                // ^
-            case SyntaxKind.TildeToken:                // ~
-            case SyntaxKind.LessThanLessThanToken:    // <<
-            case SyntaxKind.GreaterThanGreaterThanToken:// >>
+            case SyntaxKind.EqualsToken:                 // =
+            case SyntaxKind.EqualsEqualsToken:           // ==
+            case SyntaxKind.ExclamationEqualsToken:      // !=
+            case SyntaxKind.LessThanToken:               // <
+            case SyntaxKind.GreaterThanToken:            // >
+            case SyntaxKind.AmpersandAmpersandToken:     // &&
+            case SyntaxKind.BarBarToken:                 // ||
+            case SyntaxKind.PlusToken:                   // +
+            case SyntaxKind.MinusToken:                  // -
+            case SyntaxKind.AsteriskToken:               // *
+            case SyntaxKind.SlashToken:                  // /
+            case SyntaxKind.PercentToken:                // %
+            case SyntaxKind.PlusPlusToken:               // ++
+            case SyntaxKind.MinusMinusToken:             // --
+            case SyntaxKind.LessThanEqualsToken:         // <=
+            case SyntaxKind.GreaterThanEqualsToken:      // >=
+            case SyntaxKind.AmpersandToken:              // &
+            case SyntaxKind.BarToken:                    // |
+            case SyntaxKind.CaretToken:                  // ^
+            case SyntaxKind.TildeToken:                  // ~
+            case SyntaxKind.LessThanLessThanToken:       // <<
+            case SyntaxKind.GreaterThanGreaterThanToken: // >>
                 return ConsoleColor.Yellow;
 
             case SyntaxKind.TrueKeyword:
             case SyntaxKind.FalseKeyword:
             case SyntaxKind.StringLiteralToken:
             case SyntaxKind.NumericLiteralToken:
-                return ConsoleColor.Red;
+                return ConsoleColor.DarkGreen;
 
             case SyntaxKind.IdentifierToken:
                 return GetIdentifierColor(token);
