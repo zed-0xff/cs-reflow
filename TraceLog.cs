@@ -230,7 +230,7 @@ public class TraceLog
             if (ifStmt.LineNo() != hint_key)
             {
                 Console.WriteLine($"[d] if statement: {ifStmt.LineNo()}: {ifStmt}");
-                throw new Exception($"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+                throw new TaggedException("TraceLog.Merge", $"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
             }
 
             BlockSyntax thenBlock = Block(this.entries
