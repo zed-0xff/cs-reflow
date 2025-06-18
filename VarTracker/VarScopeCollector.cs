@@ -5,9 +5,11 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 public partial class VarTracker
 {
+    public record DeclInfo(LocalDeclarationStatementSyntax decl, BlockSyntax block);
+
     class VarScopeCollector : CSharpSyntaxWalker
     {
-        public Dictionary<SyntaxAnnotation, LocalDeclarationStatementSyntax> Declarations = new();
+        public Dictionary<SyntaxAnnotation, List<DeclInfo>> DeclInfos = new();
         public Dictionary<SyntaxAnnotation, HashSet<BlockSyntax>> UsageBlocks = new();
 
         private Stack<BlockSyntax> _blockStack = new();
@@ -21,12 +23,20 @@ public partial class VarTracker
 
         public override void VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
         {
-            foreach (var v in node.Declaration.Variables)
+            if (node.Declaration.Variables.Count == 1) // skip multi-variable declarations
             {
-                var annotation = v.GetAnnotations("VAR").FirstOrDefault();
-                if (annotation != null)
+                foreach (var v in node.Declaration.Variables)
                 {
-                    Declarations[annotation] = node;
+                    var annotation = v.GetAnnotations("VAR").FirstOrDefault();
+                    if (annotation == null)
+                        continue;
+
+                    if (!DeclInfos.TryGetValue(annotation, out var decls))
+                    {
+                        decls = new List<DeclInfo>();
+                        DeclInfos[annotation] = decls;
+                    }
+                    decls.Add(new DeclInfo(node, _blockStack.Peek()));
                 }
             }
             base.VisitLocalDeclarationStatement(node);

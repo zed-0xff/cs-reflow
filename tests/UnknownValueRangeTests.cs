@@ -21,7 +21,7 @@ public class UnknownValueRangeTests
     [Fact]
     public void Test_int_negate()
     {
-        UnknownValueRange a, b, c;
+        UnknownValueRange a, b;
 
         a = new(TypeDB.Int);
         Assert.Equal(a, a.Negate());

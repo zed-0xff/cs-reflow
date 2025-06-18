@@ -6,12 +6,19 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 public partial class VarTracker
 {
     // Maps variable symbol -> unique annotation
-    private readonly Dictionary<ISymbol, SyntaxAnnotation> _varAnnotations = new Dictionary<ISymbol, SyntaxAnnotation>(SymbolEqualityComparer.Default);
+    public readonly Dictionary<ISymbol, SyntaxAnnotation> _varAnnotations = new Dictionary<ISymbol, SyntaxAnnotation>(SymbolEqualityComparer.Default);
+
+    int _id = 0;
 
     public SyntaxNode Track(SyntaxNode rootNode)
     {
         var ctx = new SemanticContext(rootNode);
         return IndexSymbols(rootNode, ctx.Model);
+    }
+
+    public string GetNextId()
+    {
+        return (++_id).ToString("X4");
     }
 
     public SyntaxNode IndexSymbols(SyntaxNode rootNode, SemanticModel semanticModel)
@@ -21,7 +28,7 @@ public partial class VarTracker
         collector.Visit(rootNode);
 
         // Second pass: rewrite and apply annotations
-        var rewriter = new AnnotationRewriter(_varAnnotations, semanticModel);
+        var rewriter = new AnnotationRewriter(this, semanticModel);
         return rewriter.Visit(rootNode);
     }
 
@@ -32,7 +39,7 @@ public partial class VarTracker
         collector.Visit(rootNode);
 
         // Move declarations to appropriate blocks
-        var mover = new VarDeclarationMover(collector);
+        var mover = new VarDeclarationMover(this, collector);
         return mover.Visit(rootNode);
     }
 }

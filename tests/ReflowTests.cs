@@ -189,4 +189,10 @@ public class ReflowTests
     {
         checkData("nested_whiles");
     }
+
+    [Fact]
+    public void real_eb5c()
+    {
+        checkData("eb5c");
+    }
 }

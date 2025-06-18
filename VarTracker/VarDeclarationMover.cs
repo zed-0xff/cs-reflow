@@ -7,54 +7,144 @@ public partial class VarTracker
 {
     class VarDeclarationMover : CSharpSyntaxRewriter
     {
-        VarScopeCollector _collector;
+        readonly VarTracker _tracker;
+        readonly VarScopeCollector _collector;
         Dictionary<SyntaxAnnotation, BlockSyntax> _targetBlocks = new();
         HashSet<LocalDeclarationStatementSyntax> _toRemove = new();
 
-        public VarDeclarationMover(VarScopeCollector collector)
+        static readonly string LOG_TAG = "VarDeclarationMover";
+
+        static bool IsSafeToRemove(LocalDeclarationStatementSyntax decl)
         {
-            _collector = collector;
+            return decl.Declaration.Variables.Count == 1; // && decl.Declaration.Variables[0].Initializer == null;
+        }
 
-            // Calculate target blocks
-            foreach (var kvp in _collector.Declarations)
+        void enqueue_removal(LocalDeclarationStatementSyntax decl)
+        {
+            if (IsSafeToRemove(decl))
             {
-                var key = kvp.Key;
-                var declStmt = kvp.Value;
+                _toRemove.Add(decl);
+            }
+            else
+            {
+                Logger.debug($"Cannot remove declaration {decl.TitleWithLineNo()}: it has initializer or multiple variables", LOG_TAG);
+            }
+        }
 
-                // Skip declarations with more than one variable
-                if (declStmt.Declaration.Variables.Count != 1)
+        Dictionary<BlockSyntax, LocalDeclarationStatementSyntax> collect_block_decls(SyntaxAnnotation key)
+        {
+            Dictionary<BlockSyntax, LocalDeclarationStatementSyntax> blockDecls = new();
+            foreach (var declInfo in _collector.DeclInfos[key])
+            {
+                if (blockDecls.TryGetValue(declInfo.block, out var existingDecl))
                 {
-                    _targetBlocks[key] = declStmt.Ancestors().OfType<BlockSyntax>().FirstOrDefault();
-                    continue;
-                }
-
-                var declBlock = declStmt.Ancestors().OfType<BlockSyntax>().FirstOrDefault();
-                if (!_collector.UsageBlocks.TryGetValue(key, out var usageBlocks))
-                {
-                    _targetBlocks[key] = declBlock;
-                    continue;
-                }
-
-                var allBlocks = new HashSet<BlockSyntax>(usageBlocks) { declBlock };
-                var targetBlock = FindCommonAncestor(allBlocks);
-
-                if (targetBlock == null)
-                    throw new InvalidOperationException($"No common ancestor found for variable '{key}'");
-
-                if (targetBlock != declBlock)
-                {
-                    // Check if every usage block already declares the variable
-                    bool allBlocksHaveDecl = usageBlocks.All(block =>
-                            block.Statements.OfType<LocalDeclarationStatementSyntax>()
-                            .Any(ld => ld.IsSameVar(key)));
-
-                    if (!allBlocksHaveDecl)
+                    // If we already have a declaration in this block, keep the topmost one
+                    int oldIdx = declInfo.block.Statements.IndexOf(existingDecl);
+                    int newIdx = declInfo.block.Statements.IndexOf(declInfo.decl);
+                    if (oldIdx == -1 || newIdx == -1)
+                        throw new InvalidOperationException($"Declaration {key.Data} not found in block statements: {declInfo.block.TitleWithLineNo()}");
+                    if (newIdx < oldIdx)
                     {
-                        _targetBlocks[key] = targetBlock;
-                        _toRemove.Add(declStmt);
+                        blockDecls[declInfo.block] = declInfo.decl;
+                        enqueue_removal(existingDecl);
+                    }
+                    else
+                    {
+                        enqueue_removal(declInfo.decl);
                     }
                 }
+                else
+                    blockDecls[declInfo.block] = declInfo.decl;
             }
+            return blockDecls;
+        }
+
+        public VarDeclarationMover(VarTracker tracker, VarScopeCollector collector)
+        {
+            _tracker = tracker;
+            _collector = collector;
+
+            foreach (var (key, usageBlocks) in _collector.UsageBlocks)
+            {
+                if (!_collector.DeclInfos.ContainsKey(key))
+                    continue;
+
+                var blockDecls = collect_block_decls(key); // also adds duplicate decls to _toRemove
+                var declBlocks = _collector.DeclInfos[key].Select(d => d.block).ToHashSet();
+                var usageToDecl = new Dictionary<BlockSyntax, BlockSyntax>();
+                var declToUsage = new Dictionary<BlockSyntax, List<BlockSyntax>>();
+                var orphanedUsageBlocks = new List<BlockSyntax>();
+
+                foreach (var usageBlk in usageBlocks)
+                {
+                    BlockSyntax closestDecl = null;
+
+                    foreach (var ancestor in usageBlk.AncestorsAndSelf())
+                    {
+                        if (declBlocks.Contains(ancestor))
+                        {
+                            closestDecl = (BlockSyntax)ancestor;
+                            break;
+                        }
+                    }
+
+                    if (closestDecl != null)
+                    {
+                        usageToDecl[usageBlk] = closestDecl;
+                        if (!declToUsage.TryGetValue(closestDecl, out var usages))
+                        {
+                            usages = new List<BlockSyntax>();
+                            declToUsage[closestDecl] = usages;
+                        }
+                        usages.Add(usageBlk);
+                    }
+                    else
+                        orphanedUsageBlocks.Add(usageBlk);
+                }
+
+                var unusedDecls = _collector.DeclInfos[key]
+                    .Where(d => !declToUsage.ContainsKey(d.block))
+                    .Select(d => d.block)
+                    .ToHashSet();
+
+                if (orphanedUsageBlocks.Count == 0 && declBlocks.Count < 2)
+                    continue; // nothing to do here
+
+                foreach (var usageBlk in orphanedUsageBlocks)
+                    fix_orphaned_block(key, usageBlk);
+
+                foreach (var declInfo in _collector.DeclInfos[key])
+                    Logger.debug($"{key.Data}: declared in {declInfo.block.TitleWithLineNo()}", LOG_TAG);
+            }
+        }
+
+        void fix_orphaned_block(SyntaxAnnotation key, BlockSyntax usageBlk)
+        {
+            Logger.debug($"{key.Data}: usage block has no decl: {usageBlk.TitleWithLineNo()}", LOG_TAG);
+            BlockSyntax? targetBlk = usageBlk
+                .AncestorsAndSelf()
+                .OfType<BlockSyntax>()
+                .FirstOrDefault(b => b.DescendantNodes().OfType<LocalDeclarationStatementSyntax>().Any(ld => ld.IsSameVar(key)));
+
+            if (targetBlk == null)
+                throw new InvalidOperationException($"{key.Data}: No parent block found for orphaned usage block {usageBlk.TitleWithLineNo()}");
+
+            // targetBlk itself won't have the declaration of interest, but some of its children do
+            targetBlk.DescendantNodes()
+                .OfType<LocalDeclarationStatementSyntax>()
+                .Where(ld => ld.IsSameVar(key))
+                .ToList()
+                .ForEach(ld => enqueue_removal(ld));
+
+            if (_targetBlocks.TryGetValue(key, out var existingTarget))
+            {
+                if (existingTarget != targetBlk)
+                    throw new InvalidOperationException(
+                            $"Variable '{key.Data}' already has a target block: {existingTarget.TitleWithLineNo()} " +
+                            $"but found another candidate: {targetBlk.TitleWithLineNo()}");
+            }
+            else
+                _targetBlocks[key] = targetBlk;
         }
 
         // Helper to find common ancestor block of many blocks
@@ -88,10 +178,14 @@ public partial class VarTracker
                 var varName = kvp.Key;
                 var targetBlock = kvp.Value;
 
-                if (targetBlock == node && _collector.Declarations.TryGetValue(varName, out var declStmt))
+                if (targetBlock == node && _collector.DeclInfos.TryGetValue(varName, out var decls))
                 {
-                    if (_toRemove.Contains(declStmt))
+                    foreach (DeclInfo di in decls)
                     {
+                        var declStmt = di.decl;
+                        if (!_toRemove.Contains(declStmt))
+                            continue;
+
                         var variable = declStmt.Declaration.Variables[0];
 
                         // Create declaration without initializer
@@ -99,7 +193,7 @@ public partial class VarTracker
                             .WithTrailingTrivia(SyntaxFactory.ElasticMarker);
 
                         var newDeclaration = declStmt.Declaration.WithVariables(
-                            SyntaxFactory.SingletonSeparatedList(newVariable));
+                                SyntaxFactory.SingletonSeparatedList(newVariable));
 
                         var newDeclStmt = declStmt.WithDeclaration(newDeclaration)
                             .WithTrailingTrivia(SyntaxFactory.ElasticMarker);
@@ -139,9 +233,10 @@ public partial class VarTracker
                     SyntaxFactory.AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         SyntaxFactory
-                        .IdentifierName(variable.Identifier)
-                        .WithAdditionalAnnotations(variable.GetAnnotations("VAR")),
+                            .IdentifierName(variable.Identifier)
+                            .WithAdditionalAnnotations(variable.GetAnnotations(new string[] { "VAR", "LineNo" })),
                         variable.Initializer.Value)
+                    .WithAdditionalAnnotations(new SyntaxAnnotation("ID", _tracker.GetNextId()))
                     );
 
             return assignmentExpr;

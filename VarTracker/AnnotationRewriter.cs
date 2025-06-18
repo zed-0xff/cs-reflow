@@ -9,11 +9,12 @@ public partial class VarTracker
     {
         private readonly Dictionary<ISymbol, SyntaxAnnotation> _varAnnotations;
         private readonly SemanticModel _semanticModel;
-        int _id = 0;
+        private readonly VarTracker _tracker;
 
-        public AnnotationRewriter(Dictionary<ISymbol, SyntaxAnnotation> varAnnotations, SemanticModel semanticModel)
+        public AnnotationRewriter(VarTracker tracker, SemanticModel semanticModel)
         {
-            _varAnnotations = varAnnotations;
+            _tracker = tracker;
+            _varAnnotations = tracker._varAnnotations;
             _semanticModel = semanticModel;
         }
 
@@ -51,7 +52,7 @@ public partial class VarTracker
             if (node is StatementSyntax)
             {
                 node = node.WithAdditionalAnnotations(
-                        new SyntaxAnnotation("ID", (++_id).ToString("X4"))
+                        new SyntaxAnnotation("ID", _tracker.GetNextId())
                         );
             }
             return node;

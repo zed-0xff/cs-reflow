@@ -48,6 +48,11 @@
 	                Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
 	            };
 	            collection = String.Split(obj5, obj6, 0);
+	            obj5 = obj;
+	            obj6 = new string[1]
+	            {
+	                Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+	            };
 	            collection = String.Split(obj5, obj6, 0);
 	            list.AddRange((IEnumerable<string>)collection);
 	            a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
@@ -93,7 +98,11 @@
 	            }
 	
 	            ((Control)((Form_af54)object_0md).label_a811).Text = (string)string_0a;
-	            object obj5 = obj;
+	            obj5 = obj;
+	            obj6 = new string[1]
+	            {
+	                Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+	            };
 	            collection = String.Split(obj5, obj6, 0);
 	            goto lbl_241;
 	        }
@@ -123,6 +132,11 @@
 	            Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
 	        };
 	        collection = String.Split(obj5, obj6, 0);
+	        obj5 = obj;
+	        obj6 = new string[1]
+	        {
+	            Strings_a392.a8f2095a7d364b9bb95b7201d7e914bd
+	        };
 	        collection = String.Split(obj5, obj6, 0);
 	        list.AddRange((IEnumerable<string>)collection);
 	        a99d58504b1948b7a3cc4dc5bd76f268(((Control)((Form_af54)object_0md).comboBox_db7d).Text, list, ((Main_a546)((Form_af54)object_0md).main_a93b).rec_afb8, ref *(string*)(&string_0a), ref *(string*)(&string_1b), ref *(string*)(&string_2c));
