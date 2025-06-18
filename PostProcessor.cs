@@ -569,6 +569,9 @@ public class CommentAligner : CSharpSyntaxRewriter
         if (!token.TrailingTrivia.Any(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia)))
             return token;
 
+        if (token.Parent is EmptyStatementSyntax) // keep comments on empty statements (deleted nodes)
+            return token;
+
         var newTrivia = new List<SyntaxTrivia>();
         bool aligned = false;
 

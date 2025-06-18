@@ -2,6 +2,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
 
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
 public static class SyntaxNodeExtensions
 {
     static readonly string[] ANNOTATION_KINDS = new[] { "ID", "VAR", "LineNo" };
@@ -206,5 +208,14 @@ public static class SyntaxNodeExtensions
 
         // Add the new annotation
         return node.WithAdditionalAnnotations(newAnnotation);
+    }
+
+    public static SyntaxNode ToEmptyStmt(this SyntaxNode node)
+    {
+        return EmptyStatement()
+            .WithComment(node.Title())
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("LineNo", node.LineNo().ToString())
+                    );
     }
 }

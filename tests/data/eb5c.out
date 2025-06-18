@@ -11,22 +11,10 @@
 	            string text3 = get_str(33061, 44878, 20);
 	            Record_ab57 obj = new Record_ab57();
 	            object obj2 = obj;
-	            object obj4;
-	            string[] obj5;
-	            object obj6;
-	            string[] obj7;
-	            object obj8;
-	            string[] obj9;
 	            object_0wf = String.Substring(object_0wf, String.IndexOf(object_0wf, Strings_a392.e7dbba00b1ec4f6aad59de101cf391aa) + 2);
 	            object_0wf = decrypt_a8f4(object_0wf, string.Empty);
 	            if (String.Contains(object_0wf, Strings_a392.ab50e274fb3141edab7ca8f95fc73273))
 	            {
-	                object obj4;
-	                string[] obj5;
-	                object obj6;
-	                string[] obj7;
-	                object obj8;
-	                string[] obj9;
 	                object obj10 = object_0wf;
 	                string[] obj11 = new string[1]
 	                {
@@ -117,3 +105,4 @@
 	
 	    goto lbl_6;
 	}
+

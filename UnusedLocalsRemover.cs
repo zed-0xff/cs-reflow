@@ -179,13 +179,9 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             _assignmentsToReplace = new HashSet<AssignmentExpressionSyntax>(assignmentsToReplace);
         }
 
-        SyntaxNode? gen_empty_stmt(SyntaxNode prev)
+        SyntaxNode gen_empty_stmt(SyntaxNode prev)
         {
-            return EmptyStatement()
-                .WithComment(prev.Title())
-                .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("LineNo", prev.LineNo().ToString())
-                );
+            return prev.ToEmptyStmt();
         }
 
         public override SyntaxNode? VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)

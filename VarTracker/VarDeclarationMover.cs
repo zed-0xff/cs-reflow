@@ -102,19 +102,18 @@ public partial class VarTracker
                         orphanedUsageBlocks.Add(usageBlk);
                 }
 
-                var unusedDecls = _collector.DeclInfos[key]
-                    .Where(d => !declToUsage.ContainsKey(d.block))
-                    .Select(d => d.block)
-                    .ToHashSet();
-
-                if (orphanedUsageBlocks.Count == 0 && declBlocks.Count < 2)
-                    continue; // nothing to do here
-
                 foreach (var usageBlk in orphanedUsageBlocks)
                     fix_orphaned_block(key, usageBlk);
 
-                foreach (var declInfo in _collector.DeclInfos[key])
-                    Logger.debug($"{key.Data}: declared in {declInfo.block.TitleWithLineNo()}", LOG_TAG);
+                var unusedDecls = _collector.DeclInfos[key]
+                    .Where(d => !declToUsage.ContainsKey(d.block))
+                    .Select(d => d.decl);
+
+                foreach (var decl in unusedDecls)
+                {
+                    Logger.debug($"{key.Data}: unused decl: {decl.TitleWithLineNo()}", LOG_TAG);
+                    _toRemove.Add(decl);
+                }
             }
         }
 
@@ -225,7 +224,7 @@ public partial class VarTracker
             if (variable.Initializer == null)
             {
                 // no initializer, safe to remove declaration completely
-                return null;
+                return node.ToEmptyStmt();
             }
 
             // Build assignment expression: varName = initializer;
