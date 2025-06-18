@@ -293,8 +293,12 @@ public partial class VarProcessor
                     }
                     catch (InvalidCastException)
                     {
-                        Console.Error.WriteLine($"[?] cannot cast '{condition}' to bool in: {conditionalExpr}");
-                        return UnknownValue.Create();
+                        Logger.warn_once($"ConditionalExpression: cannot cast '{condition}' to bool in: {conditionalExpr}");
+                        object whenTrue = EvaluateExpression(conditionalExpr.WhenTrue);
+                        object whenFalse = EvaluateExpression(conditionalExpr.WhenFalse);
+                        object result = (Equals(whenTrue, whenFalse)) ? whenTrue : VarProcessor.MergeVar("?", whenTrue, whenFalse);
+                        Logger.warn_once($"ConditionalExpression: merged {whenTrue} and {whenFalse} => {result}");
+                        return result;
                     }
 
                 case DefaultExpressionSyntax defaultExpr:
@@ -309,8 +313,8 @@ public partial class VarProcessor
                         "default(float)" => default(float),
                         "default(int)" => default(int),
                         "default(long)" => default(long),
-                        "default(nint)" => default(nint),   // TODO: 32/64 bit cmdline switch
-                        "default(nuint)" => default(nuint), // TODO: 32/64 bit cmdline switch
+                        "default(nint)" => default(nint),   // zero for both 32/64
+                        "default(nuint)" => default(nuint), // zero for both 32/64
                         "default(object)" => default(object),
                         "default(sbyte)" => default(sbyte),
                         "default(string)" => default(string),
@@ -362,8 +366,8 @@ public partial class VarProcessor
                         "sizeof(float)" => sizeof(float),
                         "sizeof(int)" => sizeof(int),
                         "sizeof(long)" => sizeof(long),
-                        //                        "sizeof(nint)" => sizeof(nint),   // TODO: 32/64 bit cmdline switch
-                        //                        "sizeof(nuint)" => sizeof(nuint), // TODO: 32/64 bit cmdline switch
+                        // "sizeof(nint)" => sizeof(nint),   // TODO: 32/64 bit cmdline switch
+                        // "sizeof(nuint)" => sizeof(nuint), // TODO: 32/64 bit cmdline switch
                         "sizeof(sbyte)" => sizeof(sbyte),
                         "sizeof(uint)" => sizeof(uint),
                         "sizeof(ulong)" => sizeof(ulong),
@@ -673,79 +677,6 @@ public partial class VarProcessor
             return false;
         }
 
-        object promoted_eval(dynamic l, SyntaxKind kind, dynamic r)
-        {
-            var iceL = l as IntConstExpr;
-            var iceR = r as IntConstExpr;
-            var ltype = (iceL != null) ? iceL.IntType.Type : l.GetType();
-            var rtype = (iceR != null) ? iceR.IntType.Type : r.GetType();
-            // [floats skipped]
-            // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
-            // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
-            if (ltype == typeof(ulong) || rtype == typeof(ulong))
-            {
-                if (ltype != typeof(ulong))
-                    l = (iceL != null) ? iceL.Cast(TypeDB.ULong) : Convert.ToUInt64(l);
-                if (rtype != typeof(ulong))
-                    r = (iceR != null) ? iceR.Cast(TypeDB.ULong) : Convert.ToUInt64(r);
-            }
-
-            // Otherwise, if either operand is of type long, the OTHER OPERAND is converted to type long.
-            else if (ltype == typeof(long) || rtype == typeof(long))
-            {
-                if (ltype != typeof(long))
-                    l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);
-                if (rtype != typeof(long))
-                    r = (iceR != null) ? iceR.Cast(TypeDB.Long) : Convert.ToInt64(r);
-            }
-
-            // Otherwise, if either operand is of type uint and the other operand is of type sbyte, short, or int, BOTH OPERANDS are converted to type long.
-            // XXX not always true XXX
-            else if (
-                    (ltype == typeof(uint) && (rtype == typeof(sbyte) || rtype == typeof(short) || rtype == typeof(int))) ||
-                    (rtype == typeof(uint) && (ltype == typeof(sbyte) || ltype == typeof(short) || ltype == typeof(int)))
-                    )
-            {
-                // if left is uint and right is int, but can fit in uint => right is converted to uint
-                if (ltype == typeof(uint) && rtype == typeof(int) && iceR != null && iceR!.Value >= 0)
-                {
-                    r = iceR!.Cast(TypeDB.UInt);
-                }
-                else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL!.Value >= 0)
-                {
-                    l = iceL!.Cast(TypeDB.UInt);
-                }
-                else
-                {
-                    l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);
-                    r = (iceR != null) ? iceR.Cast(TypeDB.Long) : Convert.ToInt64(r);
-                }
-            }
-
-            // Otherwise, if either operand is of type uint, the OTHER OPERAND is converted to type uint.
-            else if (ltype == typeof(uint) || rtype == typeof(uint))
-            {
-                if (ltype != typeof(uint))
-                    l = (iceL != null) ? iceL.Cast(TypeDB.UInt) : Convert.ToUInt32(l);
-                if (rtype != typeof(uint))
-                    r = (iceR != null) ? iceR.Cast(TypeDB.UInt) : Convert.ToUInt32(r);
-            }
-            else
-            {
-                // Otherwise, BOTH OPERANDS are converted to type int.
-                l = (iceL != null) ? iceL.Cast(TypeDB.Int) : Convert.ToInt32(l);
-                r = (iceR != null) ? iceR.Cast(TypeDB.Int) : Convert.ToInt32(r);
-            }
-
-            if (l is IntConstExpr iceL2)
-                l = iceL2.TypedValue();
-
-            if (r is IntConstExpr iceR2)
-                r = iceR2.TypedValue();
-
-            return eval_binary(l, kind, r);
-        }
-
         object eval_binary<TL, TR>(TL l, SyntaxKind kind, TR r)
             where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
             where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
@@ -756,7 +687,8 @@ public partial class VarProcessor
             // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
             if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
             {
-                return promoted_eval(l, kind, r);
+                var (lp, rp) = VarProcessor.PromoteInts(l, r);
+                return eval_binary((dynamic)lp, kind, (dynamic)rp);
             }
 
             return kind switch

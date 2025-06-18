@@ -226,4 +226,114 @@ public partial class VarProcessor : ICloneable
             }
         }
     }
+
+    public static (dynamic, dynamic) PromoteInts(dynamic l, dynamic r)
+    {
+        var iceL = l as IntConstExpr;
+        var iceR = r as IntConstExpr;
+        var ltype = (iceL != null) ? iceL.IntType.Type : l.GetType();
+        var rtype = (iceR != null) ? iceR.IntType.Type : r.GetType();
+        // [floats skipped]
+        // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
+        // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
+        if (ltype == typeof(ulong) || rtype == typeof(ulong))
+        {
+            if (ltype != typeof(ulong))
+                l = (iceL != null) ? iceL.Cast(TypeDB.ULong) : Convert.ToUInt64(l);
+            if (rtype != typeof(ulong))
+                r = (iceR != null) ? iceR.Cast(TypeDB.ULong) : Convert.ToUInt64(r);
+        }
+
+        // Otherwise, if either operand is of type long, the OTHER OPERAND is converted to type long.
+        else if (ltype == typeof(long) || rtype == typeof(long))
+        {
+            if (ltype != typeof(long))
+                l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);
+            if (rtype != typeof(long))
+                r = (iceR != null) ? iceR.Cast(TypeDB.Long) : Convert.ToInt64(r);
+        }
+
+        // Otherwise, if either operand is of type uint and the other operand is of type sbyte, short, or int, BOTH OPERANDS are converted to type long.
+        // XXX not always true XXX
+        else if (
+                (ltype == typeof(uint) && (rtype == typeof(sbyte) || rtype == typeof(short) || rtype == typeof(int))) ||
+                (rtype == typeof(uint) && (ltype == typeof(sbyte) || ltype == typeof(short) || ltype == typeof(int)))
+                )
+        {
+            // if left is uint and right is int, but can fit in uint => right is converted to uint
+            if (ltype == typeof(uint) && rtype == typeof(int) && iceR != null && iceR!.Value >= 0)
+            {
+                r = iceR!.Cast(TypeDB.UInt);
+            }
+            else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL!.Value >= 0)
+            {
+                l = iceL!.Cast(TypeDB.UInt);
+            }
+            else
+            {
+                l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);
+                r = (iceR != null) ? iceR.Cast(TypeDB.Long) : Convert.ToInt64(r);
+            }
+        }
+
+        // Otherwise, if either operand is of type uint, the OTHER OPERAND is converted to type uint.
+        else if (ltype == typeof(uint) || rtype == typeof(uint))
+        {
+            if (ltype != typeof(uint))
+                l = (iceL != null) ? iceL.Cast(TypeDB.UInt) : Convert.ToUInt32(l);
+            if (rtype != typeof(uint))
+                r = (iceR != null) ? iceR.Cast(TypeDB.UInt) : Convert.ToUInt32(r);
+        }
+        else
+        {
+            // Otherwise, BOTH OPERANDS are converted to type int.
+            l = (iceL != null) ? iceL.Cast(TypeDB.Int) : Convert.ToInt32(l);
+            r = (iceR != null) ? iceR.Cast(TypeDB.Int) : Convert.ToInt32(r);
+        }
+
+        if (l is IntConstExpr iceL2)
+            l = iceL2.TypedValue();
+
+        if (r is IntConstExpr iceR2)
+            r = iceR2.TypedValue();
+
+        return (l, r);
+    }
+
+
+    // input: value1 != value2 and both of them are not null
+    public static object MergeVar(string key, object value1, object value2, int depth = 0)
+    {
+        if (value2 is UnknownValueBase && value1 is not UnknownValueBase)
+        {
+            return MergeVar(key, value2, value1); // Ensure UnknownValueBase is always first
+        }
+
+        object result = value1 switch
+        {
+            byte b1 when value2 is byte b2 => new UnknownValueList(TypeDB.Byte, new() { b1, b2 }),
+            sbyte sb1 when value2 is sbyte sb2 => new UnknownValueList(TypeDB.SByte, new() { sb1, sb2 }),
+            int i1 when value2 is int i2 => new UnknownValueList(TypeDB.Int, new() { i1, i2 }),
+            uint ui1 when value2 is uint ui2 => new UnknownValueList(TypeDB.UInt, new() { ui1, ui2 }),
+            short s1 when value2 is short s2 => new UnknownValueList(TypeDB.Short, new() { s1, s2 }),
+            ushort us1 when value2 is ushort us2 => new UnknownValueList(TypeDB.UShort, new() { us1, us2 }),
+            long l1 when value2 is long l2 => new UnknownValueList(TypeDB.Long, new() { l1, l2 }),
+            ulong ul1 when value2 is ulong ul2 => throw new NotImplementedException("Merging ulong values is not implemented."),
+            UnknownValueBase unk1 => unk1.Merge(value2),
+            _ => PromoteAndMergeVar(key, value1, value2, depth)
+        };
+
+        Logger.debug(() => $" {key,-10} {value1,-20} {value2,-20} => {result}");
+
+        return result;
+    }
+
+    public static object PromoteAndMergeVar(string key, object value1, object value2, int depth = 0)
+    {
+        if (depth >= 2)
+            throw new NotImplementedException($"cannot merge ({value1?.GetType()}) {value1} and ({value2?.GetType()}) {value2}");
+
+        var (l, r) = PromoteInts(value1, value2);
+        return MergeVar(key, l, r, depth + 1);
+    }
 }

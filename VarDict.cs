@@ -96,7 +96,7 @@ public class VarDict : Dictionary<string, object>
             if (object.Equals(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
-            this[other_kvp.Key] = MergeVar(other_kvp.Key, thisValue, other_kvp.Value);
+            this[other_kvp.Key] = VarProcessor.MergeVar(other_kvp.Key, thisValue, other_kvp.Value);
         }
     }
 
@@ -111,34 +111,6 @@ public class VarDict : Dictionary<string, object>
         }
 
         MergeExisting(other);
-    }
-
-    // input: value1 != value2 and both of them are not null
-    object MergeVar(string key, object value1, object value2)
-    {
-        if (value2 is UnknownValueBase && value1 is not UnknownValueBase)
-        {
-            return MergeVar(key, value2, value1); // Ensure UnknownValueBase is always first
-        }
-
-        object result = value1 switch
-        {
-            byte b1 when value2 is byte b2 => new UnknownValueList(TypeDB.Byte, new() { b1, b2 }),
-            sbyte sb1 when value2 is sbyte sb2 => new UnknownValueList(TypeDB.SByte, new() { sb1, sb2 }),
-            int i1 when value2 is int i2 => new UnknownValueList(TypeDB.Int, new() { i1, i2 }),
-            uint ui1 when value2 is uint ui2 => new UnknownValueList(TypeDB.UInt, new() { ui1, ui2 }),
-            short s1 when value2 is short s2 => new UnknownValueList(TypeDB.Short, new() { s1, s2 }),
-            ushort us1 when value2 is ushort us2 => new UnknownValueList(TypeDB.UShort, new() { us1, us2 }),
-            long l1 when value2 is long l2 => new UnknownValueList(TypeDB.Long, new() { l1, l2 }),
-            ulong ul1 when value2 is ulong ul2 => throw new NotImplementedException("Merging ulong values is not implemented."),
-            UnknownValueBase unk1 => unk1.Merge(value2),
-            _ => new UnknownValue()
-        };
-
-        if (Logger.HasTag("MergeVar"))
-            Logger.info($" {key,-10} {value1,-20} {value2,-20} => {result}");
-
-        return result;
     }
 
     public VarDict VarsFromNode(SyntaxNode node)

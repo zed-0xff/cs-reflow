@@ -14,6 +14,9 @@ public static class Logger
 
     public static void warn(string message, [CallerMemberName] string caller = "")
     {
+        if (message != null && message.StartsWith("[?] "))
+            message = message.Substring(4);
+
         log($"[?] [{caller}] {message}".Yellow());
     }
 
@@ -43,6 +46,15 @@ public static class Logger
             message = message.Substring(4); // remove prefix if already present
 
         log($"[d] [{caller}] {message}");
+    }
+
+    public static void debug(Func<string> msgFunc, [CallerMemberName] string caller = "")
+    {
+        if (!HasTag(caller))
+            return;
+
+        // TODO: check level
+        debug(msgFunc(), caller);
     }
 
     public static void log(string message)
