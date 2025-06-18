@@ -44,18 +44,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     string _status;
 
     // configuration
-    public int Verbosity = 0;
-    public bool ShowProgress = true;
-    public bool RemoveSwitchVars = true;
     public bool AddComments = true;
-    public bool ShowAnnotations = false;
     public bool MoveDeclarations = true;
+    public bool PostProcess = true;
     public bool PreProcess = true;
     public bool Reflow = true;
-    public bool PostProcess = true;
+    public bool RemoveSwitchVars = true;
+    public bool ShowAnnotations = false;
+    public bool ShowProgress = true;
     public bool isClone = false;
-    public string dumpIntermediateLogs;
+    public int Verbosity = 0;
     public int commentPadding = 100;
+    public string dumpIntermediateLogs;
 
     public void Reset()
     {

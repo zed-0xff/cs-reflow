@@ -19,6 +19,7 @@ class Program
         List<string> traceUniqVars,
         List<string> traceVars,
         bool addComments,
+        bool colorize,
         bool dumpFlowInfos,
         bool listMethods,
         bool moveDeclarations,
@@ -136,6 +137,12 @@ class Program
             description: "Show progress."
         );
 
+        var colorizeOpt = new Option<bool>(
+            aliases: new[] { "--color", "-C" },
+            getDefaultValue: () => !Console.IsOutputRedirected,
+            description: "Colorize output."
+        );
+
         var moveDeclarationsOpt = new Option<bool>(
             aliases: new[] { "--move-declarations", "-M" },
             getDefaultValue: () => true,
@@ -224,6 +231,7 @@ class Program
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
             addCommentsOpt,
+            colorizeOpt,
             debugTagsOpt,
             dropVarsOpt,
             dumpFlowInfosOpt,
@@ -254,6 +262,7 @@ class Program
         {
             var opts = new Options(
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
+                colorize: context.ParseResult.GetValueForOption(colorizeOpt),
                 debugTags: context.ParseResult.GetValueForOption(debugTagsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
@@ -389,7 +398,15 @@ class Program
                         collector.PrintTree();
                     }
 
-                    Console.WriteLine(unflattener.ReflowMethod(method));
+                    string result = unflattener.ReflowMethod(method);
+                    if (opts.colorize)
+                    {
+                        ConsoleColorizer.ColorizeToConsole(PostProcessor.ExpandTabs(result));
+                    }
+                    else
+                    {
+                        Console.WriteLine(result);
+                    }
 
                     if (opts.dumpFlowInfos)
                     {

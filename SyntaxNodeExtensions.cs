@@ -196,7 +196,7 @@ public static class SyntaxNodeExtensions
 
     public static T WithComment<T>(this T node, string comment) where T : SyntaxNode
     {
-        return node.WithTrailingTrivia(SyntaxFactory.Comment(" // " + EscapeNonPrintable(comment)));
+        return node.WithTrailingTrivia(SyntaxFactory.Comment("// " + EscapeNonPrintable(comment)));
     }
 
     public static SyntaxNode WithUniqueAnnotation(this SyntaxNode node, SyntaxAnnotation newAnnotation)
