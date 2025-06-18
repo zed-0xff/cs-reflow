@@ -337,6 +337,12 @@ class Program
             {
                 unflattener = createUnflattener(code, opts, hints, true);
                 methodDict = unflattener.Methods;
+                if (methodDict.Count == 0 && !string.IsNullOrEmpty(opts.expr))
+                {
+                    VarProcessor processor = new();
+                    processor.Verbosity = 3;
+                    processor.EvaluateExpression(SyntaxFactory.ParseExpression(opts.expr));
+                }
             }
 
             bool printAll = false;
