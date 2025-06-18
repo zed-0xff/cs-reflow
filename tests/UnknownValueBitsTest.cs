@@ -3,6 +3,19 @@ using Xunit;
 public class UnknownValueBitsTest
 {
     [Fact]
+    public void Test_ctor()
+    {
+        var a = new UnknownValueBits(TypeDB.Byte, 0, 0);
+        Assert.Equal("UnknownValueBits<byte>[]", a.ToString());
+
+        a = new UnknownValueBits(TypeDB.Byte, 0, 1);
+        Assert.Equal("UnknownValueBits<byte>[0]", a.ToString());
+
+        a = new UnknownValueBits(TypeDB.Byte, 1, 1);
+        Assert.Equal("UnknownValueBits<byte>[1]", a.ToString());
+    }
+
+    [Fact]
     public void Test_ToString()
     {
         var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, 1, 0, -1, -1, -1, -1, -1 });
@@ -315,5 +328,23 @@ public class UnknownValueBitsTest
         Assert.Equal("UnknownValueBits<byte>[110]", a.Mul(3).ToString());
         Assert.Equal("UnknownValueBits<byte>[1000]", a.Mul(4).ToString());
         Assert.Equal("UnknownValueBits<byte>[1010]", a.Mul(5).ToString());
+    }
+
+    [Fact]
+    public void Test_Mod()
+    {
+        var a = new UnknownValueBits(TypeDB.Byte);
+        var zero = new UnknownValueList(TypeDB.Byte, new() { 0 });
+        Assert.Equal(zero, a.Mod(a));
+        Assert.Equal(zero, a.Mod(1));
+        Assert.Equal(new UnknownValue(), a.Mod(0));
+        Assert.Equal(new UnknownValue(), a.Mod(-1));
+        Assert.Equal(new UnknownValue(), a.Mod(-10));
+
+        Assert.Equal(new UnknownValueRange(TypeDB.Byte, 0, 1), a.Mod(2));
+        Assert.Equal(new UnknownValueRange(TypeDB.Byte, 0, 3), a.Mod(4));
+
+        a = new UnknownValueBits(TypeDB.Int);
+        Assert.Equal(new UnknownValueRange(TypeDB.Int, -5, 5), a.Mod(6));
     }
 }

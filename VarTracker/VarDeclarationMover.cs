@@ -138,9 +138,7 @@ public partial class VarTracker
             if (_targetBlocks.TryGetValue(key, out var existingTarget))
             {
                 if (existingTarget != targetBlk)
-                    throw new TaggedException(LOG_TAG,
-                            $"Variable '{key.Data}' already has a target block {existingTarget.LineNo()} " +
-                            $"but found another candidate {targetBlk.LineNo()}");
+                    _targetBlocks[key] = FindCommonAncestor(new[] { existingTarget, targetBlk });
             }
             else
                 _targetBlocks[key] = targetBlk;

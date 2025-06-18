@@ -324,6 +324,16 @@ public partial class ExpressionTests
         Assert.Equal(true, result);
     }
 
+    [Fact]
+    public void Test_exprL()
+    {
+        string expr_str = "(((uint)(64 * (int)num) % 40u) | 0xABA40BBFu) != 2879654847u";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VarProcessor processor = new();
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(false, result);
+    }
+
     // "if either operand is of type uint and the other operand is of type sbyte, short, or int, both operands are converted to type long."
     //
     // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions

@@ -9,7 +9,7 @@ public class UnknownValueBits : UnknownTypedValue
         init(bits);
     }
 
-    public UnknownValueBits(TypeDB.IntInfo type, long val, long mask) : base(type)
+    public UnknownValueBits(TypeDB.IntInfo type, long val, long mask) : base(type) // mask represents the known bits
     {
         init(null);
         for (int i = 0; i < type.nbits; i++)
@@ -293,18 +293,6 @@ public class UnknownValueBits : UnknownTypedValue
 
     public override UnknownValueBase Negate() => BitwiseNot().Add(1);
 
-    private UnknownValueBase calc_asym(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
-    {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
-
-        if (l == identity)
-            return id_val;
-
-        var (minMask, val) = MaskVal(true);
-        return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
-    }
-
     private UnknownValueBase calc_symm(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val, bool useMinMask = true)
     {
         switch (right)
@@ -414,8 +402,37 @@ public class UnknownValueBits : UnknownTypedValue
         return calc_symm((a, b) => a * b, right, 1, this);
     }
 
+    public override UnknownValueBase Mod(object right)
+    {
+        if (right == this)
+            return new UnknownValueList(type, new List<long> { 0 });
+
+        if (!TryConvertToLong(right, out long l))
+            return UnknownTypedValue.Create(type);
+
+        if (l == 1)
+            return new UnknownValueList(type, new List<long> { 0 });
+
+        if (l <= 0)
+            return UnknownValue.Create();
+
+        // TODO: apply knowledge of known bits
+        return type.signed ? new UnknownValueRange(type, -l + 1, l - 1) : new UnknownValueRange(type, 0, l - 1);
+    }
+
+    private UnknownValueBase calc_asym(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    {
+        if (!TryConvertToLong(right, out long l))
+            return UnknownTypedValue.Create(type);
+
+        if (l == identity)
+            return id_val;
+
+        var (minMask, val) = MaskVal(true);
+        return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
+    }
+
     public override UnknownValueBase Div(object right) => calc_asym((a, b) => a / b, right, 1, this);
-    public override UnknownValueBase Mod(object right) => calc_asym((a, b) => a % b, right, 1, new UnknownValueList(type, new List<long> { 0 }));
     public override UnknownValueBase Sub(object right) => calc_asym((a, b) => a - b, right, 0, this);
 
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && bits.SequenceEqual(other.bits);
