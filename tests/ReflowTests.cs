@@ -1,4 +1,5 @@
 #pragma warning disable CS8981 // The type name 'synthetic' only contains lower-cased ascii characters. Such names may become reserved for the language.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 
 using System.Collections;
 using System.IO;
@@ -15,7 +16,7 @@ public class ReflowTests
             {
                 var dataPath = Path.Combine(basePath, "data");
                 if (Directory.Exists(dataPath))
-                    return Directory.GetParent(dataPath).Parent.FullName;
+                    return Directory.GetParent(dataPath)!.Parent!.FullName;
 
                 var parent = Directory.GetParent(basePath);
                 if (parent == null)
