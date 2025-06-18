@@ -266,12 +266,19 @@ public partial class VarProcessor
                         }
                         return variableValues[varName];
                     }
-                    catch (Exception)
+                    catch
                     {
-                        Type? type = null;
-                        if (variableValues.ContainsKey(varName))
-                            type = variableValues[varName]?.GetType();
-                        variableValues[varName] = UnknownValue.Create(type);
+                        if (variableValues.TryGetValue(varName, out var varValue))
+                        {
+                            if (varValue is UnknownTypedValue utv)
+                                variableValues[varName] = UnknownValue.Create(utv.type);
+                            else
+                                variableValues[varName] = UnknownValue.Create(varValue?.GetType());
+                        }
+                        else
+                        {
+                            variableValues[varName] = UnknownValue.Create();
+                        }
                         throw;
                     }
 
@@ -446,7 +453,7 @@ public partial class VarProcessor
                         variableValues[varName] = retValue;
                         break;
                     case LiteralExpressionSyntax num:
-                        Logger.warn_once($"Prefix operator '{expr.Kind()}' on literal '{num}'. Returning original ({expr.TitleWithLineNo()})");
+                        Logger.warn_once($"Prefix operator '{expr.TitleWithLineNo()}' on literal '{num}'. Returning {retValue}");
                         break;
                     default:
                         throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");

@@ -15,10 +15,42 @@ public partial class ExpressionTests
     }
 
     [Fact]
-    public void Test_int_unk_assign()
+    public void Test_int_unk_init()
     {
         string stmt_str = "int x = Foo.bar";
         VarProcessor processor = new();
+        try
+        {
+            processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+        }
+        catch (NotSupportedException)
+        {
+        }
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.GetVar("x"));
+    }
+
+    [Fact]
+    public void Test_int_unk_assign()
+    {
+        string stmt_str = "x = Foo.bar";
+        VarProcessor processor = new();
+        processor.SetVar("x", 123);
+        try
+        {
+            processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+        }
+        catch (NotSupportedException)
+        {
+        }
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.GetVar("x"));
+    }
+
+    [Fact]
+    public void Test_unk_int_unk_assign()
+    {
+        string stmt_str = "x = Foo.bar";
+        VarProcessor processor = new();
+        processor.SetVar("x", UnknownValue.Create(TypeDB.Int));
         try
         {
             processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
