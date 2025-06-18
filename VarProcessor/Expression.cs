@@ -352,6 +352,26 @@ public partial class VarProcessor
                 case PostfixUnaryExpressionSyntax postfixExpr:
                     return EvaluatePostfixExpression(postfixExpr);
 
+                case SizeOfExpressionSyntax sizeOfExpr:
+                    return sizeOfExpr.ToString() switch
+                    {
+                        "sizeof(bool)" => sizeof(bool),
+                        "sizeof(byte)" => sizeof(byte),
+                        "sizeof(char)" => sizeof(char),
+                        "sizeof(double)" => sizeof(double),
+                        "sizeof(float)" => sizeof(float),
+                        "sizeof(int)" => sizeof(int),
+                        "sizeof(long)" => sizeof(long),
+                        //                        "sizeof(nint)" => sizeof(nint),   // TODO: 32/64 bit cmdline switch
+                        //                        "sizeof(nuint)" => sizeof(nuint), // TODO: 32/64 bit cmdline switch
+                        "sizeof(sbyte)" => sizeof(sbyte),
+                        "sizeof(uint)" => sizeof(uint),
+                        "sizeof(ulong)" => sizeof(ulong),
+                        "sizeof(ushort)" => sizeof(ushort),
+                        "sizeof(Guid)" => 0x10, // same for 32/64 bit hosts
+                        _ => throw new NotSupportedException($"SizeOf expression '{sizeOfExpr.ToString()}' is not supported.")
+                    };
+
                 default:
                     throw new NotSupportedException($"{expression.Kind()} is not supported.");
             }
@@ -413,16 +433,19 @@ public partial class VarProcessor
 
             if (expr.Kind() == SyntaxKind.PreDecrementExpression || expr.Kind() == SyntaxKind.PreIncrementExpression)
             {
-                if (expr.Operand is IdentifierNameSyntax id)
+                switch (expr.Operand)
                 {
-                    string varName = id.Identifier.Text;
-                    VarsWritten.Add(varName);
-                    VarsRead.Add(varName);
-                    variableValues[varName] = retValue;
-                }
-                else
-                {
-                    throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");
+                    case IdentifierNameSyntax id:
+                        string varName = id.Identifier.Text;
+                        VarsWritten.Add(varName);
+                        VarsRead.Add(varName);
+                        variableValues[varName] = retValue;
+                        break;
+                    case LiteralExpressionSyntax num:
+                        Logger.warn_once($"Prefix operator '{expr.Kind()}' on literal '{num}'. Returning original ({expr.TitleWithLineNo()})");
+                        break;
+                    default:
+                        throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");
                 }
             }
 

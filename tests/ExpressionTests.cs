@@ -334,6 +334,36 @@ public partial class ExpressionTests
         Assert.Equal(false, result);
     }
 
+    [Fact]
+    public void Test_exprM()
+    {
+        string expr_str = "(3 & ((uint)e093257623e347d2a45b8e4d5fa2 % 4558u << 15 >> 4)) != (uint)((124656 * (int)e093257623e347d2a45b8e4d5fa2) & 3)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VarProcessor processor = new();
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
+    public void Test_sizeof_ulong()
+    {
+        string expr_str = "sizeof(ulong)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VarProcessor processor = new();
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(sizeof(ulong), result);
+    }
+
+    [Fact]
+    public void Test_sizeof_Guid()
+    {
+        string expr_str = "sizeof(Guid)";
+        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
+        VarProcessor processor = new();
+        var result = processor.EvaluateExpression(expr);
+        Assert.Equal(16, result);
+    }
+
     // "if either operand is of type uint and the other operand is of type sbyte, short, or int, both operands are converted to type long."
     //
     // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions

@@ -12,6 +12,20 @@ public static class Logger
         log($"[!] [{caller}] {message}".Red());
     }
 
+    public static void warn(string message, [CallerMemberName] string caller = "")
+    {
+        log($"[?] [{caller}] {message}".Yellow());
+    }
+
+    public static void warn_once(string message, [CallerMemberName] string caller = "")
+    {
+        if (_onceMessages.Contains(message))
+            return;
+
+        _onceMessages.Add(message);
+        warn(message, caller);
+    }
+
     public static void info(string message, [CallerMemberName] string caller = "")
     {
         if (!HasTag(caller))

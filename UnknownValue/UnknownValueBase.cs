@@ -46,7 +46,7 @@ public abstract class UnknownValueBase
     {
         return Eq(right) switch
         {
-            UnknownValueBase other => UnknownValue.Create("bool"),
+            UnknownValueBase other => other.Cast(TypeDB.Bool),
             bool b => !b,
             _ => throw new NotImplementedException($"{ToString()}.Ne(): unexpected type {right?.GetType()}")
         };

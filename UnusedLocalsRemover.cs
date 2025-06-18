@@ -351,6 +351,23 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 continue;
             }
 
+            LocalDeclarationStatementSyntax? declStmt = expr.FirstAncestorOrSelfUntil<LocalDeclarationStatementSyntax, BlockSyntax>();
+            if (declStmt != null)
+            {
+                // local variable declaration: int x = 123 + [...]
+                if (declStmt.IsSameVar(id))
+                {
+                    _logger.debug(() => $"CollectVars: DECLARE {ann.Data}");
+                    declared.Add(ann);
+                }
+                else
+                {
+                    _logger.debug(() => $"CollectVars: READ  {ann.Data}");
+                    read.Add(ann); // variable is read in the other variable's initializer
+                }
+                continue;
+            }
+
             // foo(x)
             ArgumentSyntax? argExpr = expr.FirstAncestorOrSelfUntil<ArgumentSyntax, BlockSyntax>();
             if (argExpr != null)
@@ -474,7 +491,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
     public override SyntaxNode? VisitBlock(BlockSyntax node)
     {
-        var updated = (BlockSyntax)base.VisitBlock(node); // visit children first
+        var updated = (BlockSyntax)base.VisitBlock(node); // visit children first (x2.2 faster than visiting them afterwards)
         var result = RewriteBlock(updated);
         return result;
     }

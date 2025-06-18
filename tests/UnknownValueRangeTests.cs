@@ -103,7 +103,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.Int, new LongRange(1, 5));
         var b = a.Xor(0x10);
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 0x11, 0x12, 0x13, 0x14, 0x15 }, values);
     }
 
@@ -112,7 +112,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.Int, new LongRange(1, 5));
         var b = a.Add(0x10);
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 0x11, 0x12, 0x13, 0x14, 0x15 }, values);
 
         a = new(TypeDB.Int);
@@ -132,7 +132,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.Int, new LongRange(10, 15));
         var b = a.Sub(10);
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 0, 1, 2, 3, 4, 5 }, values);
 
         a = new(TypeDB.Int, int.MinValue, 0);
@@ -149,7 +149,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.Int, new LongRange(1, 3));
         var b = a.Mul(5);
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 5, 10, 15 }, values);
     }
 
@@ -159,7 +159,7 @@ public class UnknownValueRangeTests
         UnknownValueRange a = new(TypeDB.Int, new LongRange(1, 3));
         UnknownValueRange b = new(TypeDB.Int, new LongRange(5, 7));
         var r = a.Mul(b);
-        List<long> values = r.Values().ToList();
+        List<long> values = r.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 5, 6, 7, 10, 12, 14, 15, 18, 21 }, values);
     }
 
@@ -316,7 +316,7 @@ public class UnknownValueRangeTests
 
         b = a.ShiftLeft(30);
         Assert.Equal(4, b.Cardinality());
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 0, 1L << 30, 2L << 30, 3L << 30 }, values);
     }
 
@@ -329,7 +329,7 @@ public class UnknownValueRangeTests
 
         b = a.ShiftLeft(30);
         Assert.Equal(4, b.Cardinality());
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 2 << 30, 3 << 30, 0, 1073741824 }, values);
     }
 
@@ -339,7 +339,7 @@ public class UnknownValueRangeTests
         UnknownValueRange a = new(TypeDB.SByte);
         var b = a.ShiftLeft(5);
         Assert.Equal(8, b.Cardinality());
-        List<long> values = b.Values().ToList();
+        List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { -128, -96, -64, -32, 0, 32, 64, 96 }, values);
     }
 

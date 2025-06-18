@@ -39,9 +39,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract override long Min();
     public abstract override long Max();
 
-    public override object Eq(object right)
+    public override object Eq(object other)
     {
-        if (TryConvertToLong(right, out long l))
+        if (TryConvertToLong(other, out long l))
         {
             if (Contains(l))
             {
@@ -56,11 +56,16 @@ public abstract class UnknownTypedValue : UnknownValueBase
             }
         }
 
-        return right switch
+        if (other is UnknownTypedValue r)
         {
-            UnknownTypedValue r => IntersectsWith(r) ? UnknownValue.Create("bool") : false,
-            _ => UnknownValue.Create("bool")
-        };
+            if (Cardinality() == 1 && r.Cardinality() == 1 && Values().First() == r.Values().First())
+                return true;
+
+            if (!IntersectsWith(r))
+                return false;
+        }
+        ;
+        return UnknownValue.Create("bool");
     }
 
     public override object Gt(object right)

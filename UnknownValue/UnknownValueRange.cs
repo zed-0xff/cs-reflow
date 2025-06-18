@@ -133,6 +133,12 @@ public class UnknownValueRange : UnknownTypedValue
         if (shiftedCardinality > MAX_DISCRETE_CARDINALITY)
             return new UnknownValueBits(type).ShiftLeft(l);
 
+        if (Cardinality() < MAX_DISCRETE_CARDINALITY)
+        {
+            int iShift = (int)l;
+            return new UnknownValueList(type, Values().Select(v => MaskWithSign(v << iShift)));
+        }
+
         List<long> values = new List<long>((int)shiftedCardinality);
 
         if (type.signed && type.nbits < 64)

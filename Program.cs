@@ -307,7 +307,10 @@ class Program
 
             if (!string.IsNullOrEmpty(opts.expr))
             {
-                code = opts.expr;
+                VarProcessor processor = new();
+                processor.Verbosity = 3;
+                processor.EvaluateExpression(SyntaxFactory.ParseExpression(opts.expr));
+                return;
             }
             else if (string.IsNullOrEmpty(opts.filename))
             {
@@ -337,12 +340,6 @@ class Program
             {
                 unflattener = createUnflattener(code, opts, hints, true);
                 methodDict = unflattener.Methods;
-                if (methodDict.Count == 0 && !string.IsNullOrEmpty(opts.expr))
-                {
-                    VarProcessor processor = new();
-                    processor.Verbosity = 3;
-                    processor.EvaluateExpression(SyntaxFactory.ParseExpression(opts.expr));
-                }
             }
 
             bool printAll = false;
