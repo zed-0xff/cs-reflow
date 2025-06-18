@@ -1,3 +1,5 @@
+#pragma warning disable CS8981 // The type name 'synthetic' only contains lower-cased ascii characters. Such names may become reserved for the language.
+
 using System.Collections;
 using System.IO;
 using Xunit;
@@ -13,7 +15,7 @@ public class ReflowTests
             {
                 var dataPath = Path.Combine(basePath, "data");
                 if (Directory.Exists(dataPath))
-                    return dataPath;
+                    return Directory.GetParent(dataPath).Parent.FullName;
 
                 var parent = Directory.GetParent(basePath);
                 if (parent == null)
@@ -51,7 +53,7 @@ public class ReflowTests
             actualOutput += "\n";
         }
 
-        var actualPath = fname + ".out.actual";
+        var actualPath = inputPath + ".out.actual";
         if (expectedOutput.TrimEnd() != actualOutput.TrimEnd())
         {
             // write to file
@@ -67,36 +69,49 @@ public class ReflowTests
         // Assert
         StringAssert.Equal(expectedOutput.TrimEnd(), actualOutput.TrimEnd());
     }
+
+    public static IEnumerable<object[]> GetFiles(string dirName)
+    {
+        string? filter = Environment.GetEnvironmentVariable("TEST_FILTER");
+
+        bool was = false;
+        foreach (var fname in Directory.GetFiles(Path.Combine(DataPath, dirName), "*.cs"))
+        {
+            if (filter != null && !fname.Contains(filter))
+                continue;
+
+            yield return new object[] { Path.GetRelativePath(DataPath, fname).PadRight(40) };
+            was = true;
+        }
+        if (!was)
+        {
+            yield return new object[] { null }; // prevent Error Message: System.InvalidOperationException : No data found
+        }
+    }
 }
 
 public class real_code
 {
-    public static IEnumerable<object[]> Files =>
-        Directory.GetFiles(Path.Combine(ReflowTests.DataPath, "real"), "*.cs")
-        .Select(f => new object[] {
-                Path.GetRelativePath(ReflowTests.DataPath, f).PadRight(30)
-                });
+    public static IEnumerable<object[]> GetFiles() => ReflowTests.GetFiles("tests/data/real");
 
     [Theory]
-    [MemberData(nameof(Files))]
+    [MemberData(nameof(GetFiles))]
     public void check(string fname)
     {
-        ReflowTests.CheckData(fname);
+        if (fname != null)
+            ReflowTests.CheckData(fname);
     }
 }
 
 public class synthetic
 {
-    public static IEnumerable<object[]> Files =>
-        Directory.GetFiles(Path.Combine(ReflowTests.DataPath, "synthetic"), "*.cs")
-        .Select(f => new object[] {
-                Path.GetRelativePath(ReflowTests.DataPath, f).PadRight(30)
-                });
+    public static IEnumerable<object[]> GetFiles() => ReflowTests.GetFiles("tests/data/synthetic");
 
     [Theory]
-    [MemberData(nameof(Files))]
+    [MemberData(nameof(GetFiles))]
     public void check(string fname)
     {
-        ReflowTests.CheckData(fname);
+        if (fname != null)
+            ReflowTests.CheckData(fname);
     }
 }

@@ -1,0 +1,60 @@
+	public static string a51ee1556c0e4b359ae4b9687427924c(int int_0nk, int int_1nl, int int_2nm, int int_3nn)
+	{
+	    object obj = new char[int_0nk];
+	    object obj2 = default(object);
+	    object obj3 = default(object);
+	    int num6 = default(int);
+	    int num8 = default(int);
+	    object obj4 = default(object);
+	    int seed = default(int);
+	    object obj5 = default(object);
+	    int num10 = default(int);
+	    object obj6 = default(object);
+	    int num12 = default(int);
+	    obj2 = new char[int_1nl];
+	    obj5 = new char[int_2nm];
+	    obj6 = new char[int_3nn];
+	    seed = a8e9b0795da8415f8c143cfd0444d27e();
+	    obj4 = new Random(seed);
+	    num6 = 0;
+	    while (num6 < int_0nk)
+	    {
+	        ((short[])obj)[num6] = (short)(ushort)((Random)obj4).Next(65, 90);
+	        num6++;
+	    }
+	
+	    seed = a8e9b0795da8415f8c143cfd0444d27e();
+	    obj4 = new Random(seed);
+	    num10 = 0;
+	    while (num10 < int_1nl)
+	    {
+	        ((short[])obj2)[num10] = (short)(ushort)((Random)obj4).Next(97, 122);
+	        num10++;
+	    }
+	
+	    seed = a8e9b0795da8415f8c143cfd0444d27e();
+	    obj4 = new Random(seed);
+	    num8 = 0;
+	    while (num8 < int_2nm)
+	    {
+	        ((short[])obj5)[num8] = (short)(ushort)((Random)obj4).Next(48, 57);
+	        num8++;
+	    }
+	
+	    seed = a8e9b0795da8415f8c143cfd0444d27e();
+	    obj4 = new Random(seed);
+	    num12 = 0;
+	    while (num12 < int_3nn)
+	    {
+	        ((short[])obj6)[num12] = (short)(ushort)((Random)obj4).Next(33, 47);
+	        num12++;
+	    }
+	
+	    obj3 = new char[int_0nk + int_1nl + int_2nm + int_3nn];
+	    ((Array)obj).CopyTo((Array)obj3, 0);
+	    ((Array)obj2).CopyTo((Array)obj3, int_0nk);
+	    ((Array)obj5).CopyTo((Array)obj3, int_0nk + int_1nl);
+	    ((Array)obj6).CopyTo((Array)obj3, int_0nk + int_1nl + int_2nm);
+	    a76aec11e5f44b0192b96663807fe1e4((char[])obj3);
+	    return new string ((char[]? )obj3);
+	}
