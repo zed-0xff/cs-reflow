@@ -7,12 +7,12 @@ public partial class VarTracker
 {
     class VarDeclarationMover : CSharpSyntaxRewriter
     {
+        static readonly string LOG_TAG = "VarDeclarationMover";
+
         readonly VarTracker _tracker;
         readonly VarScopeCollector _collector;
         Dictionary<SyntaxAnnotation, BlockSyntax> _targetBlocks = new();
         HashSet<LocalDeclarationStatementSyntax> _toRemove = new();
-
-        static readonly string LOG_TAG = "VarDeclarationMover";
 
         static bool IsSafeToRemove(LocalDeclarationStatementSyntax decl)
         {
@@ -126,7 +126,7 @@ public partial class VarTracker
                 .FirstOrDefault(b => b.DescendantNodes().OfType<LocalDeclarationStatementSyntax>().Any(ld => ld.IsSameVar(key)));
 
             if (targetBlk == null)
-                throw new InvalidOperationException($"{key.Data}: No parent block found for orphaned usage block {usageBlk.TitleWithLineNo()}");
+                throw new TaggedException(LOG_TAG, $"{key.Data}: No parent block found for orphaned usage block {usageBlk.TitleWithLineNo()}");
 
             // targetBlk itself won't have the declaration of interest, but some of its children do
             targetBlk.DescendantNodes()
@@ -138,9 +138,9 @@ public partial class VarTracker
             if (_targetBlocks.TryGetValue(key, out var existingTarget))
             {
                 if (existingTarget != targetBlk)
-                    throw new InvalidOperationException(
-                            $"Variable '{key.Data}' already has a target block: {existingTarget.TitleWithLineNo()} " +
-                            $"but found another candidate: {targetBlk.TitleWithLineNo()}");
+                    throw new TaggedException(LOG_TAG,
+                            $"Variable '{key.Data}' already has a target block {existingTarget.LineNo()} " +
+                            $"but found another candidate {targetBlk.LineNo()}");
             }
             else
                 _targetBlocks[key] = targetBlk;

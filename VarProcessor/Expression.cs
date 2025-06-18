@@ -684,13 +684,13 @@ public partial class VarProcessor
                     )
             {
                 // if left is uint and right is int, but can fit in uint => right is converted to uint
-                if (ltype == typeof(uint) && rtype == typeof(int) && iceR != null && iceR.Value >= 0)
+                if (ltype == typeof(uint) && rtype == typeof(int) && iceR != null && iceR!.Value >= 0)
                 {
-                    r = iceR.Cast(TypeDB.UInt);
+                    r = iceR!.Cast(TypeDB.UInt);
                 }
                 else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL!.Value >= 0)
                 {
-                    l = iceL.Cast(TypeDB.UInt);
+                    l = iceL!.Cast(TypeDB.UInt);
                 }
                 else
                 {

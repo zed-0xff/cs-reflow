@@ -12,16 +12,18 @@ class SemanticContext
 
     public SemanticContext(SyntaxNode rootNode)
     {
+        _tree = rootNode.SyntaxTree;
         _compilation = CSharpCompilation.Create($"MyAnalysis{_aidx++}")
-            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-            .AddSyntaxTrees(rootNode.SyntaxTree.GetCompilationUnitRoot().SyntaxTree);
-        _tree = rootNode.SyntaxTree.GetCompilationUnitRoot().SyntaxTree;
-        Model = _compilation.GetSemanticModel(rootNode.SyntaxTree);
+            .AddReferences(
+                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location)
+                    )
+            .AddSyntaxTrees(_tree);
+        Model = _compilation.GetSemanticModel(_tree);
     }
 
     public void Update(SyntaxNode newRoot)
     {
-        var newTree = newRoot.SyntaxTree.GetCompilationUnitRoot().SyntaxTree;
+        var newTree = newRoot.SyntaxTree;
         _compilation = _compilation.ReplaceSyntaxTree(_tree, newTree);
         _tree = newTree;
         Model = _compilation.GetSemanticModel(newTree);

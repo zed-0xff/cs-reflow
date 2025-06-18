@@ -15,7 +15,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
     bool _needRetry;
 
-    public UnusedLocalsRemover(SyntaxNode rootNode, int verbosity = 0, HashSet<string>? keepVars = null)
+    public UnusedLocalsRemover(int verbosity = 0, HashSet<string>? keepVars = null)
     {
         Verbosity = verbosity;
         _keepVars = keepVars ?? new HashSet<string>();
@@ -372,7 +372,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     BlockSyntax? RewriteBlock(BlockSyntax block)
     {
         if (_mainCtx == null)
-            throw new InvalidOperationException("Main context is not set. Call Process().");
+            throw new TaggedException(TAG, "Main context is not set. Call Process().");
 
         if (Verbosity > 2)
             _logger.debug(() => $"[d] UnusedLocalsRemover.RewriteBlock: {block}");

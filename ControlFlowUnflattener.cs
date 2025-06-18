@@ -20,6 +20,27 @@ public enum EHint
     Unknown = 3
 }
 
+class CodeFmtInfo
+{
+    public string Indentation;
+    public string LinePrefix;
+    public string EOL;
+
+    public CodeFmtInfo(string code)
+    {
+        EOL = code.Contains("\r\n") ? "\r\n" : "\n";
+        List<string> lines = code.Substring(0, Math.Min(1024, code.Length)).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        while (lines[0].Trim() == "")
+            lines.RemoveAt(0);
+
+        Indentation = code.Contains("\n\t") ? "\t" : "    ";
+
+        LinePrefix = "";
+        while (lines[0].StartsWith(LinePrefix + Indentation))
+            LinePrefix += Indentation;
+    }
+}
+
 public class TaggedException : Exception
 {
     public readonly string tag;
@@ -40,13 +61,17 @@ public class TaggedException : Exception
 
 public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
+    // used only by root Processor, i.e. in ReflowMethod() only
+    HashSet<string> _keepVars = new();
+    CodeFmtInfo _fmt;
+
     // shared
     SyntaxTree _tree;
     ControlFlowNode _flowRoot;
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
-    HashSet<string> _keepVars = new(); // not copied to clones bc used only in post/preprocessor
+
 
     // local
     FlowDictionary _localFlowDict = new();
@@ -217,7 +242,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var methods = _tree.GetRoot().DescendantNodes()
             .Where(n =>
                     (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
-                    (n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName) ||
+                    //(n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName) ||
                     (n is ConstructorDeclarationSyntax c && c.Identifier.Text == methodName)
                   )
             .ToList();
@@ -237,8 +262,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         return _tree.GetRoot().DescendantNodes()
             .Where(n =>
-                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno) ||
-                    (n is LocalFunctionStatementSyntax l && l.SpanStart <= lineno && l.Span.End > lineno)
+                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno) //||
+                                                                                                         //(n is LocalFunctionStatementSyntax l && l.SpanStart <= lineno && l.Span.End > lineno)
                   )
             .First() as CSharpSyntaxNode;
     }
@@ -267,11 +292,19 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _traceLog;
     }
 
-    public ControlFlowUnflattener(string code, HintsDictionary flowHints = null)
+    public ControlFlowUnflattener(string code, HintsDictionary flowHints = null, bool dummyClassWrap = false)
     {
+        _fmt = new(code); // needs to be initialized before dummy class wrap
+        if (dummyClassWrap)
+        {
+            // without the dummy class methods are defined as LocalFunctions, and SemanticModel leaks variables from one method to another
+            // not adding newlines to keep original line numbers
+            code = "class DummyClass { " + code + " }";
+        }
+        _tree = CSharpSyntaxTree.ParseText(code);
+
         if (flowHints != null)
             _flowHints = new(flowHints);
-        _tree = CSharpSyntaxTree.ParseText(code);
     }
 
     // private empty constructor for cloning exclusively
@@ -332,7 +365,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     }
 
     public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
-        .Where(n => n is BaseMethodDeclarationSyntax || n is LocalFunctionStatementSyntax)
+        .Where(n => n is BaseMethodDeclarationSyntax /*|| n is LocalFunctionStatementSyntax*/)
         .ToDictionary(
                 n => n.SpanStart,
                 n => n is MethodDeclarationSyntax m ? m.Identifier.Text :
@@ -1832,7 +1865,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         };
     }
 
-    public string ReflowMethod(CSharpSyntaxNode methodNode, string indentation = "", string eol = "")
+    public string ReflowMethod(CSharpSyntaxNode methodNode)
     {
         BlockSyntax? body = methodNode switch
         {
@@ -1841,24 +1874,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             null => throw new ArgumentNullException(nameof(methodNode), "Method node cannot be null."),
             _ => throw new ArgumentException($"Unsupported method node type: {methodNode.GetType()}", nameof(methodNode))
         };
-
-        string methodStr = methodNode.ToFullString();
-        string linePrefix = "";
-
-        if (eol == "")
-        {
-            eol = methodStr.Contains("\r\n") ? "\r\n" : "\n";
-        }
-
-        List<string> lines = methodStr.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-        while (lines[0].Trim() == "")
-            lines.RemoveAt(0);
-
-        if (indentation == "")
-            indentation = methodStr.Contains("\n\t") ? "\t" : "    ";
-
-        while (lines[0].StartsWith(linePrefix + indentation))
-            linePrefix += indentation;
 
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
@@ -1875,7 +1890,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         while (PreProcess)
         {
             // remove unused vars _before_ main processing
-            var body_ = new UnusedLocalsRemover(body, Verbosity, _keepVars).Process(body) as BlockSyntax;
+            var body_ = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
             if (body_.IsEquivalentTo(body))
             {
                 break;
@@ -1883,7 +1898,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             else
             {
                 body = body.ReplaceAndGetNewNode(
-                        body_.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true)
+                        body_.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true)
                         );
             }
         }
@@ -1919,7 +1934,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
             }
 
-            body2 = new UnusedLocalsRemover(body, Verbosity, _keepVars).Process(body) as BlockSyntax;
+            body2 = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varProcessor, body2);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
             var body3 = postProcessor.PostProcessAll(body2!); // removes empty finally{} after UnusedLocalsRemover removed some locals
@@ -1952,7 +1967,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (newMethodNode == null)
             throw new InvalidOperationException("Could not find method node in the syntax tree.");
 
-        newMethodNode = newMethodNode.NormalizeWhitespace(eol: eol, indentation: indentation, elasticTrivia: true);
+        newMethodNode = newMethodNode.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true);
         string result = PostProcessor.ExpandTabs(GotoSpacer.Process(newMethodNode.ToFullString()));
 
         // align comments
@@ -1960,8 +1975,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         newMethodNode = new CommentAligner(newTree.GetText(), commentPadding).Visit(newTree.GetRoot());
         result = newMethodNode.ToFullString();
 
-        if (linePrefix != "")
-            result = linePrefix + result.Replace(eol, eol + linePrefix);
+        if (_fmt.LinePrefix != "")
+            result = _fmt.LinePrefix + result.Replace(_fmt.EOL, _fmt.EOL + _fmt.LinePrefix);
         return result;
     }
 

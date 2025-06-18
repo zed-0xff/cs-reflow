@@ -5,7 +5,7 @@ task :build do
 end
 
 task :test do
-  sh "dotnet test"
+  sh 'dotnet test --logger "console;verbosity=normal"'
 end
 
 task :fmt do

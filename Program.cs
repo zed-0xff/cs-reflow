@@ -37,9 +37,9 @@ class Program
         string? filename
     );
 
-    static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints)
+    static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints, bool dummyClassWrap)
     {
-        return new ControlFlowUnflattener(code, hints)
+        return new ControlFlowUnflattener(code, hints, dummyClassWrap)
         {
             Verbosity = opts.verbosity,
             RemoveSwitchVars = opts.removeSwitchVars,
@@ -330,8 +330,14 @@ class Program
 
             VarDict.Verbosity = opts.verbosity;
 
-            var unflattener = createUnflattener(code, opts, hints);
+            var unflattener = createUnflattener(code, opts, hints, false);
             var methodDict = unflattener.Methods;
+
+            if (methodDict.Count == 0)
+            {
+                unflattener = createUnflattener(code, opts, hints, true);
+                methodDict = unflattener.Methods;
+            }
 
             bool printAll = false;
             List<CSharpSyntaxNode> methods = new List<CSharpSyntaxNode>();
@@ -398,7 +404,17 @@ class Program
                         collector.PrintTree();
                     }
 
-                    string result = unflattener.ReflowMethod(method);
+                    string result = "";
+                    try
+                    {
+                        result = unflattener.ReflowMethod(method);
+                    }
+                    catch
+                    {
+                        Console.Error.WriteLine($"[!] Failed to reflow method: {method.TitleWithLineNo()}".Red());
+                        throw;
+                    }
+
                     if (opts.colorize)
                     {
                         ConsoleColorizer.ColorizeToConsole(PostProcessor.ExpandTabs(result));

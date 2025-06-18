@@ -34,6 +34,9 @@ public class ReflowTests
 
         // Act
         var controlFlowUnflattener = new ControlFlowUnflattener(input);
+        if (controlFlowUnflattener.Methods.Count == 0)
+            controlFlowUnflattener = new ControlFlowUnflattener(input, dummyClassWrap: true);
+
         controlFlowUnflattener.AddComments = false;
         controlFlowUnflattener.Verbosity = -2;
 
