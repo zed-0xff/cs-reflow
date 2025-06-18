@@ -1,9 +1,10 @@
+using System.Collections;
 using System.IO;
 using Xunit;
 
 public class ReflowTests
 {
-    public string DataPath
+    public static string DataPath
     {
         get
         {
@@ -24,10 +25,10 @@ public class ReflowTests
         }
     }
 
-    void checkData(string name)
+    public static void CheckData(string fname)
     {
-        var inputPath = Path.Combine(DataPath, $"{name}.cs");
-        var expectedPath = Path.Combine(DataPath, $"{name}.out");
+        var inputPath = Path.Combine(ReflowTests.DataPath, fname.Trim());
+        var expectedPath = inputPath + ".out";
 
         var input = File.ReadAllText(inputPath);
         var expectedOutput = File.ReadAllText(expectedPath);
@@ -50,7 +51,7 @@ public class ReflowTests
             actualOutput += "\n";
         }
 
-        var actualPath = Path.Combine(DataPath, $"{name}.out.actual");
+        var actualPath = fname + ".out.actual";
         if (expectedOutput.TrimEnd() != actualOutput.TrimEnd())
         {
             // write to file
@@ -66,136 +67,36 @@ public class ReflowTests
         // Assert
         StringAssert.Equal(expectedOutput.TrimEnd(), actualOutput.TrimEnd());
     }
+}
 
-    [Fact]
-    public void Bytes_afff()
+public class real_code
+{
+    public static IEnumerable<object[]> Files =>
+        Directory.GetFiles(Path.Combine(ReflowTests.DataPath, "real"), "*.cs")
+        .Select(f => new object[] {
+                Path.GetRelativePath(ReflowTests.DataPath, f).PadRight(30)
+                });
+
+    [Theory]
+    [MemberData(nameof(Files))]
+    public void check(string fname)
     {
-        checkData("Bytes_afff");
+        ReflowTests.CheckData(fname);
     }
+}
 
-    [Fact]
-    public void get_icon_a661()
-    {
-        checkData("get_icon_a661");
-    }
+public class synthetic
+{
+    public static IEnumerable<object[]> Files =>
+        Directory.GetFiles(Path.Combine(ReflowTests.DataPath, "synthetic"), "*.cs")
+        .Select(f => new object[] {
+                Path.GetRelativePath(ReflowTests.DataPath, f).PadRight(30)
+                });
 
-    [Fact]
-    public void goto_default_case()
+    [Theory]
+    [MemberData(nameof(Files))]
+    public void check(string fname)
     {
-        checkData("goto_default_case");
-    }
-
-    [Fact]
-    public void invert_if()
-    {
-        checkData("invert_if");
-    }
-
-    [Fact]
-    public void synthetic_try_catch()
-    {
-        checkData("try_catch");
-    }
-
-    [Fact]
-    public void try_catch_real()
-    {
-        checkData("try_catch_real");
-    }
-
-    [Fact]
-    public void CheckBox_a47b()
-    {
-        checkData("CheckBox_a47b");
-    }
-
-    [Fact]
-    public void loop()
-    {
-        checkData("loop");
-    }
-
-    [Fact]
-    public void synthetic_logic()
-    {
-        checkData("logic");
-    }
-
-    [Fact]
-    public void unknown_expr()
-    {
-        checkData("unknown_expr");
-    }
-
-    [Fact]
-    public void rsa_aaf9_0()
-    {
-        checkData("rsa_aaf9_0");
-    }
-
-    [Fact]
-    public void rsa_aaf9_5()
-    {
-        checkData("rsa_aaf9_5");
-    }
-
-    [Fact]
-    public void rsa_aa96_5()
-    {
-        checkData("rsa_aa96_5");
-    }
-
-    [Fact]
-    public void labels()
-    {
-        checkData("labels");
-    }
-
-    [Fact]
-    public void big()
-    {
-        checkData("big");
-    }
-
-    [Fact]
-    public void synthetic_do()
-    {
-        checkData("do");
-    }
-
-    [Fact]
-    public void synthetic_if()
-    {
-        checkData("if");
-    }
-
-    [Fact]
-    public void synthetic_if2()
-    {
-        checkData("if2");
-    }
-
-    [Fact]
-    public void synthetic_while()
-    {
-        checkData("while");
-    }
-
-    [Fact]
-    public void synthetic_unused_vars()
-    {
-        checkData("unused_vars");
-    }
-
-    [Fact]
-    public void nested_whiles()
-    {
-        checkData("nested_whiles");
-    }
-
-    [Fact]
-    public void real_eb5c()
-    {
-        checkData("eb5c");
+        ReflowTests.CheckData(fname);
     }
 }
