@@ -6,6 +6,9 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 class UnusedLocalsRemover : CSharpSyntaxRewriter
 {
+    static readonly string TAG = "UnusedLocalsRemover";
+    private static readonly TaggedLogger _logger = new(TAG);
+
     public int Verbosity = 0;
     Context? _mainCtx = null;
     HashSet<string> _keepVars;
@@ -155,8 +158,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                     var ann = variable.GetAnnotations("VAR").FirstOrDefault();
                     if (ann == null)
                         throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VAR' annotation.");
-                    if (Verbosity > 0 && Logger.HasTag("UnusedLocalsRemover"))
-                        Console.Error.WriteLine($"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
+                    _logger.debug(() => $"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
                     keepLocals.Add(ann);
                 }
             }
@@ -236,7 +238,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         public override SyntaxNode? VisitExpressionStatement(ExpressionStatementSyntax node)
         {
             // Remove collected assignments
-            //Console.Error.WriteLine($"[d] {node.Title()} => {_statementsToRemove.Contains(node)}");
+            //_logger.debug(() => "[d] {node.Title()} => {_statementsToRemove.Contains(node)}");
             if (_statementsToRemove.Contains(node))
                 return gen_empty_stmt(node);
 
@@ -338,12 +340,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             {
                 if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.IsSameVar(id))
                 {
-                    Logger.debug($"CollectVars: WRITE {ann.Data}", "UnusedLocalsRemover");
+                    _logger.debug(() => $"CollectVars: WRITE {ann.Data}");
                     written.Add(ann); // intentionally do not interpret self-read as 'read'
                 }
                 else
                 {
-                    Logger.debug($"CollectVars: READ  {ann.Data}", "UnusedLocalsRemover");
+                    _logger.debug(() => $"CollectVars: READ  {ann.Data}");
                     read.Add(ann);
                 }
                 continue;
@@ -353,14 +355,14 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             ArgumentSyntax? argExpr = expr.FirstAncestorOrSelfUntil<ArgumentSyntax, BlockSyntax>();
             if (argExpr != null)
             {
-                Logger.debug($"CollectVars: READ  {ann.Data}", "UnusedLocalsRemover");
+                _logger.debug(() => $"CollectVars: READ  {ann.Data}");
                 read.Add(ann);
                 if (!argExpr.RefOrOutKeyword.IsKind(SyntaxKind.None))
                     written.Add(ann); // ref/out arguments are both read and written
                 continue;
             }
 
-            Logger.debug($"CollectVars: unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}", "UnusedLocalsRemover");
+            _logger.debug(() => $"CollectVars: unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}");
             read.Add(ann); // fallback: treat as read
         }
 
@@ -372,13 +374,10 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         if (_mainCtx == null)
             throw new InvalidOperationException("Main context is not set. Call Process().");
 
-        if (Logger.HasTag("UnusedLocalsRemover"))
-        {
-            if (Verbosity > 2)
-                Console.Error.WriteLine($"[d] UnusedLocalsRemover.RewriteBlock: {block}");
-            else if (Verbosity > 0)
-                Console.Error.WriteLine($"[d] UnusedLocalsRemover.RewriteBlock: {block.TitleWithLineSpan()}");
-        }
+        if (Verbosity > 2)
+            _logger.debug(() => $"[d] UnusedLocalsRemover.RewriteBlock: {block}");
+        else if (Verbosity > 0)
+            _logger.debug(() => $"[d] UnusedLocalsRemover.RewriteBlock: {block.TitleWithLineSpan()}");
 
         var ctx = _mainCtx;
         DataFlowAnalysis? dataFlow = null;
@@ -398,37 +397,41 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         if (!dataFlow.Succeeded)
             return block;
 
-        if (Verbosity > 1 && Logger.HasTag("UnusedLocalsRemover"))
-        {
-            if (dataFlow.VariablesDeclared.Count() > 0)
-                Console.Error.WriteLine($"[d] dataFlow.VariablesDeclared: {string.Join(", ", dataFlow.VariablesDeclared.Select(s => s.Name))}");
-            if (dataFlow.ReadInside.Count() > 0)
-                Console.Error.WriteLine($"[d] dataFlow.ReadInside       : {string.Join(", ", dataFlow.ReadInside.Select(s => s.Name))}");
-            if (dataFlow.ReadOutside.Count() > 0)
-                Console.Error.WriteLine($"[d] dataFlow.ReadOutside      : {string.Join(", ", dataFlow.ReadOutside.Select(s => s.Name))}");
-            if (dataFlow.WrittenInside.Count() > 0)
-                Console.Error.WriteLine($"[d] dataFlow.WrittenInside    : {string.Join(", ", dataFlow.WrittenInside.Select(s => s.Name))}");
-            if (dataFlow.WrittenOutside.Count() > 0)
-                Console.Error.WriteLine($"[d] dataFlow.WrittenOutside   : {string.Join(", ", dataFlow.WrittenOutside.Select(s => s.Name))}");
-        }
+        if (dataFlow.VariablesDeclared.Count() > 0)
+            _logger.debug(() => $"[d] dataFlow.VariablesDeclared: {string.Join(", ", dataFlow.VariablesDeclared.Select(s => s.Name))}");
+        if (dataFlow.ReadInside.Count() > 0)
+            _logger.debug(() => $"[d] dataFlow.ReadInside       : {string.Join(", ", dataFlow.ReadInside.Select(s => s.Name))}");
+        if (dataFlow.ReadOutside.Count() > 0)
+            _logger.debug(() => $"[d] dataFlow.ReadOutside      : {string.Join(", ", dataFlow.ReadOutside.Select(s => s.Name))}");
+        if (dataFlow.WrittenInside.Count() > 0)
+            _logger.debug(() => $"[d] dataFlow.WrittenInside    : {string.Join(", ", dataFlow.WrittenInside.Select(s => s.Name))}");
+        if (dataFlow.WrittenOutside.Count() > 0)
+            _logger.debug(() => $"[d] dataFlow.WrittenOutside   : {string.Join(", ", dataFlow.WrittenOutside.Select(s => s.Name))}");
 
         var (declared, read, written) = CollectVars(block);
-        if (Verbosity > 0 && Logger.HasTag("UnusedLocalsRemover"))
-        {
-            if (declared.Count > 0)
-                Console.Error.WriteLine($"[d] declared: {string.Join(", ", declared.Select(s => s.Data))}");
-            if (read.Count > 0)
-                Console.Error.WriteLine($"[d] read:     {string.Join(", ", read.Select(s => s.Data))}");
-            if (written.Count > 0)
-                Console.Error.WriteLine($"[d] written:  {string.Join(", ", written.Select(s => s.Data))}");
-        }
+
+        if (declared.Count > 0)
+            _logger.debug(() => $"[d] declared: {string.Join(", ", declared.Select(s => s.Data))}");
+        if (read.Count > 0)
+            _logger.debug(() => $"[d] read:     {string.Join(", ", read.Select(s => s.Data))}");
+        if (written.Count > 0)
+            _logger.debug(() => $"[d] written:  {string.Join(", ", written.Select(s => s.Data))}");
+
+        var rwOutside =
+            dataFlow.ReadOutside.Select(s => s.Name)
+            .Concat(
+                    dataFlow.WrittenOutside.Select(s => s.Name)
+                   )
+            .ToHashSet();
+
         var unusedLocals = declared
             .Where(s => !read.Contains(s))
             .Where(s => !_keepVars.Contains(s.Data))
+            .Where(s => !rwOutside.Contains(s.Data))
             .ToHashSet();
 
-        if (Verbosity > 0 && unusedLocals.Count > 0 && Logger.HasTag("UnusedLocalsRemover"))
-            Console.Error.WriteLine($"[d] unused locals A: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
+        if (unusedLocals.Count > 0)
+            _logger.debug(() => $"[d] unused locals A: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
 
         if (unusedLocals.Count == 0)
             return block;
@@ -438,29 +441,25 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         var collector = new Collector(ctx, Verbosity);
         collector.Visit(block);
 
-        if (Verbosity > 0 && collector.keepLocals.Count > 0 && Logger.HasTag("UnusedLocalsRemover"))
+        if (collector.keepLocals.Count > 0)
         {
-            Console.Error.WriteLine($"[d] keepLocals: {string.Join(", ", collector.keepLocals.Select(s => s.Data))}");
+            _logger.debug(() => $"[d] keepLocals: {string.Join(", ", collector.keepLocals.Select(s => s.Data))}");
         }
 
         unusedLocals.ExceptWith(collector.keepLocals);
         if (unusedLocals.Count == 0)
             return block;
 
-        if (Verbosity > 0 && Logger.HasTag("UnusedLocalsRemover"))
-            Console.Error.WriteLine($"[d] unused locals B: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
+        _logger.debug(() => $"[d] unused locals B: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
 
         ctx.SetUnusedLocals(unusedLocals);
         collector = new Collector(ctx, Verbosity);
         collector.Visit(block);
 
-        if (Verbosity > 0 && Logger.HasTag("UnusedLocalsRemover"))
-        {
-            if (collector.StatementsToRemove.Count > 0)
-                Console.Error.WriteLine($"[d] Statements to remove: {string.Join(", ", collector.StatementsToRemove.Select(s => s.TitleWithLineNo()))}");
-            if (collector.AssignmentsToReplace.Count > 0)
-                Console.Error.WriteLine($"[d] Assignments to replace: {string.Join(", ", collector.AssignmentsToReplace.Select(s => s.TitleWithLineNo()))}");
-        }
+        if (collector.StatementsToRemove.Count > 0)
+            _logger.debug(() => $"[d] Statements to remove: {string.Join(", ", collector.StatementsToRemove.Select(s => s.TitleWithLineNo()))}");
+        if (collector.AssignmentsToReplace.Count > 0)
+            _logger.debug(() => $"[d] Assignments to replace: {string.Join(", ", collector.AssignmentsToReplace.Select(s => s.TitleWithLineNo()))}");
 
         var newNode = new Remover(ctx, collector.StatementsToRemove, collector.AssignmentsToReplace)
             .Visit(block);
@@ -487,14 +486,13 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         _mainCtx = new Context(node);
         for (i = 0; i < 1000; i++)
         {
-            if (Verbosity > 0 && Logger.HasTag("UnusedLocalsRemover"))
-                Console.Error.WriteLine($"\n[d] UnusedLocalsRemover.Process: iteration #{i}");
+            _logger.debug($"\n[d] UnusedLocalsRemover.Process: iteration #{i}");
 
             _needRetry = false;
             var newNode = Visit(node);
 
             if (newNode.IsEquivalentTo(node) && _needRetry)
-                throw new InvalidOperationException($"UnusedLocalsRemover.Process: no changes after iteration #{i}");
+                throw new TaggedException(TAG, $"UnusedLocalsRemover.Process: no changes after iteration #{i}");
 
             node = node.ReplaceAndGetNewNode(newNode);
             _mainCtx.Update(node);
@@ -502,6 +500,6 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (!_needRetry)
                 return node;
         }
-        throw new InvalidOperationException($"UnusedLocalsRemover.Process: too many iterations: {i}");
+        throw new TaggedException(TAG, $"UnusedLocalsRemover.Process: too many iterations: {i}");
     }
 }

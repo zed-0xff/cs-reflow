@@ -25,6 +25,9 @@ public static class Logger
         if (!HasTag(caller))
             return;
 
+        if (message != null && message.StartsWith("[d] "))
+            message = message.Substring(4); // remove prefix if already present
+
         log($"[d] [{caller}] {message}");
     }
 
@@ -53,4 +56,30 @@ public static class Logger
     }
 
     public static bool HasTag(string tag) => EnabledTags.Contains(tag) || EnabledTags.Contains("all");
+}
+
+public class TaggedLogger
+{
+    private readonly string _tag;
+
+    public TaggedLogger(string tag)
+    {
+        _tag = tag;
+    }
+
+    public void debug(string message)
+    {
+        Logger.debug(message, _tag);
+    }
+
+    // lazy
+    public void debug(Func<string> msgFunc)
+    {
+        if (!Logger.HasTag(_tag))
+            return;
+
+        // TODO: check level
+
+        Logger.debug(msgFunc(), _tag);
+    }
 }

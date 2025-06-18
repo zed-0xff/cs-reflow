@@ -20,6 +20,24 @@ public enum EHint
     Unknown = 3
 }
 
+public class TaggedException : Exception
+{
+    public readonly string tag;
+    public TaggedException(string tag, string message) : base(message)
+    {
+        this.tag = tag;
+    }
+
+    public override string ToString()
+    {
+        string str = base.ToString()
+            .Replace("TaggedException: ", "")
+            .Split("at System.CommandLine.Invocation.AnonymousCommandHandler.Invoke(InvocationContext context)")[0]
+            .Trim();
+        return $"{tag}: {str}";
+    }
+}
+
 public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
     // shared
