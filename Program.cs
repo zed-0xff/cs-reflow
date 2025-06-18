@@ -11,28 +11,29 @@ using HintsDictionary = System.Collections.Generic.Dictionary<int, EHint>;
 class Program
 {
     record Options(
-        string? filename,
-        List<string> methods,
-        List<string> hintList,
-        string? expr,
-        int verbosity,
-        bool processAll,
-        bool listMethods,
-        bool printTree,
-        bool addComments,
-        bool showAnnotations,
-        bool moveDeclarations,
-        bool removeSwitchVars,
-        bool preProcess,
-        bool reflow,
-        bool postProcess,
+        List<string> debugTags,
         List<string> dropVars,
+        List<string> hintList,
         List<string> keepVars,
-        List<string> traceVars,
+        List<string> methods,
         List<string> traceUniqVars,
+        List<string> traceVars,
+        bool addComments,
         bool dumpFlowInfos,
+        bool listMethods,
+        bool moveDeclarations,
+        bool postProcess,
+        bool preProcess,
+        bool printTree,
+        bool processAll,
+        bool reflow,
+        bool removeSwitchVars,
+        bool showAnnotations,
+        bool showProgress,
+        int verbosity,
         string dumpIntermediateLogs,
-        List<string> debugTags
+        string? expr,
+        string? filename
     );
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints)
@@ -129,6 +130,12 @@ class Program
             description: "Show annotations."
         );
 
+        var showProgressOpt = new Option<bool>(
+            aliases: new[] { "--progress" },
+            getDefaultValue: () => !Console.IsOutputRedirected,
+            description: "Show progress."
+        );
+
         var moveDeclarationsOpt = new Option<bool>(
             aliases: new[] { "--move-declarations", "-M" },
             getDefaultValue: () => true,
@@ -216,57 +223,59 @@ class Program
         // --- Define the root command ---
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
-            filenameArg,
-            methodsArg,
-            exprArg,
-            hintOpt,
-            verbosityOpt,
-            processAllOpt,
-            printTreeOpt,
             addCommentsOpt,
-            showAnnotationsOpt,
-            moveDeclarationsOpt,
-            removeSwitchVarsOpt,
-            preProcessOpt,
-            reflowOpt,
-            postProcessOpt,
-            quietOpt,
-            listMethodsOpt,
+            debugTagsOpt,
             dropVarsOpt,
-            keepVarsOpt,
-            traceVarsOpt,
-            traceUniqVarsOpt,
             dumpFlowInfosOpt,
             dumpIntermediateLogsOpt,
-            debugTagsOpt
+            exprArg,
+            filenameArg,
+            hintOpt,
+            keepVarsOpt,
+            listMethodsOpt,
+            methodsArg,
+            moveDeclarationsOpt,
+            postProcessOpt,
+            preProcessOpt,
+            printTreeOpt,
+            processAllOpt,
+            quietOpt,
+            reflowOpt,
+            removeSwitchVarsOpt,
+            showAnnotationsOpt,
+            showProgressOpt,
+            traceUniqVarsOpt,
+            traceVarsOpt,
+            verbosityOpt,
         };
 
         // --- Set the handler ---
         rootCommand.SetHandler((context) =>
         {
             var opts = new Options(
-                filename: context.ParseResult.GetValueForArgument(filenameArg),
-                methods: context.ParseResult.GetValueForArgument(methodsArg),
-                expr: context.ParseResult.GetValueForOption(exprArg),
-                hintList: context.ParseResult.GetValueForOption(hintOpt),
-                verbosity: calc_verbosity(context, quietOpt),
-                processAll: context.ParseResult.GetValueForOption(processAllOpt),
-                printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
-                showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
-                moveDeclarations: context.ParseResult.GetValueForOption(moveDeclarationsOpt),
-                removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
-                preProcess: context.ParseResult.GetValueForOption(preProcessOpt),
-                reflow: context.ParseResult.GetValueForOption(reflowOpt),
-                postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
-                listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
+                debugTags: context.ParseResult.GetValueForOption(debugTagsOpt),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
-                keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
-                traceVars: context.ParseResult.GetValueForOption(traceVarsOpt),
-                traceUniqVars: context.ParseResult.GetValueForOption(traceUniqVarsOpt),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
                 dumpIntermediateLogs: context.ParseResult.GetValueForOption(dumpIntermediateLogsOpt),
-                debugTags: context.ParseResult.GetValueForOption(debugTagsOpt)
+                expr: context.ParseResult.GetValueForOption(exprArg),
+                filename: context.ParseResult.GetValueForArgument(filenameArg),
+                hintList: context.ParseResult.GetValueForOption(hintOpt),
+                keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
+                listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
+                methods: context.ParseResult.GetValueForArgument(methodsArg),
+                moveDeclarations: context.ParseResult.GetValueForOption(moveDeclarationsOpt),
+                postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
+                preProcess: context.ParseResult.GetValueForOption(preProcessOpt),
+                printTree: context.ParseResult.GetValueForOption(printTreeOpt),
+                processAll: context.ParseResult.GetValueForOption(processAllOpt),
+                reflow: context.ParseResult.GetValueForOption(reflowOpt),
+                removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
+                showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
+                showProgress: context.ParseResult.GetValueForOption(showProgressOpt),
+                traceUniqVars: context.ParseResult.GetValueForOption(traceUniqVarsOpt),
+                traceVars: context.ParseResult.GetValueForOption(traceVarsOpt),
+                verbosity: calc_verbosity(context, quietOpt)
             );
 
             Logger.EnableTags(opts.debugTags);
@@ -370,7 +379,7 @@ class Program
                     unflattener.KeepVars(opts.keepVars);
                     unflattener.TraceVars(opts.traceVars);
                     unflattener.TraceUniqVars(opts.traceUniqVars);
-                    unflattener.ShowProgress = !Console.IsOutputRedirected;
+                    unflattener.ShowProgress = opts.showProgress;
 
                     var collector = new ControlFlowTreeCollector();
                     if (opts.dumpFlowInfos)
@@ -379,7 +388,9 @@ class Program
                         Console.WriteLine("Original Control Flow Tree:");
                         collector.PrintTree();
                     }
+
                     Console.WriteLine(unflattener.ReflowMethod(method));
+
                     if (opts.dumpFlowInfos)
                     {
                         Console.WriteLine();
