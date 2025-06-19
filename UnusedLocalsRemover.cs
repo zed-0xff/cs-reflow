@@ -51,7 +51,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         public bool IsUnusedLocal(SyntaxNode node)
         {
-            var ann = node.GetAnnotations("VAR").FirstOrDefault();
+            var ann = node.GetAnnotations("VarID").FirstOrDefault();
             return ann != null && _unusedLocals.Contains(ann);
         }
 
@@ -115,9 +115,9 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                             if (assignment.Right is not AssignmentExpressionSyntax)
                             {
                                 // If the right side is not a literal, we keep the local variable
-                                var ann = idLeft.GetAnnotations("VAR").FirstOrDefault();
+                                var ann = idLeft.GetAnnotations("VarID").FirstOrDefault();
                                 if (ann == null)
-                                    throw new InvalidOperationException($"Identifier {idLeft.Identifier.Text} has no 'VAR' annotation.");
+                                    throw new InvalidOperationException($"Identifier {idLeft.Identifier.Text} has no 'VarID' annotation.");
                                 keepLocals.Add(ann);
                             }
                         }
@@ -155,9 +155,9 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 var init = variable.Initializer?.Value;
                 if (init != null && !_ctx.IsSafeToRemove(init) && init is not AssignmentExpressionSyntax)
                 {
-                    var ann = variable.GetAnnotations("VAR").FirstOrDefault();
+                    var ann = variable.GetAnnotations("VarID").FirstOrDefault();
                     if (ann == null)
-                        throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VAR' annotation.");
+                        throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VarID' annotation.");
                     _logger.debug(() => $"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
                     keepLocals.Add(ann);
                 }
@@ -295,7 +295,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     {
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(s => s.Declaration.Variables)
-            .Select(v => v.GetAnnotations("VAR").FirstOrDefault())
+            .Select(v => v.GetAnnotations("VarID").FirstOrDefault())
             .Where(v => v != null)
             .ToHashSet();
 
@@ -304,7 +304,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         foreach (var id in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
-            var ann = id.GetAnnotations("VAR").FirstOrDefault();
+            var ann = id.GetAnnotations("VarID").FirstOrDefault();
             if (ann == null)
                 continue;
 
@@ -492,6 +492,9 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     public override SyntaxNode? VisitBlock(BlockSyntax node)
     {
         var updated = (BlockSyntax)base.VisitBlock(node); // visit children first (x2.2 faster than visiting them afterwards)
+        if (updated == null)
+            return null;
+
         var result = RewriteBlock(updated);
         return result;
     }

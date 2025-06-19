@@ -398,8 +398,8 @@ public partial class VarProcessor
                     return literal.Token.Value;
 
                 case MemberAccessExpressionSyntax:
-                    if (Constants.ContainsKey(expression.ToString()))
-                        return Constants[expression.ToString()];
+                    if (Constants.TryGetValue(expression.ToString(), out var constantValue))
+                        return constantValue;
                     else
                         goto default;
 

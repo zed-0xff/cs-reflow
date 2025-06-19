@@ -92,7 +92,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool PostProcess = true;
     public bool PreProcess = true;
     public bool Reflow = true;
-    public bool RemoveSwitchVars = true;
     public bool ShowAnnotations = false;
     public bool ShowProgress = true;
     public bool isClone = false;
@@ -223,14 +222,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     // end of exceptions
 
-    public void DropVars(List<string> vars)
-    {
-        foreach (var varName in vars)
-        {
-            setSwitchVar(varName);
-        }
-    }
-
     public void KeepVars(List<string> vars)
     {
         _keepVars = new(vars);
@@ -324,7 +315,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         clone.Verbosity = Verbosity;
         clone.ShowProgress = ShowProgress;
-        clone.RemoveSwitchVars = RemoveSwitchVars;
         clone.AddComments = AddComments;
         clone.ShowAnnotations = ShowAnnotations;
         clone.MoveDeclarations = MoveDeclarations;
@@ -700,7 +690,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _flowInfos[id];
     }
 
-    void trace_if(IfStatementSyntax ifStmt, object value)
+    void trace_if(IfStatementSyntax ifStmt, object? value)
     {
         var condition = ifStmt.Condition;
         int lineno = ifStmt.LineNo();
@@ -935,16 +925,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return EvaluateBoolExpression(expression);
     }
 
-    bool isSwitchVar(string varName)
-    {
-        return _varProcessor.IsSwitchVar(varName);
-    }
-
-    void setSwitchVar(string varName)
-    {
-        _varProcessor.SetSwitchVar(varName);
-    }
-
     public void trace_statements_inline(StatementSyntax stmt)
     {
         if (stmt is BlockSyntax block)
@@ -1143,8 +1123,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         value = ex.Result;
                         comment = value.ToString();
                         skip = true; // skip only if value is known
-                        foreach (string varName in ex.VarsReferenced)
-                            setSwitchVar(varName);
                         break;
 
                     case WhileStatementSyntax whileStmt:
@@ -1756,9 +1734,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .OfType<LocalDeclarationStatementSyntax>()
                 .SelectMany(ld => ld.Declaration.Variables))
         {
-            var key = variable.GetAnnotations("VAR").First().Data;
+            var key = variable.GetAnnotations("VarID").First().Data;
             if (key == null)
-                throw new ArgumentException($"Local variable '{variable.Identifier}' has no 'VAR' annotation data");
+                throw new ArgumentException($"Local variable '{variable.Identifier}' has no 'VarID' annotation data");
 
             var value = variable.Parent as VariableDeclarationSyntax;
             if (localDecls0.TryGetValue(key, out var existingDecl))
@@ -1837,7 +1815,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var localDecls1 = result.DescendantNodesAndSelf()
             .OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(ld => ld.Declaration.Variables)
-            .Select(v => v.GetAnnotations("VAR").First().Data)
+            .Select(v => v.GetAnnotations("VarID").First().Data)
             .ToHashSet();
 
         if (Verbosity > 2)
@@ -1850,16 +1828,16 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var newDecls = new List<LocalDeclarationStatementSyntax>();
         foreach (var id in result.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
-            var ann = id.GetAnnotations("VAR").FirstOrDefault();
+            var ann = id.GetAnnotations("VarID").FirstOrDefault();
             if (ann == null)
             {
                 if (Verbosity > 1)
-                    Logger.once($"[?] Identifier '{id}' has no 'VAR' annotation"); // TODO: check why
+                    Logger.once($"[?] Identifier '{id}' has no 'VarID' annotation"); // TODO: check why
                 continue;
             }
             string? key = ann.Data;
             if (key == null)
-                throw new ArgumentException($"Identifier '{id}' has no 'VAR' annotation data");
+                throw new ArgumentException($"Identifier '{id}' has no 'VarID' annotation data");
 
             if (localDecls1.Contains(key))
                 continue;

@@ -33,18 +33,7 @@ public class VarDict
         _values[varName] = value;
     }
 
-    public bool IsSwitchVar(string varName)
-    {
-        return (_flags[varName] & FLAG_SWITCH) != 0;
-    }
-
-    public void SetSwitchVar(string varName) => _flags[varName] |= FLAG_SWITCH;
     public void SetLoopVar(string varName) => _flags[varName] |= FLAG_LOOP;
-
-    public List<string> SwitchVars()
-    {
-        return new List<string>(_flags.Where(kvp => (kvp.Value & FLAG_SWITCH) != 0).Select(kvp => kvp.Key));
-    }
 
     public VarDict ShallowClone()
     {

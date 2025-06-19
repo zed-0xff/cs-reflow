@@ -299,8 +299,8 @@ public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
     {
         var groups = node.Statements
             .OfType<LocalDeclarationStatementSyntax>()
-            .Where(decl => decl.HasAnnotations("ID"))
-            .GroupBy(decl => decl.GetAnnotations("ID").First().Data)
+            .Where(decl => decl.HasAnnotations("StmtID"))
+            .GroupBy(decl => decl.GetAnnotations("StmtID").First().Data)
             .Where(g => g.Count() > 1)
             .ToList();
 

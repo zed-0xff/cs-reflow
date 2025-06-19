@@ -6,7 +6,7 @@ static void Main()
     }
 
     {
-        int i = 123;
+        int i = 456;
         Console.WriteLine(i);
     }
 }

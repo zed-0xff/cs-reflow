@@ -231,9 +231,9 @@ public partial class VarTracker
                         SyntaxKind.SimpleAssignmentExpression,
                         SyntaxFactory
                             .IdentifierName(variable.Identifier)
-                            .WithAdditionalAnnotations(variable.GetAnnotations(new string[] { "VAR", "LineNo" })),
+                            .WithAdditionalAnnotations(variable.GetAnnotations(new string[] { "VarID", "LineNo" })),
                         variable.Initializer.Value)
-                    .WithAdditionalAnnotations(new SyntaxAnnotation("ID", _tracker.GetNextId()))
+                    .WithAdditionalAnnotations(new SyntaxAnnotation("StmtID", _tracker.NextStmtID()))
                     );
 
             return assignmentExpr;

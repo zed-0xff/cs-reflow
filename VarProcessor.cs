@@ -116,8 +116,6 @@ public partial class VarProcessor : ICloneable
     }
 
     public VarDict VariableValues() => _vars;
-    public bool IsSwitchVar(string varName) => _vars.IsSwitchVar(varName);
-    public void SetSwitchVar(string varName) => _vars.SetSwitchVar(varName);
     public void SetLoopVar(string varName) => _vars.SetLoopVar(varName);
 
     public void TraceVars(List<string> vars)

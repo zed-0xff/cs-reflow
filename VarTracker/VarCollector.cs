@@ -3,40 +3,49 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using SymbolAnnotationMap = System.Collections.Generic.Dictionary<Microsoft.CodeAnalysis.ISymbol, Microsoft.CodeAnalysis.SyntaxAnnotation>;
+
 public partial class VarTracker
 {
     class VarCollector : CSharpSyntaxWalker
     {
         private readonly SemanticModel _model;
-        private readonly Dictionary<ISymbol, SyntaxAnnotation> _dict;
+        private readonly VarTracker _tracker;
+        private readonly SymbolAnnotationMap _sym2ann;
+        private readonly VarDB _varDB;
 
-        HashSet<string> _varNames = new HashSet<string>();
-
-        public VarCollector(SemanticModel model, Dictionary<ISymbol, SyntaxAnnotation> dict)
+        public VarCollector(VarTracker tracker, SemanticModel model, SymbolAnnotationMap sym2ann, VarDB db)
         {
+            _tracker = tracker;
             _model = model;
-            _dict = dict;
+            _sym2ann = sym2ann;
+            _varDB = db;
         }
 
         public override void VisitVariableDeclarator(VariableDeclaratorSyntax node)
         {
             var symbol = _model.GetDeclaredSymbol(node);
-            if (symbol != null && !_dict.ContainsKey(symbol))
+            if (symbol == null || _sym2ann.ContainsKey(symbol))
+                return;
+
+            ITypeSymbol typeSymbol = _model.GetTypeInfo(node).Type;
+
+            switch (symbol)
             {
-                string varName = symbol.Name;
-                if (varName.Length > 20)
-                {
-                    // Truncate too long names
-                    varName = varName.Substring(0, 1).ToLower() + varName.Substring(1, 3);
-                }
-                int suffix = 2;
-                while (_varNames.Contains(varName))
-                {
-                    varName = $"{symbol.Name}_{suffix++}";
-                }
-                _varNames.Add(varName);
-                _dict[symbol] = new SyntaxAnnotation("VAR", varName);
+                case ILocalSymbol localSymbol:
+                    typeSymbol = localSymbol.Type;
+                    break;
+
+                case IFieldSymbol fieldSymbol:
+                    typeSymbol = fieldSymbol.Type;
+                    break;
+
+                default:
+                    Logger.warn($"Unexpected symbol type {symbol?.GetType()}", "VarCollector.VisitVariableDeclarator");
+                    return;
             }
+
+            _sym2ann[symbol] = _varDB.Add(node, typeSymbol).Annotation;
         }
     }
 }

@@ -3,19 +3,21 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using SymbolAnnotationMap = System.Collections.Generic.Dictionary<Microsoft.CodeAnalysis.ISymbol, Microsoft.CodeAnalysis.SyntaxAnnotation>;
+
 public partial class VarTracker
 {
     class AnnotationRewriter : CSharpSyntaxRewriter
     {
-        private readonly Dictionary<ISymbol, SyntaxAnnotation> _varAnnotations;
         private readonly SemanticModel _semanticModel;
         private readonly VarTracker _tracker;
+        private readonly SymbolAnnotationMap _sym2ann;
 
-        public AnnotationRewriter(VarTracker tracker, SemanticModel semanticModel)
+        public AnnotationRewriter(VarTracker tracker, SemanticModel semanticModel, SymbolAnnotationMap sym2ann)
         {
             _tracker = tracker;
-            _varAnnotations = tracker._varAnnotations;
             _semanticModel = semanticModel;
+            _sym2ann = sym2ann;
         }
 
         public override SyntaxNode VisitVariableDeclarator(VariableDeclaratorSyntax node)
@@ -29,7 +31,7 @@ public partial class VarTracker
             if (symbol == null && node.SyntaxTree == _semanticModel.SyntaxTree)
                 symbol = _semanticModel.GetDeclaredSymbol(node);
 
-            if (symbol != null && _varAnnotations.TryGetValue(symbol, out var annotation))
+            if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
                 node = node.WithAdditionalAnnotations(annotation);
             return node;
         }
@@ -40,7 +42,7 @@ public partial class VarTracker
             if (node.SyntaxTree == _semanticModel.SyntaxTree)
             {
                 var symbol = _semanticModel.GetSymbolInfo(node).Symbol;
-                if (symbol != null && _varAnnotations.TryGetValue(symbol, out var annotation))
+                if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
                     node = node.WithAdditionalAnnotations(annotation);
             }
             return node;
@@ -52,7 +54,7 @@ public partial class VarTracker
             if (node is StatementSyntax)
             {
                 node = node.WithAdditionalAnnotations(
-                        new SyntaxAnnotation("ID", _tracker.GetNextId())
+                        new SyntaxAnnotation("StmtID", _tracker.NextStmtID())
                         );
             }
             return node;

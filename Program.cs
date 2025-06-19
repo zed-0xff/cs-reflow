@@ -29,7 +29,6 @@ class Program
         bool printTree,
         bool processAll,
         bool reflow,
-        bool removeSwitchVars,
         bool showAnnotations,
         bool showProgress,
         int verbosity,
@@ -43,7 +42,6 @@ class Program
         return new ControlFlowUnflattener(code, hints, dummyClassWrap)
         {
             Verbosity = opts.verbosity,
-            RemoveSwitchVars = opts.removeSwitchVars,
             AddComments = opts.addComments,
             ShowAnnotations = opts.showAnnotations,
             MoveDeclarations = opts.moveDeclarations,
@@ -150,12 +148,6 @@ class Program
             description: "Move variable declarations to the lowest common ancestor."
         );
 
-        var removeSwitchVarsOpt = new Option<bool>(
-            name: "--remove-switch-vars",
-            getDefaultValue: () => true,
-            description: "Remove switch variables."
-        );
-
         var preProcessOpt = new Option<bool>(
                 aliases: new[] { "--pre-process", "-p" },
                 getDefaultValue: () => true,
@@ -250,7 +242,6 @@ class Program
             processAllOpt,
             quietOpt,
             reflowOpt,
-            removeSwitchVarsOpt,
             showAnnotationsOpt,
             showProgressOpt,
             traceUniqVarsOpt,
@@ -280,7 +271,6 @@ class Program
                 printTree: context.ParseResult.GetValueForOption(printTreeOpt),
                 processAll: context.ParseResult.GetValueForOption(processAllOpt),
                 reflow: context.ParseResult.GetValueForOption(reflowOpt),
-                removeSwitchVars: context.ParseResult.GetValueForOption(removeSwitchVarsOpt),
                 showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
                 showProgress: context.ParseResult.GetValueForOption(showProgressOpt),
                 traceUniqVars: context.ParseResult.GetValueForOption(traceUniqVarsOpt),
@@ -392,7 +382,7 @@ class Program
 
                     unflattener.Reset();
                     unflattener.SetHints(hints);
-                    unflattener.DropVars(opts.dropVars);
+                    //unflattener.DropVars(opts.dropVars);
                     unflattener.KeepVars(opts.keepVars);
                     unflattener.TraceVars(opts.traceVars);
                     unflattener.TraceUniqVars(opts.traceUniqVars);

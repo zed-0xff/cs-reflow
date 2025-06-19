@@ -6,7 +6,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public static class SyntaxNodeExtensions
 {
-    static readonly string[] ANNOTATION_KINDS = new[] { "ID", "VAR", "LineNo" };
+    static readonly string[] ANNOTATION_KINDS = new[] { "StmtID", "VarID", "LineNo" };
 
     public static int LineNo(this SyntaxNode node)
     {
@@ -85,7 +85,7 @@ public static class SyntaxNodeExtensions
         if (node1.IsSameStmt(node2))
             return true;
 
-        var ann2 = node2.GetAnnotations("VAR").FirstOrDefault();
+        var ann2 = node2.GetAnnotations("VarID").FirstOrDefault();
 
         if (ann2 != null && node1.IsSameVar(ann2))
             return true;
@@ -93,7 +93,7 @@ public static class SyntaxNodeExtensions
         if (node2 is LocalDeclarationStatementSyntax decl2 && decl2.Declaration.Variables.Count == 1)
         {
             node2 = decl2.Declaration.Variables[0];
-            ann2 = node2.GetAnnotations("VAR").FirstOrDefault();
+            ann2 = node2.GetAnnotations("VarID").FirstOrDefault();
             if (ann2 != null && node1.IsSameVar(ann2))
                 return true;
         }
@@ -103,7 +103,7 @@ public static class SyntaxNodeExtensions
 
     public static bool IsSameVar(this SyntaxNode node1, SyntaxAnnotation ann2)
     {
-        var ann1 = node1.GetAnnotations("VAR").FirstOrDefault();
+        var ann1 = node1.GetAnnotations("VarID").FirstOrDefault();
 
         if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
             return true;
@@ -111,7 +111,7 @@ public static class SyntaxNodeExtensions
         if (node1 is LocalDeclarationStatementSyntax decl1 && decl1.Declaration.Variables.Count == 1)
         {
             node1 = decl1.Declaration.Variables[0];
-            ann1 = node1.GetAnnotations("VAR").FirstOrDefault();
+            ann1 = node1.GetAnnotations("VarID").FirstOrDefault();
             if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
                 return true;
         }
@@ -121,8 +121,8 @@ public static class SyntaxNodeExtensions
 
     public static bool IsSameStmt(this SyntaxNode node1, SyntaxNode node2)
     {
-        var ann1 = node1.GetAnnotations("ID").FirstOrDefault();
-        var ann2 = node2.GetAnnotations("ID").FirstOrDefault();
+        var ann1 = node1.GetAnnotations("StmtID").FirstOrDefault();
+        var ann2 = node2.GetAnnotations("StmtID").FirstOrDefault();
 
         return ann1 != null && ann2 != null && ann1.Data == ann2.Data;
     }
