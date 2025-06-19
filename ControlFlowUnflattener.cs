@@ -1950,8 +1950,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
 
             var body2 = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
-            PostProcessor postProcessor = new(_varProcessor, body2);
-            postProcessor.RemoveSwitchVars = RemoveSwitchVars;
+            PostProcessor postProcessor = new();
             var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
             if (body3.IsEquivalentTo(body))
             {

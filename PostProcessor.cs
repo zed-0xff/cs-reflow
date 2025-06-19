@@ -12,25 +12,6 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public class PostProcessor
 {
-    public bool RemoveSwitchVars = true;
-    VarProcessor _varProcessor;
-    public int Verbosity = 0;
-
-    public PostProcessor(VarProcessor varProcessor, SyntaxNode? rootNode = null)
-    {
-        _varProcessor = varProcessor;
-    }
-
-    bool isSwitchVar(string varName)
-    {
-        return _varProcessor.IsSwitchVar(varName);
-    }
-
-    void setSwitchVar(string varName)
-    {
-        _varProcessor.SetSwitchVar(varName);
-    }
-
     public static SyntaxNode RemoveAllComments(SyntaxNode root)
     {
         return root.ReplaceTrivia(
@@ -45,162 +26,6 @@ public class PostProcessor
         );
     }
 
-    bool is_simple_expr(ExpressionSyntax expr)
-    {
-        if (expr is LiteralExpressionSyntax || expr is IdentifierNameSyntax)
-            return true;
-
-        if (expr is BinaryExpressionSyntax binaryExpr)
-        {
-            return is_simple_expr(binaryExpr.Left) && is_simple_expr(binaryExpr.Right);
-        }
-
-        return false;
-    }
-
-    bool is_empty_if(StatementSyntax stmt)
-    {
-        if (stmt is IfStatementSyntax ifStmt)
-        {
-            if ((ifStmt.Statement is EmptyStatementSyntax) || (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0))
-            {
-                if ((ifStmt.Else == null) ||
-                    (ifStmt.Else.Statement is EmptyStatementSyntax) ||
-                    (ifStmt.Else.Statement is BlockSyntax block2 && block2.Statements.Count == 0))
-                {
-                    // empty if/else
-                    return is_simple_expr(ifStmt.Condition);
-                }
-            }
-        }
-        return false;
-    }
-
-    StatementSyntax PostProcess(StatementSyntax stmt)
-    {
-        var result = PostProcess(stmt as SyntaxNode);
-        if (result is StatementSyntax statement)
-            return statement;
-        else
-            throw new InvalidOperationException($"PostProcess() returned {result.Kind()} instead of StatementSyntax");
-    }
-
-    ExpressionSyntax PostProcess(ExpressionSyntax expr)
-    {
-        var result = PostProcess(expr as SyntaxNode);
-        if (result is ExpressionSyntax expression)
-            return expression;
-        else
-            throw new InvalidOperationException($"PostProcess() returned {result.Kind()} instead of ExpressionSyntax");
-    }
-
-    SyntaxNode PostProcess(SyntaxNode stmt)
-    {
-        switch (stmt)
-        {
-            case LabeledStatementSyntax labelStmt:
-                stmt = labelStmt.WithStatement(PostProcess(labelStmt.Statement));
-                break;
-
-            case ExpressionStatementSyntax exprStmt:
-                var id_expr = exprStmt.Expression switch
-                {
-                    AssignmentExpressionSyntax assignExpr => assignExpr.Left,  // x = 1, x += 1, ...
-                    PrefixUnaryExpressionSyntax preExpr => preExpr.Operand,    // ++x, --x
-                    PostfixUnaryExpressionSyntax postExpr => postExpr.Operand, // x++, x--
-                    _ => null
-                };
-                if (id_expr is IdentifierNameSyntax id && RemoveSwitchVars && isSwitchVar(id.Identifier.Text))
-                    stmt = EmptyStatement();
-                break;
-
-            case IfStatementSyntax ifStmt:
-                stmt = ifStmt.WithStatement(PostProcess(ifStmt.Statement as BlockSyntax));
-                if (ifStmt.Else != null)
-                {
-                    stmt = (stmt as IfStatementSyntax).WithElse(ifStmt.Else.WithStatement(PostProcess(ifStmt.Else.Statement)));
-                }
-                break;
-
-            case BlockSyntax blockStmt:
-                stmt = PostProcess(blockStmt);
-                break;
-
-            case WhileStatementSyntax whileStmt:
-                stmt = whileStmt
-                    .WithCondition(PostProcess(whileStmt.Condition))
-                    .WithStatement(PostProcess(whileStmt.Statement as BlockSyntax));
-                break;
-
-            case DoStatementSyntax doStmt:
-                stmt = doStmt
-                    .WithCondition(PostProcess(doStmt.Condition))
-                    .WithStatement(PostProcess(doStmt.Statement as BlockSyntax));
-                break;
-
-            case ForStatementSyntax forStmt:
-                stmt = forStmt
-                    .WithCondition(PostProcess(forStmt.Condition))
-                    .WithStatement(PostProcess(forStmt.Statement as BlockSyntax));
-                break;
-
-            case ForEachStatementSyntax forEachStmt:
-                stmt = forEachStmt
-                    .WithExpression(PostProcess(forEachStmt.Expression))
-                    .WithStatement(PostProcess(forEachStmt.Statement as BlockSyntax));
-                break;
-        }
-        return stmt;
-    }
-
-    BlockSyntax PostProcess(BlockSyntax block)
-    {
-        if (block == null)
-            return null;
-
-        List<StatementSyntax> statements = new();
-
-        for (int i = 0; i < block.Statements.Count; i++)
-        {
-            var stmt = block.Statements[i];
-            switch (stmt)
-            {
-                case LocalDeclarationStatementSyntax localDecl:
-                    var decl = localDecl.Declaration.Variables.First();
-                    string varName = decl.Identifier.Text;
-                    if (RemoveSwitchVars && localDecl.Declaration.Variables.All(v => isSwitchVar(v.Identifier.Text)))
-                        continue;
-                    break;
-
-                default:
-                    stmt = PostProcess(stmt) as StatementSyntax;
-                    if (stmt == null)
-                        throw new InvalidOperationException($"PostProcess() returned null for {stmt.Kind()}");
-                    break;
-            }
-
-            if (is_empty_if(stmt))
-                continue;
-
-            if (stmt is EmptyStatementSyntax)
-                continue;
-
-            statements.Add(stmt);
-        }
-
-        // label + empty statement => label + next statement
-        for (int i = 0; i < statements.Count - 1; i++)
-        {
-            if (statements[i] is LabeledStatementSyntax labelStmt && labelStmt.Statement is EmptyStatementSyntax)
-            {
-                statements[i + 1] = labelStmt.WithStatement(statements[i + 1]);
-                statements.RemoveAt(i);
-            }
-        }
-
-        return block.WithStatements(List(statements));
-    }
-
     public SyntaxNode ProcessFunction(SyntaxNode root)
     {
         return root switch
@@ -213,22 +38,10 @@ public class PostProcessor
 
     public BlockSyntax PostProcessAll(BlockSyntax block)
     {
-        for (int i = 0; ; i++)
-        {
-            if (i >= 10)
-            {
-                Console.Error.WriteLine($"[?] PostProcessAll: too many iterations ({i})");
-                break;
-            }
-            var block2 = PostProcess(block);
-            if (block2.IsEquivalentTo(block))
-                break; // no changes
-            block = block2;
-        }
         block = new EmptiesRemover().Visit(block) as BlockSyntax;
         block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
         block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
-        block = new IfRewriter().Visit(block) as BlockSyntax;
+        block = new IfRewriter().Visit(block) as BlockSyntax; // should be after EmptiesRemover
         return block;
     }
 
@@ -273,10 +86,22 @@ public class EmptiesRemover : CSharpSyntaxRewriter
     // remove all EmptyStatementSyntax
     public override SyntaxNode VisitBlock(BlockSyntax node)
     {
-        var newStatements = node.Statements.Where(stmt => !(stmt is EmptyStatementSyntax)).ToList();
+        var newStatements = node.Statements
+            .Where(stmt => !(stmt is EmptyStatementSyntax)) // remove empty statements
+            .ToList();
+
+        // Label + EmptyStatement => Label + next statement
+        for (int i = 0; i < newStatements.Count - 1; i++)
+        {
+            if (newStatements[i] is LabeledStatementSyntax labelStmt && labelStmt.Statement is EmptyStatementSyntax)
+            {
+                newStatements[i] = labelStmt.WithStatement(newStatements[i + 1]);
+                newStatements.RemoveAt(i + 1);
+            }
+        }
+
         if (newStatements.Count != node.Statements.Count)
             node = node.WithStatements(SyntaxFactory.List(newStatements));
-
         return base.VisitBlock(node);
     }
 }
