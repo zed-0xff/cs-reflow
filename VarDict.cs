@@ -5,8 +5,7 @@ using System.Collections.ObjectModel;
 
 public class VarDict
 {
-    public const int FLAG_SWITCH = 1;
-    public const int FLAG_LOOP = 2;
+    public const int FLAG_LOOP = 1;
 
     public static int Verbosity = 0;
 

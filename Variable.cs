@@ -12,8 +12,7 @@ public class Variable
     public readonly VariableDeclaratorSyntax Declarator;
     public readonly TypeDB.IntInfo? IntType;
 
-    public const int FLAG_SWITCH = 1;
-    public const int FLAG_LOOP = 2;
+    public const int FLAG_LOOP = 1;
 
     public Variable(int id, VariableDeclaratorSyntax node, ITypeSymbol type)
     {
