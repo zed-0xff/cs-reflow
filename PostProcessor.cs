@@ -133,16 +133,46 @@ public class IfRewriter : CSharpSyntaxRewriter
         return base.VisitIfStatement(ifStmt);
     }
 
+    bool CanBeFlattened(BlockSyntax parentBlock, BlockSyntax childBlock)
+    {
+        // collect declarations from parent block
+        var parentDeclarations = parentBlock.Statements
+            .OfType<LocalDeclarationStatementSyntax>()
+            .SelectMany(decl => decl.Declaration.Variables.Select(var => var.Identifier.ValueText))
+            .ToHashSet();
+
+        // + all siblings but current
+        foreach (var sibling in parentBlock.Statements)
+        {
+            if (sibling is BlockSyntax siblingBlock && siblingBlock != childBlock)
+            {
+                parentDeclarations.UnionWith(
+                    siblingBlock.Statements
+                        .OfType<LocalDeclarationStatementSyntax>()
+                        .SelectMany(decl => decl.Declaration.Variables.Select(var => var.Identifier.ValueText))
+                );
+            }
+        }
+
+        // collect declarations from this block
+        var childDeclarations = childBlock.Statements
+            .OfType<LocalDeclarationStatementSyntax>()
+            .SelectMany(decl => decl.Declaration.Variables.Select(var => var.Identifier.ValueText))
+            .ToHashSet();
+        // return true if there are no conflicts
+        return !childDeclarations.Any(var => parentDeclarations.Contains(var));
+    }
+
     // remove unnecessary nested blocks
     public override SyntaxNode VisitBlock(BlockSyntax node)
     {
         node = (BlockSyntax)base.VisitBlock(node);
-        if (node.Statements.Any(stmt => stmt is BlockSyntax))
+        if (node.Statements.Any(stmt => stmt is BlockSyntax blk2 && CanBeFlattened(node, blk2)))
         {
             var statements = new List<StatementSyntax>();
             foreach (var stmt in node.Statements)
             {
-                if (stmt is BlockSyntax innerBlock)
+                if (stmt is BlockSyntax innerBlock && CanBeFlattened(node, innerBlock))
                 {
                     statements.AddRange(innerBlock.Statements);
                 }
@@ -394,9 +424,6 @@ public class CommentAligner : CSharpSyntaxRewriter
         if (!token.TrailingTrivia.Any(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia)))
             return token;
 
-        if (token.Parent is EmptyStatementSyntax) // keep comments on empty statements (deleted nodes)
-            return token;
-
         var newTrivia = new List<SyntaxTrivia>();
         bool aligned = false;
 
@@ -408,8 +435,43 @@ public class CommentAligner : CSharpSyntaxRewriter
                 var line = _text.Lines.GetLineFromPosition(tokenEnd);
                 int offsetInLine = tokenEnd - line.Start;
 
-                int paddingSpaces = Math.Max(1, _targetColumn - offsetInLine);
-                newTrivia.Add(SyntaxFactory.Whitespace(new string(' ', paddingSpaces)));
+                if (token.Parent is EmptyStatementSyntax)
+                {
+                    var trimmedText = trivia.ToString().Trim();
+
+                    if (trimmedText.Contains(" // "))
+                    {
+                        // Split at the first occurrence of " // "
+                        var splitIndex = trimmedText.IndexOf(" // ");
+
+                        var leftCommentText = trimmedText.Substring(0, splitIndex);
+                        var rightCommentText = trimmedText.Substring(splitIndex);
+
+                        // Add left comment (non-aligned)
+                        newTrivia.Add(SyntaxFactory.Comment(leftCommentText));
+
+                        // Add padding spaces for alignment
+                        int paddingSpaces = Math.Max(1, _targetColumn - offsetInLine - leftCommentText.Length - 1);
+                        newTrivia.Add(SyntaxFactory.Whitespace(new string(' ', paddingSpaces)));
+
+                        // Add right comment (aligned)
+                        newTrivia.Add(SyntaxFactory.Comment(rightCommentText));
+
+                        aligned = true;
+                        continue; // skip rest of loop to avoid duplicate addition
+                    }
+                    else
+                    {
+                        // Case A: just add the comment as-is (non-aligned)
+                        newTrivia.Add(trivia);
+                        aligned = true;
+                        continue;
+                    }
+                }
+
+                // For tokens NOT under EmptyStatementSyntax, do default alignment
+                int padSpaces = Math.Max(1, _targetColumn - offsetInLine);
+                newTrivia.Add(SyntaxFactory.Whitespace(new string(' ', padSpaces)));
                 newTrivia.Add(trivia);
                 aligned = true;
             }
@@ -421,4 +483,6 @@ public class CommentAligner : CSharpSyntaxRewriter
 
         return token.WithTrailingTrivia(newTrivia);
     }
+
+
 }

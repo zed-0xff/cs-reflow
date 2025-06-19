@@ -199,7 +199,7 @@ public static class SyntaxNodeExtensions
         return node.WithAdditionalAnnotations(newAnnotation);
     }
 
-    public static SyntaxNode ToEmptyStmt(this SyntaxNode node)
+    public static StatementSyntax ToEmptyStmt(this SyntaxNode node)
     {
         return EmptyStatement()
             .WithComment(node.Title())

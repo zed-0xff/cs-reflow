@@ -1282,7 +1282,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case BlockSyntax block:
+                        _traceLog.entries.Add(new TraceEntry(block.ToEmptyStmt(), null, _varProcessor.VariableValues()));
                         trace_statements_inline(block); // TODO: local vars
+                        _traceLog.entries.Add(new TraceEntry(
+                                    EmptyStatement()
+                                    .WithComment("}")
+                                    .WithAdditionalAnnotations(
+                                        new SyntaxAnnotation("LineNo", (block.GetLocation().GetLineSpan().EndLinePosition.Line + 1).ToString())
+                                    ),
+                                    null, _varProcessor.VariableValues()));
                         break;
 
                     case UsingStatementSyntax usingStmt:
