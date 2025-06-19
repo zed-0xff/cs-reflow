@@ -1,6 +1,6 @@
 public class UnknownValueRanges : UnknownTypedValue
 {
-    readonly LongRangeSet _rangeSet = new();
+    readonly LongRangeSet _rangeSet = new(); // should be immutable!
 
     public UnknownValueRanges(TypeDB.IntInfo type, LongRangeSet rangeSet) : base(type)
     {

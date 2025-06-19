@@ -1,6 +1,6 @@
 public class UnknownValueRange : UnknownTypedValue
 {
-    public readonly LongRange Range;
+    public readonly LongRange Range; // immutable!
 
     public UnknownValueRange(TypeDB.IntInfo type, LongRange? range = null) : base(type)
     {
