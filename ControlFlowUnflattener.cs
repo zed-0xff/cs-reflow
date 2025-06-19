@@ -225,7 +225,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         foreach (var varName in vars)
         {
-            setSwitchVar(varName, true);
+            setSwitchVar(varName);
         }
     }
 
@@ -912,9 +912,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _varProcessor.IsSwitchVar(varName);
     }
 
-    void setSwitchVar(string varName, bool isSwitch = true)
+    void setSwitchVar(string varName)
     {
-        _varProcessor.SetSwitchVar(varName, isSwitch);
+        _varProcessor.SetSwitchVar(varName);
     }
 
     public void trace_statements_inline(StatementSyntax stmt)
@@ -1328,7 +1328,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         VarDict diffVars = (VarDict)_condStates[lineno][^3].vars.Clone();
         foreach (var state in states.Skip(1))
         {
-            foreach (var kv in state.vars)
+            foreach (var kv in state.vars.ReadOnlyDict)
             {
                 if (diffVars.TryGetValue(kv.Key, out var val))
                 {
@@ -1338,14 +1338,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
         }
         var emptyObject = default(object);
-        foreach (var kv in diffVars)
+        foreach (var key in diffVars.ReadOnlyDict
+                .Where(kv => kv.Value == null || kv.Value.Equals(emptyObject))
+                .Select(kv => kv.Key)
+                .ToList())
         {
-            if (kv.Value == null || (kv.Value != null && kv.Equals(emptyObject)))
-                diffVars.Remove(kv.Key);
+            diffVars.Remove(key);
         }
+
         foreach (var state in states)
         {
-            var stateDiffVars = state.vars.Where(kv => diffVars.ContainsKey(kv.Key)).ToList();
+            var stateDiffVars = state.vars.ReadOnlyDict.Where(kv => diffVars.ContainsKey(kv.Key)).ToList();
             Console.WriteLine($"[d] {state.lineno}: {String.Join(", ", stateDiffVars.Select(kv => $"{kv.Key}={kv.Value}"))}");
         }
         throw new Exception($"Loop var not found at line {lineno}");
@@ -1362,7 +1365,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             return new();
 
         // Initialize the common variable set from the first state
-        var baseVars = new Dictionary<string, object>(states[0].vars);
+        var baseVars = states[0].vars.ShallowClone();
 
         foreach (var state in states.Skip(1))
         {
@@ -1904,11 +1907,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
 
         var collector = new ControlFlowTreeCollector();
-        collector.Process(body);
+        collector.Process(body!);
         _flowRoot = collector.Root;
         _flowDict = collector.Root.ToDictionary();
 
-        BlockSyntax body2;
+        BlockSyntax? body2;
 
         if (Reflow)
         {
@@ -1919,7 +1922,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (MoveDeclarations)
         {
             body2 = tracker.MoveDeclarations(body) as BlockSyntax;
-            if (!body2.IsEquivalentTo(body))
+            if (!body2!.IsEquivalentTo(body))
                 body = body.ReplaceAndGetNewNode(body2);
         }
 

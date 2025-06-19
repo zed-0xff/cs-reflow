@@ -143,7 +143,7 @@ public partial class VarProcessor
             if (value is IntConstExpr ice2)
                 value = ice2.Value; // int
 
-            variableValues[varName] = value;
+            variableValues.Set(varName, value);
         }
 
         object cast_var(dynamic value, string toType)
@@ -296,13 +296,13 @@ public partial class VarProcessor
                         if (variableValues.TryGetValue(varName, out var varValue))
                         {
                             if (varValue is UnknownTypedValue utv)
-                                variableValues[varName] = UnknownValue.Create(utv.type);
+                                variableValues.Set(varName, UnknownValue.Create(utv.type));
                             else
-                                variableValues[varName] = UnknownValue.Create(varValue?.GetType());
+                                variableValues.Set(varName, UnknownValue.Create(varValue?.GetType()));
                         }
                         else
                         {
-                            variableValues[varName] = UnknownValue.Create();
+                            variableValues.Set(varName, UnknownValue.Create());
                         }
                         throw;
                     }
@@ -475,7 +475,7 @@ public partial class VarProcessor
                         string varName = id.Identifier.Text;
                         VarsWritten.Add(varName);
                         VarsRead.Add(varName);
-                        variableValues[varName] = retValue;
+                        variableValues.Set(varName, retValue);
                         break;
                     case LiteralExpressionSyntax num:
                         Logger.warn_once($"Prefix operator '{expr.TitleWithLineNo()}' on literal '{num}'. Returning {retValue}");
@@ -525,7 +525,7 @@ public partial class VarProcessor
                 string varName = id.Identifier.Text;
                 VarsWritten.Add(varName);
                 VarsRead.Add(varName);
-                variableValues[varName] = newValue;
+                variableValues.Set(varName, newValue);
             }
             else
             {

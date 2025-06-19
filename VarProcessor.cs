@@ -20,29 +20,29 @@ public partial class VarProcessor : ICloneable
 
     static VarProcessor()
     {
-        Constants["string.Empty"] = string.Empty;
-        Constants["int.MinValue"] = int.MinValue;
-        Constants["int.MaxValue"] = int.MaxValue;
-        Constants["uint.MinValue"] = uint.MinValue;
-        Constants["uint.MaxValue"] = uint.MaxValue;
+        Constants.Set("string.Empty", string.Empty);
+        Constants.Set("int.MinValue", int.MinValue);
+        Constants.Set("int.MaxValue", int.MaxValue);
+        Constants.Set("uint.MinValue", uint.MinValue);
+        Constants.Set("uint.MaxValue", uint.MaxValue);
 
-        Constants["Png_a7cb.BZh"] = 0x00685a42;
-        Constants["Png_e0d5.IDAT"] = 0x54414449;
-        Constants["Png_e0d5.IEND"] = 0x444e4549;
-        Constants["Png_e0d5.IHDR"] = 0x52444849;
-        Constants["Png_e0d5.PLTE"] = 0x45544c50;
-        Constants["Png_e0d5.QRR"] = 0x00525251;
-        Constants["Png_e0d5.tRNS"] = 0x534e5274;
+        Constants.Set("Png_a7cb.BZh", 0x00685a42);
+        Constants.Set("Png_e0d5.IDAT", 0x54414449);
+        Constants.Set("Png_e0d5.IEND", 0x444e4549);
+        Constants.Set("Png_e0d5.IHDR", 0x52444849);
+        Constants.Set("Png_e0d5.PLTE", 0x45544c50);
+        Constants.Set("Png_e0d5.QRR", 0x00525251);
+        Constants.Set("Png_e0d5.tRNS", 0x534e5274);
 
-        Constants["Structs_a7cb.BZh"] = 0x00685a42;
-        Constants["Structs_e0d5.IDAT"] = 0x54414449;
-        Constants["Structs_e0d5.IEND"] = 0x444e4549;
-        Constants["Structs_e0d5.IHDR"] = 0x52444849;
-        Constants["Structs_e0d5.PLTE"] = 0x45544c50;
-        Constants["Structs_e0d5.QRR"] = 0x00525251;
-        Constants["Structs_e0d5.tRNS"] = 0x534e5274;
+        Constants.Set("Structs_a7cb.BZh", 0x00685a42);
+        Constants.Set("Structs_e0d5.IDAT", 0x54414449);
+        Constants.Set("Structs_e0d5.IEND", 0x444e4549);
+        Constants.Set("Structs_e0d5.IHDR", 0x52444849);
+        Constants.Set("Structs_e0d5.PLTE", 0x45544c50);
+        Constants.Set("Structs_e0d5.QRR", 0x00525251);
+        Constants.Set("Structs_e0d5.tRNS", 0x534e5274);
 
-        Constants["Type.EmptyTypes.LongLength"] = Type.EmptyTypes.LongLength;
+        Constants.Set("Type.EmptyTypes.LongLength", Type.EmptyTypes.LongLength);
     }
 
     public object Clone()
@@ -69,7 +69,7 @@ public partial class VarProcessor : ICloneable
                 _caller = caller;
                 _processor = processor;
                 _node = node;
-                _original = processor._vars
+                _original = processor._vars.ReadOnlyDict
                     .Where(kvp => processor._traceVars.ContainsKey(kvp.Key))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
@@ -117,8 +117,8 @@ public partial class VarProcessor : ICloneable
 
     public VarDict VariableValues() => _vars;
     public bool IsSwitchVar(string varName) => _vars.IsSwitchVar(varName);
-    public void SetSwitchVar(string varName, bool value = true) => _vars.SetSwitchVar(varName, value);
-    public void SetLoopVar(string varName, bool value = true) => _vars.SetLoopVar(varName, value);
+    public void SetSwitchVar(string varName) => _vars.SetSwitchVar(varName);
+    public void SetLoopVar(string varName) => _vars.SetLoopVar(varName);
 
     public void TraceVars(List<string> vars)
     {
@@ -201,7 +201,7 @@ public partial class VarProcessor : ICloneable
 
     public void SetVar(string name, object? value)
     {
-        _vars[name] = value;
+        _vars.Set(name, value);
     }
 
     public object? GetVar(string name)
@@ -222,7 +222,7 @@ public partial class VarProcessor : ICloneable
             }
             else
             {
-                _vars[v.Identifier.ValueText] = UnknownValue.Create(decl.Declaration.Type);
+                _vars.Set(v.Identifier.ValueText, UnknownValue.Create(decl.Declaration.Type));
             }
         }
     }
