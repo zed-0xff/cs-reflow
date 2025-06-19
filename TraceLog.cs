@@ -271,13 +271,17 @@ public class TraceLog
 
     public BlockSyntax ToBlock(int start = 0, int count = -1)
     {
+        Logger.debug($"start = {start}, count = {count}, entries.Count = {entries.Count}", "TraceLog.ToBlock");
         if (count == -1)
             count = entries.Count - start;
 
-        return Block(entries
-                .GetRange(start, count)
-                .Select(e => e.stmt)
-                );
+        if (count == 0)
+            return Block();
+
+        return Block(entries.GetRange(start, count).Select(e => e.stmt))
+            .WithAdditionalAnnotations(
+                    new SyntaxAnnotation("LineNo", entries[start].stmt.LineNo().ToString())
+                    );
     }
 
     public void Print(
