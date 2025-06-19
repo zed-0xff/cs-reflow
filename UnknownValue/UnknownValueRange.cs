@@ -274,8 +274,10 @@ public class UnknownValueRange : UnknownTypedValue
     {
         return right switch
         {
-            UnknownValueRange r => Range.IntersectsWith(r.Range),
+            UnknownValueBits b => b.IntersectsWith(this), // TODO: test
             UnknownValueList l => l.Values().Any(v => Range.Contains(v)),
+            UnknownValueRange r => Range.IntersectsWith(r.Range),
+            UnknownValueRanges rr => rr.IntersectsWith(this),
             _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
         };
     }

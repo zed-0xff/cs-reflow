@@ -188,10 +188,35 @@ public partial class VarProcessor
                 object result = EvaluateExpression_(expr);
                 if (Verbosity > 0 || Logger.HasTag("EvaluateExpression"))
                 {
-                    if (Verbosity > 1)
-                        Console.Error.WriteLine($"[EvaluateExpression] {expr} => ({result?.GetType()}) {result}");
-                    else
-                        Console.Error.WriteLine($"[EvaluateExpression] {expr} => {result}");
+                    Console.Error.WriteColor($"[EvaluateExpression] ", ConsoleColor.DarkGray);
+                    Console.Error.Write($"{expr,-50}");
+                    Console.Error.WriteColor(" => ", ConsoleColor.DarkGray);
+                    switch (result)
+                    {
+                        case UnknownValue:
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            break;
+                        case UnknownTypedValue utv:
+                            Console.ForegroundColor = utv.Cardinality() == 1 ? ConsoleColor.Green : ConsoleColor.Yellow;
+                            break;
+                        default:
+                            Console.ForegroundColor = ConsoleColor.DarkGreen;
+                            break;
+                    }
+                    if (Verbosity > 1) Console.Error.Write($"({result?.GetType()}) ");
+                    switch (result)
+                    {
+                        case IntConstExpr ice:
+                            Console.Error.WriteLine($"{ice.Value,-11} (0x{ice.Value:X})");
+                            break;
+                        case int i:
+                            Console.Error.WriteLine($"{i,-11} (0x{i:X})");
+                            break;
+                        default:
+                            Console.Error.WriteLine($"{result}");
+                            break;
+                    }
+                    Console.ResetColor();
                 }
                 return result;
             }

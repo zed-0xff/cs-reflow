@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Collections.Generic;
@@ -307,9 +308,7 @@ class Program
 
             if (!string.IsNullOrEmpty(opts.expr))
             {
-                VarProcessor processor = new();
-                processor.Verbosity = 3;
-                processor.EvaluateExpression(SyntaxFactory.ParseExpression(opts.expr));
+                ProcessCmdLineExpr(opts);
                 return;
             }
             else if (string.IsNullOrEmpty(opts.filename))
@@ -444,5 +443,27 @@ class Program
         }); // rootCommand.SetHandler
 
         return rootCommand.Invoke(args);
+    }
+
+    static void ProcessCmdLineExpr(Options opts)
+    {
+        var tree = CSharpSyntaxTree.ParseText(opts.expr);
+        if (opts.printTree)
+        {
+            var printer = new SyntaxTreePrinter(tree);
+            printer.Verbosity = opts.verbosity;
+            printer.Print();
+        }
+        else
+        {
+            VarProcessor processor = new();
+            processor.Verbosity = opts.verbosity;
+            object? result = null;
+            foreach (var stmt in tree.GetRoot().DescendantNodes().OfType<GlobalStatementSyntax>())
+            {
+                result = processor.EvaluateExpression(stmt.Statement);
+            }
+            Console.WriteLine($"{result}");
+        }
     }
 }

@@ -28,6 +28,8 @@ public abstract class UnknownValueBase
 
     public abstract bool Contains(long value);
 
+    public object? Tag = null;
+
     public static object LogicalOr(object left, object right)
     {
         if (left is bool lb && lb)

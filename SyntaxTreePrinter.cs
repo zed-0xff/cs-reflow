@@ -22,6 +22,12 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         }
     }
 
+    public SyntaxTreePrinter(SyntaxTree tree)
+    {
+        this.tree = tree;
+        this.root = tree.GetRoot();
+    }
+
     public SyntaxTreePrinter(string code)
     {
         tree = CSharpSyntaxTree.ParseText(code);
