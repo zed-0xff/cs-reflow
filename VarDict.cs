@@ -15,9 +15,9 @@ public class VarDict
 
     public IReadOnlyDictionary<string, object?> ReadOnlyDict => new ReadOnlyDictionary<string, object?>(_values);
 
-    public object? this[string index]
+    public object? this[string varName]
     {
-        get => _values.TryGetValue(index, out var value) ? value : UnknownValue.Create();
+        get => _values.TryGetValue(varName, out var value) ? value : UnknownValue.Create().WithTag(varName);
     }
 
     public IEnumerable<string> Keys => _values.Keys;
@@ -28,6 +28,8 @@ public class VarDict
 
     public void Set(string varName, object? value)
     {
+        if (value is UnknownValueBase unk)
+            value = unk.WithTag(varName);
         _values[varName] = value;
     }
 

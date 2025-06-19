@@ -167,7 +167,7 @@ public class UnknownValueRangeTests
     public void Test_int_mul_zero()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        Assert.Equal(new UnknownValueList(TypeDB.Int, new List<long> { 0 }), a.Mul(0));
+        Assert.Equal(new UnknownValueSet(TypeDB.Int, new List<long> { 0 }), a.Mul(0));
     }
 
     [Fact]

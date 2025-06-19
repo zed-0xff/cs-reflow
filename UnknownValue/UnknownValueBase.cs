@@ -1,7 +1,23 @@
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis;
 
 public abstract class UnknownValueBase
 {
+    protected object? _tag { get; init; } = null;
+
+    protected string TagStr()
+    {
+        return _tag switch
+        {
+            null => string.Empty,
+            string s => $"`{s}",
+            SyntaxAnnotation sa => $"`{sa.Data}",
+            _ => $"`{_tag}"
+        };
+    }
+
+    public abstract UnknownValueBase WithTag(object? tag);
+
     public abstract override string ToString();
     public abstract object Cast(TypeDB.IntInfo toType);
     public abstract long Cardinality();
@@ -27,8 +43,6 @@ public abstract class UnknownValueBase
     public abstract object Lt(object right);
 
     public abstract bool Contains(long value);
-
-    public readonly object? Tag = null;
 
     public static object LogicalOr(object left, object right)
     {

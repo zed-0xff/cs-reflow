@@ -3,9 +3,26 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 public class UnknownValue : UnknownValueBase
 {
+    public class Builder
+    {
+        private readonly object? _tag;
+
+        public Builder(object? tag)
+        {
+            _tag = tag;
+        }
+
+        public UnknownValueBase Create()
+        {
+            return new UnknownValue { _tag = _tag };
+        }
+    }
+
     public UnknownValue()
     {
     }
+
+    //public static Builder WithTag(object? tag) => new Builder(tag);
 
     public static UnknownValueBase Create() => new UnknownValue();
     public static UnknownValueBase Create(string type)
@@ -20,12 +37,11 @@ public class UnknownValue : UnknownValueBase
     public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
     public static UnknownValueBase Create(TypeDB.IntInfo type) => UnknownTypedValue.Create(type);
 
+    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new() { _tag = tag };
+
     public override UnknownValueBase Cast(TypeDB.IntInfo toType) => Create(toType);
 
-    public override string ToString()
-    {
-        return "UnknownValue";
-    }
+    public override string ToString() => "UnknownValue" + TagStr();
 
     public override bool Contains(long value) => true;
 

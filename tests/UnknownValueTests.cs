@@ -22,6 +22,12 @@ public class UnknownValueTests
     {
         UnknownValue a = new();
         Assert.Equal("UnknownValue", a.ToString());
+
+        var b = a.WithTag("test");
+        Assert.Equal("UnknownValue`test", b.ToString());
+
+        var c = b.WithTag(null);
+        Assert.Equal("UnknownValue", c.ToString());
     }
 
     [Fact]
@@ -60,11 +66,11 @@ public class UnknownValueTests
         b = b?.Mod(1949u);
         Assert.Equal("UnknownValue<uint>[0..1948]", b?.ToString());
         b = b?.Xor(0x70EF1C76);
-        Assert.Equal("UnknownValueList<uint>[1949]", b?.ToString());
+        Assert.Equal("UnknownValueSet<uint>[1949]", b?.ToString());
         b = b?.Mul(2048);
-        Assert.Equal("UnknownValueList<uint>[1949]", b?.ToString());
+        Assert.Equal("UnknownValueSet<uint>[1949]", b?.ToString());
         b = b?.Cast(TypeDB.Int) as UnknownValueBase;
-        Assert.Equal("UnknownValueList<int>[1949]", b?.ToString());
+        Assert.Equal("UnknownValueSet<int>[1949]", b?.ToString());
         Assert.Equal(2025848832, b?.Min());
         Assert.Equal(2030041088, b?.Max());
 

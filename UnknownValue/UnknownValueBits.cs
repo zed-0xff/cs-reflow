@@ -24,6 +24,8 @@ public class UnknownValueBits : UnknownTypedValue
         _bits = new(bits);
     }
 
+    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bits) { _tag = tag };
+
     public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
         var _bits = new sbyte[type.nbits];
@@ -307,7 +309,7 @@ public class UnknownValueBits : UnknownTypedValue
                 var newMask = mask1 & mask2;
                 return new UnknownValueBits(type, op(val1, val2), newMask);
 
-            case UnknownValueList otherList:
+            case UnknownValueSet otherList:
                 if (Cardinality() > MAX_DISCRETE_CARDINALITY)
                     return UnknownValue.Create(type);
 
@@ -321,7 +323,7 @@ public class UnknownValueBits : UnknownTypedValue
                             return UnknownValue.Create(type);
                     }
                 }
-                return new UnknownValueList(type, newValues.OrderBy(x => x).ToList());
+                return new UnknownValueSet(type, newValues.OrderBy(x => x).ToList());
         }
 
         return calc_asym(op, right, identity, id_val);
@@ -361,7 +363,7 @@ public class UnknownValueBits : UnknownTypedValue
     public override UnknownValueBase Xor(object right)
     {
         if (right == this) // '==' and not 'equals' because we want to use the same instance
-            return new UnknownValueList(type, new List<long> { 0 });
+            return new UnknownValueSet(type, new List<long> { 0 });
 
         if (TryConvertToLong(right, out long l))
         {
@@ -387,7 +389,7 @@ public class UnknownValueBits : UnknownTypedValue
     {
         if (TryConvertToLong(right, out long l))
         {
-            if (l == 0) return new UnknownValueList(type, new List<long> { 0 });
+            if (l == 0) return new UnknownValueSet(type, new List<long> { 0 });
             if (l == 1) return this;
 
             var (minMask, val) = MaskVal(true);
@@ -409,13 +411,13 @@ public class UnknownValueBits : UnknownTypedValue
     public override UnknownValueBase Mod(object right)
     {
         if (right == this)
-            return new UnknownValueList(type, new List<long> { 0 });
+            return new UnknownValueSet(type, new List<long> { 0 });
 
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
 
         if (l == 1)
-            return new UnknownValueList(type, new List<long> { 0 });
+            return new UnknownValueSet(type, new List<long> { 0 });
 
         if (l <= 0)
             return UnknownValue.Create();

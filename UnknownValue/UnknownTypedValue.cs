@@ -114,7 +114,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     {
         if (TryConvertToLong(right, out long l))
         {
-            if (l == 0) return new UnknownValueList(type, new List<long> { 0 });
+            if (l == 0) return new UnknownValueSet(type, new List<long> { 0 });
             if (l == 1) return this;
 
             if (Cardinality() > MAX_DISCRETE_CARDINALITY && TryGetTailPow2(l, out int pow2))
@@ -127,7 +127,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (TryConvertToLong(right, out l))
-            return new UnknownValueList(type, Values().Select(v => MaskWithSign(v * l)));
+            return new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l)));
 
         if (right is not UnknownTypedValue ru)
             return UnknownValue.Create(type);
@@ -145,7 +145,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             }
         }
 
-        return new UnknownValueList(type, values.OrderBy(x => x).ToList());
+        return new UnknownValueSet(type, values.OrderBy(x => x).ToList());
     }
 
     public override object Cast(TypeDB.IntInfo toType)
@@ -171,7 +171,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueList(type, Values().Select(v => v & mask));
+            return new UnknownValueSet(type, Values().Select(v => v & mask));
 
         return UnknownValueBits.CreateFromAnd(type, mask);
     }
@@ -182,7 +182,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return UnknownValue.Create(type);
 
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueList(type, Values().Select(v => v | mask));
+            return new UnknownValueSet(type, Values().Select(v => v | mask));
 
         return UnknownValueBits.CreateFromOr(type, mask);
     }
@@ -199,7 +199,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (resultCardinality > MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
-        return new UnknownValueList(type,
+        return new UnknownValueSet(type,
                 Values()
                 .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
     }

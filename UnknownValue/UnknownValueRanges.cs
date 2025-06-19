@@ -17,6 +17,8 @@ public class UnknownValueRanges : UnknownTypedValue
         _rangeSet.Add(ranges);
     }
 
+    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _rangeSet) { _tag = tag };
+
     public override bool Equals(object obj)
     {
         if (obj is UnknownValueRanges r)
@@ -164,7 +166,7 @@ public class UnknownValueRanges : UnknownTypedValue
         if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
-        return new UnknownValueList(type, Values().Select(v => v ^ l));
+        return new UnknownValueSet(type, Values().Select(v => v ^ l));
     }
 
     public override UnknownValueBase Negate()
@@ -220,7 +222,7 @@ public class UnknownValueRanges : UnknownTypedValue
         {
             UnknownValueRange r => _rangeSet.Ranges.Any(range => range.IntersectsWith(r.Range)),
             UnknownValueRanges rr => _rangeSet.Ranges.Any(range => rr._rangeSet.Ranges.Any(r2 => range.IntersectsWith(r2))),
-            UnknownValueList l => l.Values().Any(v => Contains(v)),
+            UnknownValueSet l => l.Values().Any(v => Contains(v)),
             _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
         };
     }

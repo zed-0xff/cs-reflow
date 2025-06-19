@@ -63,7 +63,15 @@ public partial class VarProcessor
         object ProcessLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
         {
             if (Verbosity > 2)
+            {
                 Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: {localDeclaration}");
+                if (Verbosity > 3)
+                {
+                    Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: .Declaration = {localDeclaration.Declaration}");
+                    Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: .Declaration.Type = {localDeclaration.Declaration.Type}");
+                    Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: .Declaration.Variables = {localDeclaration.Declaration.Variables}");
+                }
+            }
 
             // Extract the variable declaration
             var decl = localDeclaration.Declaration.Variables.First();
@@ -71,6 +79,10 @@ public partial class VarProcessor
 
             // Get the variable name (e.g., "num3")
             string varName = decl.Identifier.Text;
+
+            if (string.IsNullOrEmpty(varName))
+                throw new NotSupportedException($"Empty variable name in: {localDeclaration}");
+
             VarsWritten.Add(varName);
 
             // Extract the right-hand side expression (e.g., "(num4 = (uint)(num2 ^ 0x76ED016F))")
@@ -100,11 +112,23 @@ public partial class VarProcessor
                 }
             }
 
+            if (Verbosity > 3)
+                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: varName={varName} value={value}");
+
+            if (value is UnknownValueBase unk)
+                value = unk.WithTag(varName);
+
+            if (Verbosity > 3)
+                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: varName={varName} value={value}");
+
             // do not overwrite existing variable values if initializerExpression is null
             if (initializerExpression != null || !variableValues.ContainsKey(varName))
             {
                 setVar(varName, value);
             }
+
+            if (Verbosity > 3)
+                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: varName={varName} value={value}");
 
             // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
             return variableValues[varName];
@@ -138,6 +162,9 @@ public partial class VarProcessor
                         break;
                 }
             }
+
+            if (value is UnknownValueBase unk)
+                value = unk.WithTag(varName);
 
             // both after previous if/switch or if the variable does not exist
             if (value is IntConstExpr ice2)

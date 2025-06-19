@@ -12,6 +12,8 @@ public class UnknownValueRange : UnknownTypedValue
         Range = new LongRange(min, max);
     }
 
+    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
+
     public override bool Equals(object obj)
     {
         if (obj is UnknownValueRange r)
@@ -136,7 +138,7 @@ public class UnknownValueRange : UnknownTypedValue
         if (Cardinality() < MAX_DISCRETE_CARDINALITY)
         {
             int iShift = (int)l;
-            return new UnknownValueList(type, Values().Select(v => MaskWithSign(v << iShift)));
+            return new UnknownValueSet(type, Values().Select(v => MaskWithSign(v << iShift)));
         }
 
         List<long> values = new List<long>((int)shiftedCardinality);
@@ -163,7 +165,7 @@ public class UnknownValueRange : UnknownTypedValue
             }
         }
 
-        return new UnknownValueList(type, values);
+        return new UnknownValueSet(type, values);
     }
 
     public override UnknownValueRange SignedShiftRight(object right) // '>>'
@@ -230,7 +232,7 @@ public class UnknownValueRange : UnknownTypedValue
         if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
-        return new UnknownValueList(type, Values().Select(v => v ^ l));
+        return new UnknownValueSet(type, Values().Select(v => v ^ l));
     }
 
     public override UnknownValueBase Negate()
@@ -258,13 +260,7 @@ public class UnknownValueRange : UnknownTypedValue
         return Range.Max - Range.Min + 1; // because both are inclusive
     }
 
-    public override string ToString()
-    {
-        if (IsFullRange())
-            return $"UnknownValue<{type}>";
-        else
-            return $"UnknownValue<{type}>{Range}";
-    }
+    public override string ToString() => $"UnknownValue<{type}>" + (IsFullRange() ? "" : Range.ToString()) + TagStr();
 
     public override bool Contains(long value) => Range.Contains(value);
 
@@ -275,7 +271,7 @@ public class UnknownValueRange : UnknownTypedValue
         return right switch
         {
             UnknownValueBits b => b.IntersectsWith(this), // TODO: test
-            UnknownValueList l => l.Values().Any(v => Range.Contains(v)),
+            UnknownValueSet l => l.Values().Any(v => Range.Contains(v)),
             UnknownValueRange r => Range.IntersectsWith(r.Range),
             UnknownValueRanges rr => rr.IntersectsWith(this),
             _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
