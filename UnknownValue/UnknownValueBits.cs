@@ -2,6 +2,10 @@ using System.Collections.ObjectModel;
 
 public class UnknownValueBits : UnknownTypedValue
 {
+    private const sbyte ANY = -1;
+    private const sbyte ONE = 1;
+    private const sbyte ZERO = 0;
+
     readonly ReadOnlyCollection<sbyte> _bits;
 
     public ReadOnlyCollection<sbyte> Bits => _bits;
@@ -18,7 +22,7 @@ public class UnknownValueBits : UnknownTypedValue
         {
             if ((mask & (1L << i)) != 0)
             {
-                bits[i] = (sbyte)((val & (1L << i)) != 0 ? 1 : 0);
+                bits[i] = (sbyte)((val & (1L << i)) != 0 ? ONE : ZERO);
             }
         }
         _bits = new(bits);
@@ -30,7 +34,7 @@ public class UnknownValueBits : UnknownTypedValue
     {
         var _bits = new sbyte[type.nbits];
         for (int i = 0; i < type.nbits; i++)
-            _bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? -1 : 0);
+            _bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? ANY : ZERO);
         return new UnknownValueBits(type, _bits);
     }
 
@@ -38,14 +42,14 @@ public class UnknownValueBits : UnknownTypedValue
     {
         var _bits = new sbyte[type.nbits];
         for (int i = 0; i < type.nbits; i++)
-            _bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? 1 : -1);
+            _bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? ONE : ANY);
         return new UnknownValueBits(type, _bits);
     }
 
     List<sbyte> init(IEnumerable<sbyte>? bits)
     {
         if (bits == null)
-            bits = Enumerable.Repeat<sbyte>(-1, type.nbits);
+            bits = Enumerable.Repeat<sbyte>(ANY, type.nbits);
 
         if (bits.Count() != type.nbits)
             throw new ArgumentException($"Expected {type.nbits} _bits, but got {bits.Count()} _bits.");
@@ -57,13 +61,13 @@ public class UnknownValueBits : UnknownTypedValue
     {
         string result = $"UnknownValueBits<{type}>[";
         int start = type.nbits - 1;
-        while (start >= 0 && _bits[start] == -1)
+        while (start >= 0 && _bits[start] == ANY)
         {
             start--;
         }
         for (int i = start; i >= 0; i--)
         {
-            result += _bits[i] == -1 ? "_" : _bits[i].ToString();
+            result += _bits[i] == ANY ? "_" : _bits[i].ToString();
         }
 
         result += "]";
@@ -85,7 +89,7 @@ public class UnknownValueBits : UnknownTypedValue
         long val = 0;
         for (int i = 0; i < type.nbits; i++)
         {
-            if (_bits[i] != -1)
+            if (_bits[i] != ANY)
             {
                 mask |= 1L << i;
                 val |= (long)_bits[i] << i;
@@ -131,7 +135,7 @@ public class UnknownValueBits : UnknownTypedValue
         long cardinality = 1;
         for (int i = 0; i < type.nbits; i++)
         {
-            if (_bits[i] == -1)
+            if (_bits[i] == ANY)
             {
                 cardinality *= 2;
             }
@@ -147,7 +151,7 @@ public class UnknownValueBits : UnknownTypedValue
         List<int> floatingBits = new();
         for (int i = 0; i < _bits.Count; i++)
         {
-            if (_bits[i] == -1)
+            if (_bits[i] == ANY)
                 floatingBits.Add(i);
         }
 
@@ -170,7 +174,7 @@ public class UnknownValueBits : UnknownTypedValue
     public override long Min()
     {
         var (mask, val) = MaskVal();
-        if (type.signed && _bits[type.nbits - 1] == -1)
+        if (type.signed && _bits[type.nbits - 1] == ANY)
         {
             long sign_bit = (1L << (type.nbits - 1));
             return extend_sign(val | sign_bit);
@@ -184,7 +188,7 @@ public class UnknownValueBits : UnknownTypedValue
     public override long Max()
     {
         var (mask, val) = MaskVal();
-        if (type.signed && _bits[type.nbits - 1] == -1)
+        if (type.signed && _bits[type.nbits - 1] == ANY)
         {
             long sign_bit = (1L << (type.nbits - 1));
             long type_mask_no_sign = sign_bit - 1;
@@ -217,7 +221,7 @@ public class UnknownValueBits : UnknownTypedValue
         List<sbyte> newBits = new(_bits);
         for (int i = 0; i < l; i++)
         {
-            newBits.Insert(0, 0);
+            newBits.Insert(0, ZERO);
             newBits.RemoveAt(_bits.Count - 1);
         }
         return new UnknownValueBits(type, newBits);
@@ -247,7 +251,7 @@ public class UnknownValueBits : UnknownTypedValue
         for (int i = 0; i < l; i++)
         {
             newBits.RemoveAt(0);
-            newBits.Add(0);
+            newBits.Add(ZERO);
         }
         return new UnknownValueBits(type, newBits);
     }
@@ -269,7 +273,7 @@ public class UnknownValueBits : UnknownTypedValue
         {
             if ((l & (1L << i)) == 0)
             {
-                newBits[i] = 0;
+                newBits[i] = ZERO;
             }
         }
         return new UnknownValueBits(type, newBits);
@@ -285,7 +289,7 @@ public class UnknownValueBits : UnknownTypedValue
         {
             if ((l & (1L << i)) != 0)
             {
-                newBits[i] = 1;
+                newBits[i] = ONE;
             }
         }
         return new UnknownValueBits(type, newBits);
@@ -337,12 +341,12 @@ public class UnknownValueBits : UnknownTypedValue
         if (TryConvertToLong(right, out long l))
         {
             // bitwise add until carry to unknown bit
-            var newBits = Enumerable.Repeat<sbyte>(-1, type.nbits).ToList();
+            var newBits = Enumerable.Repeat<sbyte>(ANY, type.nbits).ToList();
             sbyte carry = 0;
             for (int i = 0; i < type.nbits; i++, l >>= 1)
             {
                 var add = carry + (l & 1);
-                if (_bits[i] == -1)
+                if (_bits[i] == ANY)
                 {
                     if (add != 0)
                         break;
@@ -350,7 +354,7 @@ public class UnknownValueBits : UnknownTypedValue
                 else
                 {
                     var sum = _bits[i] + add;
-                    newBits[i] = (sbyte)(sum & 1);
+                    newBits[i] = (sum & 1) == 1 ? ONE : ZERO;
                     carry = (sbyte)(sum >> 1);
                 }
             }
@@ -372,7 +376,7 @@ public class UnknownValueBits : UnknownTypedValue
             int i = 0;
             while (l != 0 && i < type.nbits)
             {
-                if (newBits[i] != -1)
+                if (newBits[i] != ANY)
                 {
                     newBits[i] ^= (sbyte)(l & 1);
                 }
@@ -457,7 +461,7 @@ public class UnknownValueBits : UnknownTypedValue
         return other switch
         {
             // TODO: narrower range with new class, that contains a list of UnknownValueBase
-            UnknownValueBits otherBits => new UnknownValueBits(type, _bits.Zip(otherBits._bits, (b1, b2) => (sbyte)(b1 == b2 ? b1 : -1)).ToList()),
+            UnknownValueBits otherBits => new UnknownValueBits(type, _bits.Zip(otherBits._bits, (b1, b2) => (sbyte)(b1 == b2 ? b1 : ANY)).ToList()),
             _ => base.Merge(other)
         };
     }
