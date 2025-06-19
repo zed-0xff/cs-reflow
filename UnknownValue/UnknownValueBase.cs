@@ -28,7 +28,7 @@ public abstract class UnknownValueBase
 
     public abstract bool Contains(long value);
 
-    public object? Tag = null;
+    public readonly object? Tag = null;
 
     public static object LogicalOr(object left, object right)
     {

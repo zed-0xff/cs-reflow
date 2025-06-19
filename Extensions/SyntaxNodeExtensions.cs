@@ -64,32 +64,21 @@ public static class SyntaxNodeExtensions
         return null;
     }
 
-    public static T ReplaceAndGetNewNode<T>(this SyntaxNode oldNode, T newNode)
-        where T : SyntaxNode
+    public static BlockSyntax ReplaceWith(this BlockSyntax? oldNode, SyntaxNode? newNode)
     {
+        if (oldNode == null)
+            throw new ArgumentNullException(nameof(oldNode));
+        if (newNode == null)
+            throw new ArgumentNullException(nameof(newNode));
+
         var annotation = new SyntaxAnnotation();
         var annotatedNewNode = newNode.WithAdditionalAnnotations(annotation);
 
         var oldRoot = oldNode.SyntaxTree.GetCompilationUnitRoot();
         var newRoot = oldRoot.ReplaceNode(oldNode, annotatedNewNode);
 
-        return newRoot.GetAnnotatedNodes(annotation).OfType<T>().First();
+        return newRoot.GetAnnotatedNodes(annotation).OfType<BlockSyntax>().First();
     }
-
-    // dosent work as expected
-    //
-    // public static T ReplaceAndGetNewNode<T>(T oldNode, T newNode)
-    //     where T : SyntaxNode
-    //     {
-    //         var root = oldNode.SyntaxTree.GetCompilationUnitRoot();
-    //         var newRoot = root.TrackNodes(oldNode).ReplaceNode(oldNode, newNode);
-    //
-    //         var updatedNode = newRoot.GetCurrentNode(oldNode);
-    //         if (updatedNode == null)
-    //             throw new InvalidOperationException("Updated node not found in new tree.");
-    //
-    //         return (T)updatedNode;
-    //     }
 
     public static bool IsSameVar(this SyntaxNode node1, SyntaxNode node2)
     {

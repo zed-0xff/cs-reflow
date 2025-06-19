@@ -146,11 +146,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     abstract class FlowException : Exception
     {
         public readonly int lineno;
-        public readonly SyntaxNode node;
+        public readonly SyntaxNode? node;
+
         public FlowException(int lineno, string message) : base(message)
         {
             this.lineno = lineno;
         }
+
         public FlowException(SyntaxNode node, string message) : base(message)
         {
             this.node = node;
@@ -1725,8 +1727,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .SelectMany(ld => ld.Declaration.Variables))
         {
             var key = variable.GetAnnotations("VAR").First().Data;
-            var value = variable.Parent as VariableDeclarationSyntax;
+            if (key == null)
+                throw new ArgumentException($"Local variable '{variable.Identifier}' has no 'VAR' annotation data");
 
+            var value = variable.Parent as VariableDeclarationSyntax;
             if (localDecls0.TryGetValue(key, out var existingDecl))
             {
                 if (existingDecl.Type.ToString() != value?.Type.ToString())
@@ -1776,13 +1780,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         var labels = block.DescendantNodes()
             .OfType<LabeledStatementSyntax>()
-            .Where(l => _flowDict.TryGetValue(l, out ControlFlowNode flowNode) && flowNode.keep && !flowNode.kept)
+            .Where(l => _flowDict.TryGetValue(l, out ControlFlowNode? flowNode) && flowNode.keep && !flowNode.kept)
             .ToList();
 
         foreach (var label in labels)
         {
             var lastStmt = getLastStmt(statements);
-            if (!lastStmt.IsTerminal())
+            if (lastStmt == null || !lastStmt.IsTerminal())
             {
                 log.Print();
                 throw new NotSupportedException($"Labeled statement at line {label.LineNo()} does not end with a terminal statement: {lastStmt}");
@@ -1823,14 +1827,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Logger.once($"[?] Identifier '{id}' has no 'VAR' annotation"); // TODO: check why
                 continue;
             }
-            string key = ann.Data;
+            string? key = ann.Data;
+            if (key == null)
+                throw new ArgumentException($"Identifier '{id}' has no 'VAR' annotation data");
+
             if (localDecls1.Contains(key))
                 continue;
             if (!localDecls0.TryGetValue(key, out var decl0))
                 continue;
 
             if (Verbosity > 0)
-                Console.Error.WriteLine($"[d] adding back decl \"{decl0.Type} {id};\" used at {id.Parent.TitleWithLineNo()}");
+                Console.Error.WriteLine($"[d] adding back decl \"{decl0.Type} {id};\" used at {id.Parent?.TitleWithLineNo()}");
             localDecls1.Add(key);
             newDecls.Add(
                     LocalDeclarationStatement(
@@ -1864,13 +1871,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             LabeledStatementSyntax labeledStmt => getLastStmt(labeledStmt.Statement),
             BlockSyntax block => getLastStmt(block.Statements.LastOrDefault()),
             StatementSyntax stmt => stmt,
-            _ => throw new ArgumentException($"Unsupported type: {obj.GetType()}", nameof(obj))
+            _ => throw new ArgumentException($"Unsupported type: {obj?.GetType()}", nameof(obj))
         };
     }
 
-    public string ReflowMethod(CSharpSyntaxNode methodNode)
+    public BlockSyntax GetMethodBody(CSharpSyntaxNode methodNode)
     {
-        BlockSyntax? body = methodNode switch
+        var body = methodNode switch
         {
             BaseMethodDeclarationSyntax baseMethod => baseMethod.Body,
             LocalFunctionStatementSyntax localFunc => localFunc.Body,
@@ -1881,14 +1888,21 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (body == null)
             throw new InvalidOperationException("Method body cannot be null.");
 
+        return body;
+    }
+
+    public string ReflowMethod(CSharpSyntaxNode methodNode)
+    {
+        BlockSyntax body = GetMethodBody(methodNode);
+
         // annotate body with original line numbers
-        body = body.ReplaceAndGetNewNode(new OriginalLineNoAnnotator().Visit(body) as BlockSyntax);
+        body = body.ReplaceWith(new OriginalLineNoAnnotator().Visit(body) as BlockSyntax);
 
         // collect all declarations from body prior to any processing
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
         var tracker = new VarTracker();
         var trackedBody = tracker.Track(body) as BlockSyntax;
-        body = body.ReplaceAndGetNewNode(trackedBody);
+        body = body.ReplaceWith(trackedBody);
 
         while (PreProcess)
         {
@@ -1900,7 +1914,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
             else
             {
-                body = body.ReplaceAndGetNewNode(
+                body = body.ReplaceWith(
                         body_.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true)
                         );
             }
@@ -1911,19 +1925,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _flowRoot = collector.Root;
         _flowDict = collector.Root.ToDictionary();
 
-        BlockSyntax? body2;
-
         if (Reflow)
         {
-            body2 = ReflowBlock(body, isMethod: true);
-            body = body.ReplaceAndGetNewNode(body2);
+            var body_ = ReflowBlock(body, isMethod: true);
+            body = body.ReplaceWith(body_);
         }
 
         if (MoveDeclarations)
         {
-            body2 = tracker.MoveDeclarations(body) as BlockSyntax;
-            if (!body2!.IsEquivalentTo(body))
-                body = body.ReplaceAndGetNewNode(body2);
+            var body_ = (BlockSyntax)tracker.MoveDeclarations(body);
+            if (!body_.IsEquivalentTo(body))
+                body = body.ReplaceWith(body_);
         }
 
         while (PostProcess)
@@ -1937,24 +1949,24 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
             }
 
-            body2 = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
+            var body2 = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varProcessor, body2);
             postProcessor.RemoveSwitchVars = RemoveSwitchVars;
-            var body3 = postProcessor.PostProcessAll(body2!); // removes empty finally{} after UnusedLocalsRemover removed some locals
+            var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
             if (body3.IsEquivalentTo(body))
             {
                 break;
             }
             else
             {
-                body = body.ReplaceAndGetNewNode(body3);
+                body = body.ReplaceWith(body3);
             }
         }
 
         if (ShowAnnotations)
         {
-            body2 = new VarTracker.ShowAnnotationsRewriter().Visit(body) as BlockSyntax;
-            body = body.ReplaceAndGetNewNode(body2!);
+            var body_ = new VarTracker.ShowAnnotationsRewriter().Visit(body);
+            body = body.ReplaceWith(body_);
         }
 
         SyntaxNode? newMethodNode = body;

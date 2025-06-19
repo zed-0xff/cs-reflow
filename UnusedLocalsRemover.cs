@@ -497,7 +497,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     }
 
     // node is typically 'method body' block, but can be any syntax node
-    public SyntaxNode Process(SyntaxNode node)
+    public BlockSyntax Process(BlockSyntax node)
     {
         int i;
         _mainCtx = new Context(node);
@@ -511,7 +511,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (newNode.IsEquivalentTo(node) && _needRetry)
                 throw new TaggedException(TAG, $"UnusedLocalsRemover.Process: no changes after iteration #{i}");
 
-            node = node.ReplaceAndGetNewNode(newNode);
+            node = node.ReplaceWith(newNode);
             _mainCtx.Update(node);
 
             if (!_needRetry)
