@@ -731,6 +731,32 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
+    void trace_block(BlockSyntax block)
+    {
+        var start_block_marker = new TraceEntry(block.ToEmptyStmt(), null, _varProcessor.VariableValues());
+        _traceLog.entries.Add(start_block_marker);
+
+        trace_statements_inline(block); // TODO: local vars
+
+        // if we are here then block was not interrupted by a break/continue/goto/return
+        // so insert it as a block for the sake of variable scopes preservation
+        int start_idx = _traceLog.entries.IndexOf(start_block_marker);
+        if (start_idx < 0)
+            throw new InvalidOperationException($"Start block marker not found in trace log for block {block.TitleWithLineNo()}");
+
+        _traceLog.entries[start_idx].stmt = _traceLog.ToBlock(start_idx + 1);
+        _traceLog.CutFrom(start_idx + 1);
+
+        // var end_block_marker = new TraceEntry(
+        //         EmptyStatement()
+        //         .WithComment("}")
+        //         .WithAdditionalAnnotations(
+        //             new SyntaxAnnotation("LineNo", (block.GetLocation().GetLineSpan().EndLinePosition.Line + 1).ToString())
+        //             ),
+        //         null, _varProcessor.VariableValues());
+        // _traceLog.entries.Add(end_block_marker);
+    }
+
     ControlFlowUnflattener WithParentReturns(ReturnsDictionary retLabels)
     {
         _parentReturns = retLabels;
@@ -1204,7 +1230,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
             log_stmt(stmt, comment, skip);
             if (!skip)
+            {
+                // TODO: store more precise variablevalues, now they're stored after processing if/while/etc condition, if any,
+                // but before processing the main block
                 _traceLog.entries.Add(new TraceEntry(stmt, value, _varProcessor.VariableValues(), comment));
+            }
 
             var state = new State(stmt.LineNo(), _varProcessor.VariableValues());
             if (_states.TryGetValue(state, out int idx))
@@ -1282,15 +1312,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case BlockSyntax block:
-                        _traceLog.entries.Add(new TraceEntry(block.ToEmptyStmt(), null, _varProcessor.VariableValues()));
-                        trace_statements_inline(block); // TODO: local vars
-                        _traceLog.entries.Add(new TraceEntry(
-                                    EmptyStatement()
-                                    .WithComment("}")
-                                    .WithAdditionalAnnotations(
-                                        new SyntaxAnnotation("LineNo", (block.GetLocation().GetLineSpan().EndLinePosition.Line + 1).ToString())
-                                    ),
-                                    null, _varProcessor.VariableValues()));
+                        trace_block(block);
                         break;
 
                     case UsingStatementSyntax usingStmt:

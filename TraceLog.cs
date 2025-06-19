@@ -233,15 +233,8 @@ public class TraceLog
                 throw new TaggedException("TraceLog.Merge", $"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
             }
 
-            BlockSyntax thenBlock = Block(this.entries
-                    .GetRange(commonStart + 1, Math.Max(0, this.entries.Count - commonEnd - commonStart - 1))
-                    .Select(e => e.stmt)
-                    );
-
-            BlockSyntax elseBlock = Block(other.entries
-                    .GetRange(commonStart + 1, Math.Max(0, other.entries.Count - commonEnd - commonStart - 1))
-                    .Select(e => e.stmt)
-                    );
+            BlockSyntax thenBlock = ToBlock(commonStart + 1, Math.Max(0, this.entries.Count - commonEnd - commonStart - 1));
+            BlockSyntax elseBlock = other.ToBlock(commonStart + 1, Math.Max(0, other.entries.Count - commonEnd - commonStart - 1));
 
             bool hint = hints[hint_key] switch
             {
@@ -274,6 +267,17 @@ public class TraceLog
         result.hints.Remove(hint_key);
 
         return result;
+    }
+
+    public BlockSyntax ToBlock(int start = 0, int count = -1)
+    {
+        if (count == -1)
+            count = entries.Count - start;
+
+        return Block(entries
+                .GetRange(start, count)
+                .Select(e => e.stmt)
+                );
     }
 
     public void Print(
