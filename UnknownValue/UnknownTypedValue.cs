@@ -18,7 +18,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public abstract UnknownValueBase TypedShiftLeft(object right);
     public abstract UnknownValueBase TypedSignedShiftRight(object right);
-    // public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
+    public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
 
     public static UnknownValueRange Create(TypeDB.IntInfo type) => new UnknownValueRange(type);
 
@@ -198,6 +198,27 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return this;
 
         return TypedSignedShiftRight(right);
+    }
+
+    public sealed override UnknownValueBase UnsignedShiftRight(object right)
+    {
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return this;
+            if (l < 0)
+                throw new ArgumentException("Shift count cannot be negative.");
+            if (l >= type.nbits)
+                return Zero(type);
+        }
+
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
+            return this;
+
+        return TypedUnsignedShiftRight(right);
     }
 
     public sealed override UnknownValueBase Mod(object right)

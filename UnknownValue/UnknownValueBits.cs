@@ -245,7 +245,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return new UnknownValueBits(type, newBits);
     }
 
-    public override UnknownTypedValue UnsignedShiftRight(object right)
+    public override UnknownTypedValue TypedUnsignedShiftRight(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);

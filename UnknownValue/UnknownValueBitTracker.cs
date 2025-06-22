@@ -219,7 +219,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         return new UnknownValueBitTracker(type, _var_id, newBits);
     }
 
-    public override UnknownTypedValue UnsignedShiftRight(object right)
+    public override UnknownTypedValue TypedUnsignedShiftRight(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);

@@ -169,16 +169,10 @@ public class UnknownValueRange : UnknownValueRangeBase
         return new UnknownValueRange(type, Range >> (int)l);
     }
 
-    public override UnknownValueRange UnsignedShiftRight(object right) // '>>>'
+    public override UnknownValueRange TypedUnsignedShiftRight(object right) // '>>>'
     {
         if (!TryConvertToLong(right, out long l))
             return new(type);
-
-        if (l == 0)
-            return this;
-
-        if (l < 0)
-            throw new ArgumentOutOfRangeException($"Shift right {l} is out of range for {type}");
 
         int shift = (int)l;
 

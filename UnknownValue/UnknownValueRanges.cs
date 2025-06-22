@@ -141,9 +141,9 @@ public class UnknownValueRanges : UnknownValueRangeBase
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override UnknownValueBase UnsignedShiftRight(object right) // '>>>'
+    public override UnknownValueBase TypedUnsignedShiftRight(object right) // '>>>'
     {
-        return UnknownValue.Create(type);
+        throw new NotImplementedException();
     }
 
     public override UnknownValueBase TypedMod(object right)
