@@ -51,7 +51,7 @@ public class UnknownValueSet : UnknownTypedValue
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v << (int)l)))
             : new UnknownValueSet(type);
 
-    public override UnknownValueBase SignedShiftRight(object right) =>
+    public override UnknownValueBase TypedSignedShiftRight(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v >> (int)l)))
             : new UnknownValueSet(type);

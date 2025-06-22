@@ -129,7 +129,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
         throw new NotImplementedException();
     }
 
-    public override UnknownValueBase SignedShiftRight(object right) // '>>'
+    public override UnknownValueBase TypedSignedShiftRight(object right) // '>>'
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownValue.Create(type);

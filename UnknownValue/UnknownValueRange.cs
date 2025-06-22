@@ -161,13 +161,10 @@ public class UnknownValueRange : UnknownValueRangeBase
         return new UnknownValueSet(type, values);
     }
 
-    public override UnknownValueRange SignedShiftRight(object right) // '>>'
+    public override UnknownValueRange TypedSignedShiftRight(object right) // '>>'
     {
         if (!TryConvertToLong(right, out long l))
             return new(type);
-
-        if (l == 0)
-            return this;
 
         return new UnknownValueRange(type, Range >> (int)l);
     }
