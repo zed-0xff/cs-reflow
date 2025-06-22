@@ -19,6 +19,8 @@ public class UnknownValueSet : UnknownTypedValue
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _values) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
 
+    public override bool IsFullRange() => Cardinality() == type.Range.Count && Min() == type.Range.Min && Max() == type.Range.Max;
+
     public override UnknownValueBase TypedAdd(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v + l)))
@@ -83,7 +85,7 @@ public class UnknownValueSet : UnknownTypedValue
             return $"UnknownValueSet<{type}>[{_values.Count}]";
     }
 
-    public override long Cardinality() => _values.Count;
+    public override ulong Cardinality() => (ulong)_values.Count;
     public override IEnumerable<long> Values() => _values;
     public override bool Contains(long value) => _values.Contains(value);
     public override long Min() => _values.Min();

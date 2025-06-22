@@ -56,7 +56,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.UInt, 0, 1194);
         UnknownValueBits b = new(TypeDB.Int, 0, 0x3ffffff);
-        Assert.Equal(76480, a.Sub(b).Cardinality());
+        Assert.Equal(76480UL, a.Sub(b).Cardinality());
     }
 
     [Fact]
@@ -301,13 +301,13 @@ public class UnknownValueRangeTests
     public void Test_Cardinality()
     {
         UnknownValueRange a = new(TypeDB.UInt);
-        Assert.Equal(4294967296L, a.Cardinality());
+        Assert.Equal(4294967296UL, a.Cardinality());
 
         UnknownValueRange b = new(TypeDB.Int);
-        Assert.Equal(4294967296L, b.Cardinality());
+        Assert.Equal(4294967296UL, b.Cardinality());
 
         UnknownValueRange c = new(TypeDB.Byte);
-        Assert.Equal(256L, c.Cardinality());
+        Assert.Equal(256UL, c.Cardinality());
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class UnknownValueRangeTests
         Assert.Equal("UnknownValueBits<uint>[0]", b.ToString());
 
         b = a.ShiftLeft(30);
-        Assert.Equal(4, b.Cardinality());
+        Assert.Equal(4UL, b.Cardinality());
         List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 0, 1L << 30, 2L << 30, 3L << 30 }, values);
     }
@@ -331,7 +331,7 @@ public class UnknownValueRangeTests
         Assert.Equal("UnknownValueBits<int>[0]", b.ToString());
 
         b = a.ShiftLeft(30);
-        Assert.Equal(4, b.Cardinality());
+        Assert.Equal(4UL, b.Cardinality());
         List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 2 << 30, 3 << 30, 0, 1073741824 }, values);
     }
@@ -341,7 +341,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.SByte);
         var b = a.ShiftLeft(5);
-        Assert.Equal(8, b.Cardinality());
+        Assert.Equal(8UL, b.Cardinality());
         List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { -128, -96, -64, -32, 0, 32, 64, 96 }, values);
     }

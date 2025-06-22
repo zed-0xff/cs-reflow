@@ -1,6 +1,6 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
-    public static readonly long MAX_DISCRETE_CARDINALITY = 1_000_000L;
+    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1_000_000UL;
 
     public TypeDB.IntInfo type { get; }
     public TypeDB.IntInfo Type => type;
@@ -13,11 +13,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract UnknownValueBase TypedAdd(object right);
     public abstract UnknownValueBase TypedDiv(object right);
     public abstract UnknownValueBase TypedMod(object right);
-    // TypedMul is defined in UnknownValueBitsBase
     public abstract UnknownValueBase TypedSub(object right);
     public abstract UnknownValueBase TypedXor(object right);
 
-    // public abstract UnknownValueBase TypedBitwiseAnd(object right);
     // public abstract UnknownValueBase TypedBitwiseOr(object right);
     // public abstract UnknownValueBase TypedShiftLeft(object right);
     // public abstract UnknownValueBase TypedSignedShiftRight(object right);
@@ -66,6 +64,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return TypeDB.TryFind(typeName) is not null;
     }
 
+    public abstract bool IsFullRange();
     public abstract override bool Contains(long value);
     public abstract bool IntersectsWith(UnknownTypedValue right);
     public abstract override long Min();
@@ -259,7 +258,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             foreach (long r in ru.Values())
             {
                 long maskedValue = MaskWithSign(v * r);
-                if (values.Count >= MAX_DISCRETE_CARDINALITY)
+                if ((ulong)values.Count >= MAX_DISCRETE_CARDINALITY)
                     return UnknownValue.Create(type);
 
                 values.Add(maskedValue);
@@ -281,7 +280,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             if (l == 0)
                 return this;
-            if (l == -1)
+            if (l == -1 && TryGetSizeInBits(right) == type.nbits)
                 return BitwiseNot();
         }
 
@@ -311,8 +310,28 @@ public abstract class UnknownTypedValue : UnknownValueBase
         throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
     }
 
-    public override UnknownValueBase BitwiseAnd(object right)
+    public sealed override UnknownValueBase BitwiseAnd(object right)
     {
+        if (right is UnknownValue)
+            return UnknownValue.Create(); // can be narrower, but type is unknown
+
+        if (right == this)
+            return this;
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return Zero(type);
+            if (l == -1 && TryGetSizeInBits(right) == type.nbits)
+                return this; // full range, no change
+        }
+
+        if (IsFullRange() && right is UnknownValueBitsBase bb)
+            return bb;
+
+        if (this is UnknownValueBitsBase bits)
+            return bits.TypedBitwiseAnd(right);
+
         if (!TryConvertToLong(right, out long mask))
             return UnknownValue.Create(type);
 
@@ -349,7 +368,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (otherTyped.IsZero())
                 return this;
 
-            long productCardinality = Cardinality() * otherTyped.Cardinality(); // pessimistic
+            ulong productCardinality = Cardinality() * otherTyped.Cardinality(); // pessimistic
             var typedResult = TypedSub(right);
 
             if (typedResult.Cardinality() < productCardinality)

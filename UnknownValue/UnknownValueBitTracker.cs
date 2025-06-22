@@ -35,6 +35,8 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBitTracker(type, _var_id, _bits) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBitTracker(type, id, _bits);
 
+    public override bool IsFullRange() => _bits.All(b => b == ANY);
+
     // expects that _var_id is already set
     List<BitType> init(IEnumerable<BitType>? bits)
     {
@@ -105,14 +107,14 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         return ((value & mask) == val);
     }
 
-    public override long Cardinality()
+    public override ulong Cardinality()
     {
-        long cardinality = 1;
+        ulong cardinality = 1;
         for (int i = 0; i < type.nbits; i++)
         {
             if (_bits[i] == ANY)
             {
-                cardinality *= 2;
+                cardinality <<= 1;
             }
         }
         return cardinality;
@@ -231,7 +233,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         return new UnknownValueBitTracker(type, _var_id, newBits);
     }
 
-    public override UnknownValueBase BitwiseAnd(object right)
+    public override UnknownValueBase TypedBitwiseAnd(object right)
     {
         throw new NotImplementedException();
     }

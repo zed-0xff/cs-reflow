@@ -38,6 +38,8 @@ public class LongRange
         return $"[{Min}..{Max}]";
     }
 
+    public ulong Count => (ulong)(Max - Min + 1); // both Min and Max are inclusive
+
     public IEnumerable<long> Values()
     {
         for (long i = Min; i <= Max; i++)

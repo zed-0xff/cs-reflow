@@ -31,6 +31,8 @@ public class UnknownValueBits : UnknownValueBitsBase
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bits) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bits) { _var_id = id };
 
+    public override bool IsFullRange() => _bits.All(b => b == ANY);
+
     public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
         var _bits = new sbyte[type.nbits];
@@ -131,14 +133,14 @@ public class UnknownValueBits : UnknownValueBitsBase
         return ((value & mask) == val);
     }
 
-    public override long Cardinality()
+    public override ulong Cardinality()
     {
-        long cardinality = 1;
+        ulong cardinality = 1;
         for (int i = 0; i < type.nbits; i++)
         {
             if (_bits[i] == ANY)
             {
-                cardinality *= 2;
+                cardinality <<= 1;
             }
         }
         return cardinality;
@@ -257,7 +259,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return new UnknownValueBits(type, newBits);
     }
 
-    public override UnknownValueBase BitwiseAnd(object right)
+    public override UnknownValueBase TypedBitwiseAnd(object right)
     {
         if (right is UnknownValueBits otherBits)
         {
@@ -324,7 +326,7 @@ public class UnknownValueBits : UnknownValueBitsBase
                     foreach (var v2 in otherList.Values())
                     {
                         newValues.Add(MaskWithSign(op(v1, v2)));
-                        if (newValues.Count > MAX_DISCRETE_CARDINALITY)
+                        if ((ulong)newValues.Count > MAX_DISCRETE_CARDINALITY)
                             return UnknownValue.Create(type);
                     }
                 }

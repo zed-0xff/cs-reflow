@@ -1,4 +1,4 @@
-public class UnknownValueRanges : UnknownTypedValue
+public class UnknownValueRanges : UnknownValueRangeBase
 {
     readonly LongRangeSet _rangeSet = new(); // should be immutable!
 
@@ -31,7 +31,7 @@ public class UnknownValueRanges : UnknownTypedValue
 
     public override long Min() => _rangeSet.Min;
     public override long Max() => _rangeSet.Max;
-    public bool IsFullRange() => _rangeSet.Count == 1 && _rangeSet.First().Equals(type.Range);
+    public override bool IsFullRange() => _rangeSet.Count == 1 && _rangeSet.First().Equals(type.Range);
 
     // TODO: DRY with UnknownValueRange.Cast()
     public override object Cast(TypeDB.IntInfo toType)
@@ -161,7 +161,7 @@ public class UnknownValueRanges : UnknownTypedValue
 
     public override UnknownValueBase TypedXor(object right)
     {
-        if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
+        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
         return new UnknownValueSet(type, Values().Select(v => v ^ l));
@@ -192,15 +192,10 @@ public class UnknownValueRanges : UnknownTypedValue
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override IEnumerable<long> Values()
-    {
-        return _rangeSet.Values();
-    }
-
-    public override long Cardinality()
-    {
-        return _rangeSet.Ranges.Sum(r => r.Max - r.Min + 1); // because both are inclusive
-    }
+    public override IEnumerable<long> Values() => _rangeSet.Values();
+    public override ulong Cardinality() => _rangeSet.Cardinality();
+    public override bool Contains(long value) => _rangeSet.Contains(value);
+    public override int GetHashCode() => HashCode.Combine(type, _rangeSet);
 
     public override string ToString()
     {
@@ -209,10 +204,6 @@ public class UnknownValueRanges : UnknownTypedValue
         else
             return $"UnknownValueRanges<{type}>[{_rangeSet.Count}]";
     }
-
-    public override bool Contains(long value) => _rangeSet.Contains(value);
-
-    public override int GetHashCode() => HashCode.Combine(type, _rangeSet);
 
     public override bool IntersectsWith(UnknownTypedValue right)
     {
@@ -223,15 +214,6 @@ public class UnknownValueRanges : UnknownTypedValue
             UnknownValueSet l => l.Values().Any(v => Contains(v)),
             _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
         };
-    }
-
-    public override UnknownValueBase BitwiseAnd(object right)
-    {
-        if (right is UnknownValueBits b && IsFullRange())
-        {
-            return new UnknownValueBits(type, b.Bits);
-        }
-        return base.BitwiseAnd(right);
     }
 
     public override UnknownValueBase BitwiseNot()

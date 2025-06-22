@@ -29,22 +29,22 @@ public class UnknownValueBitsTest
     public void Test_Cardinality()
     {
         var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, 0, 0, 0, 0, 0, 0 });
-        Assert.Equal(1, a.Cardinality());
+        Assert.Equal(1UL, a.Cardinality());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
-        Assert.Equal(1, a.Cardinality());
+        Assert.Equal(1UL, a.Cardinality());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 1, 1, 1, 1, 1, 1, 1, 1 });
-        Assert.Equal(1, a.Cardinality());
+        Assert.Equal(1UL, a.Cardinality());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, 0, 0, 0, 0, 0, 0, 0 });
-        Assert.Equal(2, a.Cardinality());
+        Assert.Equal(2UL, a.Cardinality());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, 0, 0, 0, 0, 0, 0, -1 });
-        Assert.Equal(4, a.Cardinality());
+        Assert.Equal(4UL, a.Cardinality());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, -1, -1, -1, -1, -1, -1, -1 });
-        Assert.Equal(256, a.Cardinality());
+        Assert.Equal(256UL, a.Cardinality());
     }
 
     [Fact]

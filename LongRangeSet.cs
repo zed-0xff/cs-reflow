@@ -13,6 +13,16 @@ public class LongRangeSet
         Add(ranges);
     }
 
+    public ulong Cardinality()
+    {
+        ulong count = 0;
+        foreach (var range in _ranges)
+        {
+            count += range.Count;
+        }
+        return count;
+    }
+
     public void Add(IEnumerable<LongRange> newRanges)
     {
         foreach (var range in newRanges)

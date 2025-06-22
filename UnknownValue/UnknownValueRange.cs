@@ -1,4 +1,4 @@
-public class UnknownValueRange : UnknownTypedValue
+public class UnknownValueRange : UnknownValueRangeBase
 {
     public readonly LongRange Range; // immutable!
 
@@ -26,7 +26,7 @@ public class UnknownValueRange : UnknownTypedValue
 
     public override long Min() => Range.Min;
     public override long Max() => Range.Max;
-    public bool IsFullRange() => Range.Equals(type.Range);
+    public override bool IsFullRange() => Range.Equals(type.Range);
 
     public override object Cast(TypeDB.IntInfo toType)
     {
@@ -124,7 +124,7 @@ public class UnknownValueRange : UnknownTypedValue
         if (l >= type.nbits)
             throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {type}");
 
-        long shiftedCardinality = 1L << (type.nbits - (int)l);
+        ulong shiftedCardinality = 1UL << (type.nbits - (int)l);
         if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || (_var_id != null && IsFullRange())) // TODO: not full range can also be converted to bits
             return ToBits().ShiftLeft(l);
 
@@ -219,7 +219,7 @@ public class UnknownValueRange : UnknownTypedValue
 
     public override UnknownValueBase TypedXor(object right)
     {
-        if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
+        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);
 
         return new UnknownValueSet(type, Values().Select(v => v ^ l));
@@ -258,21 +258,12 @@ public class UnknownValueRange : UnknownTypedValue
         }
     }
 
-    public override IEnumerable<long> Values()
-    {
-        return Range.Values();
-    }
-
-    public override long Cardinality()
-    {
-        return Range.Max - Range.Min + 1; // because both are inclusive
-    }
+    public override IEnumerable<long> Values() => Range.Values();
+    public override ulong Cardinality() => Range.Count;
+    public override bool Contains(long value) => Range.Contains(value);
+    public override int GetHashCode() => HashCode.Combine(type, Range);
 
     public override string ToString() => $"UnknownValue<{type}>" + (IsFullRange() ? "" : Range.ToString()) + TagStr();
-
-    public override bool Contains(long value) => Range.Contains(value);
-
-    public override int GetHashCode() => HashCode.Combine(type, Range);
 
     public override bool IntersectsWith(UnknownTypedValue right)
     {
@@ -284,15 +275,6 @@ public class UnknownValueRange : UnknownTypedValue
             UnknownValueRanges rr => rr.IntersectsWith(this),
             _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
         };
-    }
-
-    public override UnknownValueBase BitwiseAnd(object right)
-    {
-        if (right is UnknownValueBits b && IsFullRange())
-        {
-            return new UnknownValueBits(type, b.Bits);
-        }
-        return base.BitwiseAnd(right);
     }
 
     public override UnknownValueBase BitwiseNot()

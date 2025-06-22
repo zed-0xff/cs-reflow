@@ -22,7 +22,7 @@ public abstract class UnknownValueBase
 
     public abstract override string ToString();
     public abstract object Cast(TypeDB.IntInfo toType);
-    public abstract long Cardinality();
+    public abstract ulong Cardinality();
     public abstract IEnumerable<long> Values();
 
     public abstract UnknownValueBase Add(object right);
@@ -175,6 +175,20 @@ public abstract class UnknownValueBase
                 return false;
         }
     }
+
+    public static int TryGetSizeInBits(object? obj) => obj switch
+    {
+        byte => 8,
+        sbyte => 8,
+        short => 16,
+        ushort => 16,
+        int => 32,
+        uint => 32,
+        long => 64,
+        ulong => 64,
+        IntConstExpr ice => ice.IntType.nbits,
+        _ => 0
+    };
 
     public virtual UnknownValueBase Merge(object other)
     {

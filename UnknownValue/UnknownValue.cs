@@ -46,7 +46,7 @@ public class UnknownValue : UnknownValueBase
 
     public override bool Contains(long value) => true;
 
-    public override long Cardinality()
+    public override ulong Cardinality()
     {
         throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
     }
