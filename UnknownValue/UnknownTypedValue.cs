@@ -16,7 +16,6 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract UnknownValueBase TypedSub(object right);
     public abstract UnknownValueBase TypedXor(object right);
 
-    // public abstract UnknownValueBase TypedBitwiseOr(object right);
     // public abstract UnknownValueBase TypedShiftLeft(object right);
     // public abstract UnknownValueBase TypedSignedShiftRight(object right);
     // public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
@@ -322,9 +321,12 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             if (l == 0)
                 return Zero(type);
-            if (l == -1 && TryGetSizeInBits(right) == type.nbits)
+            if (l == -1 && TryGetSizeInBits(right) == type.nbits) // TODO: 255 for byte, etc
                 return this; // full range, no change
         }
+
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
+            return Zero(type);
 
         if (IsFullRange() && right is UnknownValueBitsBase bb)
             return bb;
@@ -341,8 +343,26 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return UnknownValueBits.CreateFromAnd(type, mask);
     }
 
-    public override UnknownValueBase BitwiseOr(object right)
+    public sealed override UnknownValueBase BitwiseOr(object right)
     {
+        if (right is UnknownValue)
+            return UnknownValue.Create(); // can be narrower, but type is unknown
+
+        if (right == this)
+            return this;
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return this;
+        }
+
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
+            return this;
+
+        if (this is UnknownValueBitsBase bits)
+            return bits.TypedBitwiseOr(right);
+
         if (!TryConvertToLong(right, out long mask))
             return UnknownValue.Create(type);
 

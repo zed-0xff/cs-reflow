@@ -282,7 +282,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return new UnknownValueBits(type, newBits);
     }
 
-    public override UnknownValueBase BitwiseOr(object right)
+    public override UnknownValueBase TypedBitwiseOr(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);

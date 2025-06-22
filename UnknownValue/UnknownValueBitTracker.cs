@@ -238,7 +238,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         throw new NotImplementedException();
     }
 
-    public override UnknownValueBase BitwiseOr(object right)
+    public override UnknownValueBase TypedBitwiseOr(object right)
     {
         throw new NotImplementedException();
     }

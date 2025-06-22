@@ -4,4 +4,5 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
 
     public abstract UnknownValueBase TypedMul(object right);
     public abstract UnknownValueBase TypedBitwiseAnd(object right);
+    public abstract UnknownValueBase TypedBitwiseOr(object right);
 }
