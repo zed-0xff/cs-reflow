@@ -124,9 +124,9 @@ public class UnknownValueRanges : UnknownValueRangeBase
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override UnknownValueBase ShiftLeft(object right)
+    public override UnknownValueBase TypedShiftLeft(object right)
     {
-        return new UnknownValueRange(type);
+        throw new NotImplementedException();
     }
 
     public override UnknownValueBase SignedShiftRight(object right) // '>>'

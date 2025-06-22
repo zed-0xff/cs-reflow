@@ -190,7 +190,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         return other.Values().Any(v => ((v & mask) == val));
     }
 
-    public override UnknownTypedValue ShiftLeft(object right)
+    public override UnknownTypedValue TypedShiftLeft(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);

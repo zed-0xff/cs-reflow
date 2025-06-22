@@ -116,7 +116,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         return new UnknownValueRange(type, MaskWithSign(Range.Min - l), MaskWithSign(Range.Max - l));
     }
 
-    public override UnknownValueBase ShiftLeft(object right)
+    public override UnknownValueBase TypedShiftLeft(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return new UnknownValueRange(type);
