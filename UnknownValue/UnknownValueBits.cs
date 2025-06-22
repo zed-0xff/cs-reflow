@@ -387,13 +387,10 @@ public class UnknownValueBits : UnknownValueBitsBase
         return calc_symm((a, b) => a ^ b, right, 0, this, false);
     }
 
-    public override UnknownValueBase Mul(object right)
+    public override UnknownValueBase TypedMul(object right)
     {
         if (TryConvertToLong(right, out long l))
         {
-            if (l == 0) return new UnknownValueSet(type, new List<long> { 0 });
-            if (l == 1) return this;
-
             var (minMask, val) = MaskVal(true);
             val *= l;
             var newMask = minMask;

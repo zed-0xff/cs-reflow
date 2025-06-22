@@ -321,7 +321,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         return UnknownTypedValue.Create(type);
     }
 
-    public override UnknownValueBase Mul(object right)
+    public override UnknownValueBase TypedMul(object right)
     {
         throw new NotImplementedException();
     }

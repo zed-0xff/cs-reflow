@@ -212,23 +212,42 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return TypedDiv(right);
     }
 
-    public override UnknownValueBase Mul(object right)
+    public sealed override UnknownValueBase Mul(object right)
     {
-        if (TryConvertToLong(right, out long l))
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
+        if (right is UnknownTypedValue otherTyped)
+        {
+            if (otherTyped.IsZero())
+                return Zero(type);
+            if (otherTyped.IsOne())
+                return this;
+        }
+
+        bool isNumeric = TryConvertToLong(right, out long l);
+        if (isNumeric)
         {
             if (l == 0) return Zero(type);
             if (l == 1) return this;
+            if (l == -1) return Negate();
+        }
 
-            if (Cardinality() > MAX_DISCRETE_CARDINALITY && TryGetTailPow2(l, out int pow2)) // TODO
-            {
-                return new UnknownValueBits(type, 0, (1 << pow2) - 1);
-            }
+        if (this is UnknownValueBitsBase bits)
+        {
+            return bits.TypedMul(right);
         }
 
         if (Cardinality() > MAX_DISCRETE_CARDINALITY)
+        {
+            if (isNumeric && TryGetTailPow2(l, out int pow2)) // TODO
+            {
+                return new UnknownValueBits(type, 0, (1 << pow2) - 1);
+            }
             return UnknownValue.Create(type);
+        }
 
-        if (TryConvertToLong(right, out l))
+        if (isNumeric)
             return new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l)));
 
         if (right is not UnknownTypedValue ru)
