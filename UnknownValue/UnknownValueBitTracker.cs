@@ -257,7 +257,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         throw new NotImplementedException();
     }
 
-    public override UnknownValueBase Add(object right)
+    public override UnknownValueBase TypedAdd(object right)
     {
         throw new NotImplementedException();
     }
@@ -326,7 +326,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         throw new NotImplementedException();
     }
 
-    public override UnknownValueBase Mod(object right)
+    public override UnknownValueBase TypedMod(object right)
     {
         throw new NotImplementedException();
     }

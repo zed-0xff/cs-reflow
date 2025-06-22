@@ -61,11 +61,8 @@ public class UnknownValueRange : UnknownTypedValue
             : new UnknownValueRange(type);
     }
 
-    public override UnknownValueBase Add(object right)
+    public override UnknownValueBase TypedAdd(object right)
     {
-        if (right as UnknownValueRange == this)
-            return ShiftLeft(1);
-
         if (IsFullRange())
             return new UnknownValueRange(type);
 
@@ -215,16 +212,10 @@ public class UnknownValueRange : UnknownTypedValue
         return new UnknownValueRange(type, min, max);
     }
 
-    public override UnknownTypedValue Mod(object right)
+    public override UnknownTypedValue TypedMod(object right)
     {
-        if (right == this)
-            return Zero(type);
-
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
-
-        if (l == 0)
-            throw new DivideByZeroException();
 
         // TODO: case when left is not full range
         if (l > 0)
@@ -247,14 +238,32 @@ public class UnknownValueRange : UnknownTypedValue
         if (IsFullRange())
             return new UnknownValueRange(type);
 
-        if (type.signed && Contains(type.MinValue))
-            return new UnknownValueRanges(type,
-                    new List<LongRange>(){
-                        new LongRange(type.MinValue, type.MinValue), // edge case: -128 for sbyte, -32768 for short, etc.
-                        new LongRange(-Range.Max, Math.Min(-Range.Min, type.MaxSignedValue))
-                    });
+        if (type.signed)
+        {
+            if (Contains(type.MinValue))
+                return new UnknownValueRanges(type,
+                        new List<LongRange>(){
+                            new LongRange(type.MinValue, type.MinValue), // edge case: -128 for sbyte, -32768 for short, etc.
+                            new LongRange(-Range.Max, Math.Min(-Range.Min, type.MaxSignedValue))
+                        });
+            return new UnknownValueRange(type, new LongRange(-Range.Max, -Range.Min));
+        }
+        else
+        {
+            if (type == TypeDB.ULong)
+                throw new NotImplementedException("Negate() for ULong is not implemented.");
 
-        return new UnknownValueRange(type, new LongRange(-Range.Max, -Range.Min));
+            var newMin = MaskNoSign(-Range.Max);
+            var newMax = MaskNoSign(-Range.Min);
+            if (newMin <= newMax)
+                return new UnknownValueRange(type, newMin, newMax);
+            else
+                return new UnknownValueRanges(type, // [0..100] => [4294967196, 4294967295] U [0, 0]
+                        new List<LongRange>(){
+                            new LongRange(type.MinValue, newMax),
+                            new LongRange(newMin, type.MaxSignedValue)
+                        });
+        }
     }
 
     public override IEnumerable<long> Values()

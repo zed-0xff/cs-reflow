@@ -10,6 +10,19 @@ public abstract class UnknownTypedValue : UnknownValueBase
         this.type = type;
     }
 
+    public abstract UnknownValueBase TypedAdd(object right);
+    // public abstract UnknownValueBase TypedDiv(object right);
+    public abstract UnknownValueBase TypedMod(object right);
+    // public abstract UnknownValueBase TypedMul(object right);
+    // public abstract UnknownValueBase TypedSub(object right);
+    // public abstract UnknownValueBase TypedXor(object right);
+    // 
+    // public abstract UnknownValueBase TypedBitwiseAnd(object right);
+    // public abstract UnknownValueBase TypedBitwiseOr(object right);
+    // public abstract UnknownValueBase TypedShiftLeft(object right);
+    // public abstract UnknownValueBase TypedSignedShiftRight(object right);
+    // public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
+
     public static UnknownValueRange Create(TypeDB.IntInfo type) => new UnknownValueRange(type);
 
     static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _zeroes = new();
@@ -26,6 +39,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public UnknownValueBitsBase ToBits() => new UnknownValueBits(type);
     // (this is UnknownValueBitsBase bits) ? bits :
     // (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
+
+    public bool IsZero() => Equals(Zero(type));
+    public bool IsOne() => Equals(One(type));
 
     public bool IsOverflow(long value) => !type.CanFit(value);
     public long MaskNoSign(long value) => value & type.Mask;
@@ -126,6 +142,48 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return (pow2 > 0);
     }
 
+    public override UnknownValueBase Add(object right)
+    {
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
+        if (TryConvertToLong(right, out long l) && (l == 0))
+            return this;
+
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
+            return this;
+
+        if (right == this)
+            return ShiftLeft(1);
+
+        return TypedAdd(right);
+    }
+
+    public override UnknownValueBase Mod(object right)
+    {
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return UnknownValue.Create(); // division by zero
+            if (l == 1)
+                return Zero(type);
+            // XXX if (l == -1) ?
+        }
+
+        if (right is UnknownTypedValue otherTyped)
+        {
+            if (otherTyped.IsZero())
+                return UnknownValue.Create(); // division by zero
+            if (otherTyped.IsOne() || otherTyped == this)
+                return Zero(type);
+        }
+
+        return TypedMod(right);
+    }
+
     public override UnknownValueBase Mul(object right)
     {
         if (TryConvertToLong(right, out long l))
@@ -133,7 +191,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (l == 0) return Zero(type);
             if (l == 1) return this;
 
-            if (Cardinality() > MAX_DISCRETE_CARDINALITY && TryGetTailPow2(l, out int pow2))
+            if (Cardinality() > MAX_DISCRETE_CARDINALITY && TryGetTailPow2(l, out int pow2)) // TODO
             {
                 return new UnknownValueBits(type, 0, (1 << pow2) - 1);
             }

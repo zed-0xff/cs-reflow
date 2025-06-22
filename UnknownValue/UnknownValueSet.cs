@@ -19,7 +19,7 @@ public class UnknownValueSet : UnknownTypedValue
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _values) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
 
-    public override UnknownValueBase Add(object right) =>
+    public override UnknownValueBase TypedAdd(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v + l)))
             : new UnknownValueSet(type);
@@ -34,7 +34,7 @@ public class UnknownValueSet : UnknownTypedValue
             ? new UnknownValueSet(type, _values.Select(v => v / l))
             : new UnknownValueSet(type);
 
-    public override UnknownValueBase Mod(object right) =>
+    public override UnknownValueBase TypedMod(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => v % l))
             : new UnknownValueSet(type);

@@ -277,7 +277,7 @@ public class UnknownValueBitsTest
     public void Test_Xor_self()
     {
         var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, -1, -1, -1, -1, -1, -1 });
-        Assert.Equal(new UnknownValueSet(TypeDB.Byte, new List<long> { 0 }), a.Xor(a));
+        Assert.Equal(UnknownTypedValue.Zero(TypeDB.Byte), a.Xor(a));
         Assert.NotEqual(a, a.Xor(a));
 
         // not self but same

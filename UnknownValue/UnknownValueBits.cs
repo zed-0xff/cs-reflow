@@ -334,11 +334,8 @@ public class UnknownValueBits : UnknownValueBitsBase
         return calc_asym(op, right, identity, id_val);
     }
 
-    public override UnknownValueBase Add(object right)
+    public override UnknownValueBase TypedAdd(object right)
     {
-        if (right == this) // '==' and not 'equals' because it needs to be the same instance
-            return ShiftLeft(1);
-
         if (TryConvertToLong(right, out long l))
         {
             // bitwise add until carry to unknown bit
@@ -413,16 +410,10 @@ public class UnknownValueBits : UnknownValueBitsBase
         return calc_symm((a, b) => a * b, right, 1, this);
     }
 
-    public override UnknownValueBase Mod(object right)
+    public override UnknownValueBase TypedMod(object right)
     {
-        if (right == this)
-            return Zero(type);
-
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
-
-        if (l == 1)
-            return new UnknownValueSet(type, new List<long> { 0 });
 
         if (l <= 0)
             return UnknownValue.Create();

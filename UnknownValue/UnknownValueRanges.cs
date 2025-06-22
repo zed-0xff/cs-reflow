@@ -68,7 +68,7 @@ public class UnknownValueRanges : UnknownTypedValue
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override UnknownValueBase Add(object right)
+    public override UnknownValueBase TypedAdd(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownValue.Create(type);
@@ -146,13 +146,10 @@ public class UnknownValueRanges : UnknownTypedValue
         return UnknownValue.Create(type);
     }
 
-    public override UnknownValueBase Mod(object right)
+    public override UnknownValueBase TypedMod(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownValue.Create(type);
-
-        if (l == 0)
-            throw new DivideByZeroException();
 
         // TODO: case when left is not full range
         if (l > 0)
