@@ -393,7 +393,7 @@ public partial class VarProcessor
                     // If the expression is an identifier, fetch its value from the dictionary
                     // string varName2 = id.Identifier.Text;
                     // VarsRead.Add(varName2);
-                    return _varDict.GetValueOrDefault(id);
+                    return _varDict[id.Identifier];
 
                 case LiteralExpressionSyntax literal:
                     if (literal.Token.Value is int i)

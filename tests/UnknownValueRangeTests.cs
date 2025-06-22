@@ -9,13 +9,13 @@ public class UnknownValueRangeTests
         Assert.Equal("UnknownValue<uint>", a.ToString());
         Assert.Equal("UnknownValue<uint>", $"{a}");
 
-        a = a.Div(0x100);
-        Assert.Equal("UnknownValue<uint>[0..16777215]", a.ToString());
-        Assert.Equal("UnknownValue<uint>[0..16777215]", $"{a}");
+        var b = a.Div(0x100);
+        Assert.Equal("UnknownValue<uint>[0..16777215]", b.ToString());
+        Assert.Equal("UnknownValue<uint>[0..16777215]", $"{b}");
 
-        UnknownValueRange b = new(TypeDB.Int);
-        Assert.Equal("UnknownValue<int>", b.ToString());
-        Assert.Equal("UnknownValue<int>", $"{b}");
+        UnknownValueRange c = new(TypeDB.Int);
+        Assert.Equal("UnknownValue<int>", c.ToString());
+        Assert.Equal("UnknownValue<int>", $"{c}");
     }
 
     [Fact]
@@ -72,30 +72,33 @@ public class UnknownValueRangeTests
     public void Test_int_div()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        a = a.Div(10);
-        Assert.NotNull(a.Range);
-        Assert.Equal(int.MinValue / 10, a.Range.Min);
-        Assert.Equal(int.MaxValue / 10, a.Range.Max);
+        var b = a.Div(10) as UnknownValueRange;
+        Assert.NotNull(b);
+        Assert.NotNull(b.Range);
+        Assert.Equal(int.MinValue / 10, b.Range.Min);
+        Assert.Equal(int.MaxValue / 10, b.Range.Max);
     }
 
     [Fact]
     public void Test_int_mod()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        a = a.Mod(100);
-        Assert.NotNull(a.Range);
-        Assert.Equal(0, a.Range.Min);
-        Assert.Equal(99, a.Range.Max);
+        var b = a.Mod(100) as UnknownValueRange;
+        Assert.NotNull(b);
+        Assert.NotNull(b.Range);
+        Assert.Equal(0, b.Range.Min);
+        Assert.Equal(99, b.Range.Max);
     }
 
     [Fact]
     public void Test_int_mod_negative()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        a = a.Mod(-100);
-        Assert.NotNull(a.Range);
-        Assert.Equal(-99, a.Range.Min);
-        Assert.Equal(0, a.Range.Max);
+        var b = a.Mod(-100) as UnknownValueRange;
+        Assert.NotNull(b);
+        Assert.NotNull(b.Range);
+        Assert.Equal(-99, b.Range.Min);
+        Assert.Equal(0, b.Range.Max);
     }
 
     [Fact]
@@ -167,7 +170,7 @@ public class UnknownValueRangeTests
     public void Test_int_mul_zero()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        Assert.Equal(new UnknownValueSet(TypeDB.Int, new List<long> { 0 }), a.Mul(0));
+        Assert.Equal(UnknownTypedValue.Zero(TypeDB.Int), a.Mul(0));
     }
 
     [Fact]

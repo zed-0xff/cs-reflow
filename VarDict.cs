@@ -29,16 +29,7 @@ public class VarDict
     }
 
     public object? this[int id] => _values.TryGetValue(id, out var value) ? value : Default(id);
-    public object? this[SyntaxToken token]
-    {
-        get
-        {
-            if (_varDB.TryGetValue(token, out var V))
-                return _values.TryGetValue(V.id, out var value) ? value : Default(V.id); // .WithTag(V.Name);
-            else
-                return UnknownValue.Create();
-        }
-    }
+    public object? this[SyntaxToken token] => _varDB.TryGetValue(token, out var v) ? this[v.id] : UnknownValue.Create();
 
     public IEnumerable<int> Keys => _values.Keys;
     public int Count => _values.Count;
@@ -65,20 +56,6 @@ public class VarDict
         return result;
     }
 
-    public object? GetValueOrDefault(IdentifierNameSyntax id) => GetValueOrDefault(id.Identifier);
-    public object? GetValueOrDefault(SyntaxToken token)
-    {
-        if (_varDB.TryGetValue(token, out var V))
-        {
-            return _values.TryGetValue(V.id, out var value) ? value : Default(V.id);
-        }
-        else
-        {
-            _logger.warn_once($"Variable definition not found for {token}");
-            return UnknownValue.Create();
-        }
-    }
-
     public bool IsVariableRegistered(SyntaxToken token) => _varDB.TryGetValue(token, out var _);
     public void RegisterVariable(VariableDeclaratorSyntax decl)
     {
@@ -90,16 +67,20 @@ public class VarDict
         _varDB.Add(decl, parent.Type.ToString());
     }
 
+    // XXX all Sets should call this one
+    void setVar(int id, object? value)
+    {
+        if (value is UnknownValueBase unk)
+            value = unk.WithVarID(id);
+        _values[id] = value;
+    }
+
     public void ResetVar(SyntaxToken token)
     {
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug($"Resetting variable {V}");
-            _values[V.id] = Default(V.id);
-        }
-        else
-        {
-            _logger.warn($"Variable not found in VarDB for SyntaxToken {token}");
+            setVar(V.id, Default(V.id));
         }
     }
 
@@ -108,7 +89,7 @@ public class VarDict
     public void Set(int id, object? value, [CallerMemberName] string caller = "")
     {
         _logger.debug(() => $"{_varDB[id]} = {value} [caller: {caller}]");
-        _values[id] = value;
+        setVar(id, value);
     }
 
     public void Set(SyntaxToken token, object? value)
@@ -116,7 +97,7 @@ public class VarDict
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug($"{V} = {value}");
-            _values[V.id] = value;
+            setVar(V.id, value);
         }
         else
         {

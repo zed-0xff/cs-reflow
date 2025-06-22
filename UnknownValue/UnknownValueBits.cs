@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-public class UnknownValueBits : UnknownTypedValue
+public class UnknownValueBits : UnknownValueBitsBase
 {
     private const sbyte ANY = -1;
     private const sbyte ONE = 1;
@@ -29,6 +29,7 @@ public class UnknownValueBits : UnknownTypedValue
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bits) { _tag = tag };
+    public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bits) { _var_id = id };
 
     public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
@@ -221,8 +222,8 @@ public class UnknownValueBits : UnknownTypedValue
         List<sbyte> newBits = new(_bits);
         for (int i = 0; i < l; i++)
         {
-            newBits.Insert(0, ZERO);
             newBits.RemoveAt(_bits.Count - 1);
+            newBits.Insert(0, ZERO); // should be after remove!
         }
         return new UnknownValueBits(type, newBits);
     }
@@ -232,7 +233,7 @@ public class UnknownValueBits : UnknownTypedValue
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
 
-        sbyte sign = _bits[type.nbits - 1];
+        sbyte sign = type.signed ? _bits[type.nbits - 1] : ZERO;
         List<sbyte> newBits = new(_bits);
         for (int i = 0; i < l; i++)
         {
@@ -367,7 +368,7 @@ public class UnknownValueBits : UnknownTypedValue
     public override UnknownValueBase Xor(object right)
     {
         if (right == this) // '==' and not 'equals' because we want to use the same instance
-            return new UnknownValueSet(type, new List<long> { 0 });
+            return Zero(type);
 
         if (TryConvertToLong(right, out long l))
         {
@@ -415,7 +416,7 @@ public class UnknownValueBits : UnknownTypedValue
     public override UnknownValueBase Mod(object right)
     {
         if (right == this)
-            return new UnknownValueSet(type, new List<long> { 0 });
+            return Zero(type);
 
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);

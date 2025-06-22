@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 public abstract class UnknownValueBase
 {
     protected object? _tag { get; init; } = null;
+    protected int? _var_id { get; init; } = null;
 
     protected string TagStr()
     {
@@ -17,6 +18,7 @@ public abstract class UnknownValueBase
     }
 
     public abstract UnknownValueBase WithTag(object? tag);
+    public abstract UnknownValueBase WithVarID(int id);
 
     public abstract override string ToString();
     public abstract object Cast(TypeDB.IntInfo toType);
@@ -52,7 +54,7 @@ public abstract class UnknownValueBase
         if (right is bool rb && rb)
             return true;
 
-        return UnknownValue.Create("bool");
+        return UnknownValue.Create(TypeDB.Bool);
     }
 
     public virtual object Lte(object right) => LogicalOr(Lt(right), Eq(right));

@@ -334,7 +334,7 @@ public class UnknownValueBitsTest
     public void Test_Mod()
     {
         var a = new UnknownValueBits(TypeDB.Byte);
-        var zero = new UnknownValueSet(TypeDB.Byte, new() { 0 });
+        var zero = UnknownTypedValue.Zero(TypeDB.Byte);
         Assert.Equal(zero, a.Mod(a));
         Assert.Equal(zero, a.Mod(1));
         Assert.Equal(new UnknownValue(), a.Mod(0));

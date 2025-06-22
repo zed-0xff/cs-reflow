@@ -18,6 +18,7 @@ public class UnknownValueRanges : UnknownTypedValue
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _rangeSet) { _tag = tag };
+    public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _rangeSet) { _var_id = id };
 
     public override bool Equals(object obj)
     {

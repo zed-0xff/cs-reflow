@@ -1,5 +1,7 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
+    public static readonly long MAX_DISCRETE_CARDINALITY = 1_000_000L;
+
     public TypeDB.IntInfo type { get; }
     public TypeDB.IntInfo Type => type;
 
@@ -8,9 +10,22 @@ public abstract class UnknownTypedValue : UnknownValueBase
         this.type = type;
     }
 
-    public static UnknownTypedValue Create(TypeDB.IntInfo type) => new UnknownValueRange(type);
+    public static UnknownValueRange Create(TypeDB.IntInfo type) => new UnknownValueRange(type);
 
-    public static readonly long MAX_DISCRETE_CARDINALITY = 1_000_000L;
+    static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _zeroes = new();
+    static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _ones = new();
+
+    public static UnknownTypedValue Zero(TypeDB.IntInfo type) =>
+        _zeroes.TryGetValue(type, out var zero) ? zero :
+        (_zeroes[type] = new UnknownValueRange(type, 0, 0));
+
+    public static UnknownTypedValue One(TypeDB.IntInfo type) =>
+        _ones.TryGetValue(type, out var one) ? one :
+        (_ones[type] = new UnknownValueRange(type, 1, 1));
+
+    public UnknownValueBitsBase ToBits() => new UnknownValueBits(type);
+    // (this is UnknownValueBitsBase bits) ? bits :
+    // (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
 
     public bool IsOverflow(long value) => !type.CanFit(value);
     public long MaskNoSign(long value) => value & type.Mask;
@@ -115,7 +130,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     {
         if (TryConvertToLong(right, out long l))
         {
-            if (l == 0) return new UnknownValueSet(type, new List<long> { 0 });
+            if (l == 0) return Zero(type);
             if (l == 1) return this;
 
             if (Cardinality() > MAX_DISCRETE_CARDINALITY && TryGetTailPow2(l, out int pow2))
@@ -191,7 +206,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public override UnknownValueBase Sub(object right)
     {
         if (right == this)
-            return new UnknownValueRange(type, 0, 0);
+            return Zero(type);
 
         if (right is not UnknownTypedValue otherTyped)
             return UnknownValue.Create(type);

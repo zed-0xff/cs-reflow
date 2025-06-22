@@ -17,6 +17,7 @@ public class UnknownValueSet : UnknownTypedValue
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _values) { _tag = tag };
+    public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
 
     public override UnknownValueBase Add(object right) =>
         TryConvertToLong(right, out long l)

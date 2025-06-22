@@ -28,7 +28,7 @@ public class VarDB
     public Variable Add(VariableDeclaratorSyntax node, string typeName) => Add(node.Identifier.ValueText, typeName);
     public Variable Add(string name, string typeName)
     {
-        int id = ++_var_id;
+        int id = _var_id++;
         var v = new Variable(id, name, typeName);
         _ann2vars[v.Annotation] = v;
         _vars[id] = v;

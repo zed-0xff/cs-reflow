@@ -38,6 +38,7 @@ public class UnknownValue : UnknownValueBase
     public static UnknownValueBase Create(TypeDB.IntInfo? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new() { _tag = tag };
+    public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new() { _var_id = id };
 
     public override UnknownValueBase Cast(TypeDB.IntInfo toType) => Create(toType);
 

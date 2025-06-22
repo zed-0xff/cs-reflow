@@ -13,6 +13,7 @@ public class UnknownValueRange : UnknownTypedValue
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
+    public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
 
     public override bool Equals(object obj)
     {
@@ -50,8 +51,11 @@ public class UnknownValueRange : UnknownTypedValue
         return base.Cast(toType);
     }
 
-    public override UnknownValueRange Div(object right)
+    public override UnknownTypedValue Div(object right)
     {
+        if (right as UnknownValueRange == this)
+            return One(type);
+
         return TryConvertToLong(right, out long l)
             ? new UnknownValueRange(type, Range / l)
             : new UnknownValueRange(type);
@@ -92,7 +96,7 @@ public class UnknownValueRange : UnknownTypedValue
     public override UnknownValueBase Sub(object right)
     {
         if (right as UnknownValueRange == this)
-            return new UnknownValueRange(type, 0, 0);
+            return Zero(type);
 
         if (IsFullRange())
             return new UnknownValueRange(type);
@@ -132,8 +136,8 @@ public class UnknownValueRange : UnknownTypedValue
             throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {type}");
 
         long shiftedCardinality = 1L << (type.nbits - (int)l);
-        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueBits(type).ShiftLeft(l);
+        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || (_var_id != null && IsFullRange())) // TODO: not full range can also be converted to bits
+            return ToBits().ShiftLeft(l);
 
         if (Cardinality() < MAX_DISCRETE_CARDINALITY)
         {
@@ -211,10 +215,13 @@ public class UnknownValueRange : UnknownTypedValue
         return new UnknownValueRange(type, min, max);
     }
 
-    public override UnknownValueRange Mod(object right)
+    public override UnknownTypedValue Mod(object right)
     {
+        if (right == this)
+            return Zero(type);
+
         if (!TryConvertToLong(right, out long l))
-            return new(type);
+            return UnknownTypedValue.Create(type);
 
         if (l == 0)
             throw new DivideByZeroException();
