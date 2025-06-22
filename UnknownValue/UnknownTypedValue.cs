@@ -11,7 +11,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     }
 
     public abstract UnknownValueBase TypedAdd(object right);
-    // public abstract UnknownValueBase TypedDiv(object right);
+    public abstract UnknownValueBase TypedDiv(object right);
     public abstract UnknownValueBase TypedMod(object right);
     // public abstract UnknownValueBase TypedMul(object right);
     // public abstract UnknownValueBase TypedSub(object right);
@@ -142,7 +142,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return (pow2 > 0);
     }
 
-    public override UnknownValueBase Add(object right)
+    // sealed to prevent overriding in derived classes
+    public sealed override UnknownValueBase Add(object right)
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
@@ -159,7 +160,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return TypedAdd(right);
     }
 
-    public override UnknownValueBase Mod(object right)
+    public sealed override UnknownValueBase Mod(object right)
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
@@ -168,9 +169,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             if (l == 0)
                 return UnknownValue.Create(); // division by zero
-            if (l == 1)
+            if (l == 1 || l == -1)
                 return Zero(type);
-            // XXX if (l == -1) ?
         }
 
         if (right is UnknownTypedValue otherTyped)
@@ -182,6 +182,34 @@ public abstract class UnknownTypedValue : UnknownValueBase
         }
 
         return TypedMod(right);
+    }
+
+    public sealed override UnknownValueBase Div(object right)
+    {
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return UnknownValue.Create(); // division by zero
+            if (l == 1)
+                return this;
+            if (l == -1)
+                return Negate();
+        }
+
+        if (right is UnknownTypedValue otherTyped)
+        {
+            if (otherTyped.IsZero())
+                return UnknownValue.Create(); // division by zero
+            if (otherTyped.IsOne())
+                return this;
+            if (otherTyped == this)
+                return One(type);
+        }
+
+        return TypedDiv(right);
     }
 
     public override UnknownValueBase Mul(object right)

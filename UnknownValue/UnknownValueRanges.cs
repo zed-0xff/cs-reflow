@@ -56,7 +56,7 @@ public class UnknownValueRanges : UnknownTypedValue
         return base.Cast(toType);
     }
 
-    public override UnknownValueBase Div(object right)
+    public override UnknownValueBase TypedDiv(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownValue.Create(type);

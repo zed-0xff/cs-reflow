@@ -29,7 +29,7 @@ public class UnknownValueSet : UnknownTypedValue
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v - l)))
             : base.Sub(right);
 
-    public override UnknownValueBase Div(object right) =>
+    public override UnknownValueBase TypedDiv(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => v / l))
             : new UnknownValueSet(type);

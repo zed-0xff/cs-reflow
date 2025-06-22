@@ -434,7 +434,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
     }
 
-    public override UnknownValueBase Div(object right) => calc_asym((a, b) => a / b, right, 1, this);
+    public override UnknownValueBase TypedDiv(object right) => calc_asym((a, b) => a / b, right, 1, this);
     public override UnknownValueBase Sub(object right) => calc_asym((a, b) => a - b, right, 0, this);
 
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bits.SequenceEqual(other._bits);
