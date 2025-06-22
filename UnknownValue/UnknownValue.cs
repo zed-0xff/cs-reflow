@@ -35,7 +35,7 @@ public class UnknownValue : UnknownValueBase
 
     public static UnknownValueBase Create(Type? type) => Create(type?.ToString());
     public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
-    public static UnknownValueBase Create(TypeDB.IntInfo type) => UnknownTypedValue.Create(type);
+    public static UnknownValueBase Create(TypeDB.IntInfo? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new() { _tag = tag };
 

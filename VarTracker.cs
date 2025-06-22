@@ -8,7 +8,12 @@ using SymbolAnnotationMap = System.Collections.Generic.Dictionary<Microsoft.Code
 public partial class VarTracker
 {
     int _stmt_id = 0;
-    VarDB _varDB = new();
+    readonly VarDB _varDB;
+
+    public VarTracker(VarDB varDB)
+    {
+        _varDB = varDB;
+    }
 
     public string NextStmtID() => (++_stmt_id).ToString("X4");
 

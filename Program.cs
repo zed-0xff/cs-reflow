@@ -320,8 +320,6 @@ class Program
                 code = File.ReadAllText(opts.filename);
             }
 
-            VarDict.Verbosity = opts.verbosity;
-
             var unflattener = createUnflattener(code, opts, hints, false);
             var methodDict = unflattener.Methods;
 
@@ -437,22 +435,19 @@ class Program
 
     static void ProcessCmdLineExpr(Options opts)
     {
-        var tree = CSharpSyntaxTree.ParseText(opts.expr);
         if (opts.printTree)
         {
+            var tree = CSharpSyntaxTree.ParseText(opts.expr);
             var printer = new SyntaxTreePrinter(tree);
             printer.Verbosity = opts.verbosity;
             printer.Print();
         }
         else
         {
-            VarProcessor processor = new();
+            VarDB varDB = new VarDB();
+            VarProcessor processor = new(varDB);
             processor.Verbosity = opts.verbosity;
-            object? result = null;
-            foreach (var stmt in tree.GetRoot().DescendantNodes().OfType<GlobalStatementSyntax>())
-            {
-                result = processor.EvaluateExpression(stmt.Statement);
-            }
+            object? result = processor.EvaluateString(opts.expr);
             Console.WriteLine($"{result}");
         }
     }

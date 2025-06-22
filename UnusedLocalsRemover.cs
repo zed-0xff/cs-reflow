@@ -49,9 +49,15 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             return true;
         }
 
-        public bool IsUnusedLocal(SyntaxNode node)
+        public bool IsUnusedLocal(VariableDeclaratorSyntax node)
         {
-            var ann = node.GetAnnotations("VarID").FirstOrDefault();
+            var ann = node.VarID();
+            return ann != null && _unusedLocals.Contains(ann);
+        }
+
+        public bool IsUnusedLocal(IdentifierNameSyntax node)
+        {
+            var ann = node.VarID();
             return ann != null && _unusedLocals.Contains(ann);
         }
 
@@ -115,7 +121,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                             if (assignment.Right is not AssignmentExpressionSyntax)
                             {
                                 // If the right side is not a literal, we keep the local variable
-                                var ann = idLeft.GetAnnotations("VarID").FirstOrDefault();
+                                var ann = idLeft.VarID();
                                 if (ann == null)
                                     throw new InvalidOperationException($"Identifier {idLeft.Identifier.Text} has no 'VarID' annotation.");
                                 keepLocals.Add(ann);
@@ -155,7 +161,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 var init = variable.Initializer?.Value;
                 if (init != null && !_ctx.IsSafeToRemove(init) && init is not AssignmentExpressionSyntax)
                 {
-                    var ann = variable.GetAnnotations("VarID").FirstOrDefault();
+                    var ann = variable.VarID();
                     if (ann == null)
                         throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VarID' annotation.");
                     _logger.debug(() => $"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
@@ -295,7 +301,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     {
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(s => s.Declaration.Variables)
-            .Select(v => v.GetAnnotations("VarID").FirstOrDefault())
+            .Select(v => v.VarID())
             .Where(v => v != null)
             .ToHashSet();
 
@@ -304,7 +310,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         foreach (var id in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
-            var ann = id.GetAnnotations("VarID").FirstOrDefault();
+            var ann = id.VarID();
             if (ann == null)
                 continue;
 
@@ -340,12 +346,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             {
                 if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.IsSameVar(id))
                 {
-                    _logger.debug(() => $"CollectVars: WRITE {ann.Data}");
+                    _logger.debug(() => $"WRITE {ann.Data}");
                     written.Add(ann); // intentionally do not interpret self-read as 'read'
                 }
                 else
                 {
-                    _logger.debug(() => $"CollectVars: READ  {ann.Data}");
+                    _logger.debug(() => $"READ  {ann.Data}");
                     read.Add(ann);
                 }
                 continue;
@@ -357,12 +363,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 // local variable declaration: int x = 123 + [...]
                 if (declStmt.IsSameVar(id))
                 {
-                    _logger.debug(() => $"CollectVars: DECLARE {ann.Data}");
+                    _logger.debug(() => $"DECLARE {ann.Data}");
                     declared.Add(ann);
                 }
                 else
                 {
-                    _logger.debug(() => $"CollectVars: READ  {ann.Data}");
+                    _logger.debug(() => $"READ  {ann.Data}");
                     read.Add(ann); // variable is read in the other variable's initializer
                 }
                 continue;
@@ -372,14 +378,14 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             ArgumentSyntax? argExpr = expr.FirstAncestorOrSelfUntil<ArgumentSyntax, BlockSyntax>();
             if (argExpr != null)
             {
-                _logger.debug(() => $"CollectVars: READ  {ann.Data}");
+                _logger.debug(() => $"READ  {ann.Data}");
                 read.Add(ann);
                 if (!argExpr.RefOrOutKeyword.IsKind(SyntaxKind.None))
                     written.Add(ann); // ref/out arguments are both read and written
                 continue;
             }
 
-            _logger.debug(() => $"CollectVars: unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}");
+            _logger.debug(() => $"unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}");
             read.Add(ann); // fallback: treat as read
         }
 
@@ -392,9 +398,9 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             throw new TaggedException(TAG, "Main context is not set. Call Process().");
 
         if (Verbosity > 2)
-            _logger.debug(() => $"[d] UnusedLocalsRemover.RewriteBlock: {block}");
+            _logger.debug(() => $"{block}");
         else if (Verbosity > 0)
-            _logger.debug(() => $"[d] UnusedLocalsRemover.RewriteBlock: {block.TitleWithLineSpan()}");
+            _logger.debug(() => $"{block.TitleWithLineSpan()}");
 
         var ctx = _mainCtx;
         DataFlowAnalysis? dataFlow = null;
@@ -506,13 +512,13 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         _mainCtx = new Context(node);
         for (i = 0; i < 1000; i++)
         {
-            _logger.debug($"\n[d] UnusedLocalsRemover.Process: iteration #{i}");
+            _logger.debug($"\niteration #{i}");
 
             _needRetry = false;
             var newNode = Visit(node);
 
             if (newNode.IsEquivalentTo(node) && _needRetry)
-                throw new TaggedException(TAG, $"UnusedLocalsRemover.Process: no changes after iteration #{i}");
+                throw new TaggedException(TAG, $"Process: no changes after iteration #{i}");
 
             node = node.ReplaceWith(newNode);
             _mainCtx.Update(node);
@@ -520,6 +526,6 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (!_needRetry)
                 return node;
         }
-        throw new TaggedException(TAG, $"UnusedLocalsRemover.Process: too many iterations: {i}");
+        throw new TaggedException(TAG, $"Process: too many iterations: {i}");
     }
 }

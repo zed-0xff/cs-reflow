@@ -15,3 +15,7 @@ void case3()
     stub(c);                                                                                         // prevent 'c' to be dropped by post-processor
 }
 
+void case4()
+{
+    call_me();
+}

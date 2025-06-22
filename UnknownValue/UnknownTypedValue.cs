@@ -1,6 +1,7 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
     public TypeDB.IntInfo type { get; }
+    public TypeDB.IntInfo Type => type;
 
     public UnknownTypedValue(TypeDB.IntInfo type) : base()
     {

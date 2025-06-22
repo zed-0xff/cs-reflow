@@ -2,52 +2,144 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 
 public class VarDict
 {
+    static readonly string TAG = "VarDict";
+    private static readonly TaggedLogger _logger = new(TAG);
     public const int FLAG_LOOP = 1;
 
-    public static int Verbosity = 0;
+    DefaultDict<int, int> _flags = new();
+    Dictionary<int, object?> _values = new();
+    readonly VarDB _varDB;
 
-    DefaultDict<string, int> _flags = new();
-    Dictionary<string, object?> _values = new();
-
-    public IReadOnlyDictionary<string, object?> ReadOnlyDict => new ReadOnlyDictionary<string, object?>(_values);
-
-    public object? this[string varName]
+    public VarDict(VarDB db)
     {
-        get => _values.TryGetValue(varName, out var value) ? value : UnknownValue.Create().WithTag(varName);
+        _varDB = db;
     }
 
-    public IEnumerable<string> Keys => _values.Keys;
+    public IReadOnlyDictionary<int, object?> ReadOnlyDict => new ReadOnlyDictionary<int, object?>(_values);
+
+    public object? Default(int id)
+    {
+        var result = UnknownValue.Create(_varDB[id].IntType);
+        _logger.debug(() => $"{_varDB[id]} => {result}");
+        return result;
+    }
+
+    public object? this[int id] => _values.TryGetValue(id, out var value) ? value : Default(id);
+    public object? this[SyntaxToken token]
+    {
+        get
+        {
+            if (_varDB.TryGetValue(token, out var V))
+                return _values.TryGetValue(V.id, out var value) ? value : Default(V.id); // .WithTag(V.Name);
+            else
+                return UnknownValue.Create();
+        }
+    }
+
+    public IEnumerable<int> Keys => _values.Keys;
     public int Count => _values.Count;
-    public bool ContainsKey(string key) => _values.ContainsKey(key);
-    public bool TryGetValue(string key, out object? value) => _values.TryGetValue(key, out value);
-    public void Remove(string key) => _values.Remove(key); // XXX _flags?
 
-    public void Set(string varName, object? value)
+    public bool ContainsKey(int key) => _values.ContainsKey(key);
+    public bool ContainsKey(SyntaxToken token) => _varDB.TryGetValue(token, out var V) && _values.ContainsKey(V.id);
+
+    public bool TryGetValue(int key, out object? value) => _values.TryGetValue(key, out value);
+    public bool TryGetValue(IdentifierNameSyntax id, out object? value) => TryGetValue(id.Identifier, out value); // id.Identifier is SyntaxToken
+    public bool TryGetValue(SyntaxToken token, out object? value)
     {
-        if (value is UnknownValueBase unk)
-            value = unk.WithTag(varName);
-        _values[varName] = value;
+        bool result;
+        if (_varDB.TryGetValue(token, out var V))
+        {
+            result = _values.TryGetValue(V.id, out value);
+        }
+        else
+        {
+            value = null;
+            result = false;
+            _logger.warn_once($"Variable definition not found for {token}");
+        }
+        _logger.debug($"{token} => {value}");
+        return result;
     }
 
-    public void SetLoopVar(string varName) => _flags[varName] |= FLAG_LOOP;
+    public object? GetValueOrDefault(IdentifierNameSyntax id) => GetValueOrDefault(id.Identifier);
+    public object? GetValueOrDefault(SyntaxToken token)
+    {
+        if (_varDB.TryGetValue(token, out var V))
+        {
+            return _values.TryGetValue(V.id, out var value) ? value : Default(V.id);
+        }
+        else
+        {
+            _logger.warn_once($"Variable definition not found for {token}");
+            return UnknownValue.Create();
+        }
+    }
+
+    public bool IsVariableRegistered(SyntaxToken token) => _varDB.TryGetValue(token, out var _);
+    public void RegisterVariable(VariableDeclaratorSyntax decl)
+    {
+        _logger.debug($"Registering variable: {decl}");
+        var parent = decl.Parent as VariableDeclarationSyntax;
+        if (parent == null)
+            throw new ArgumentException("VariableDeclaratorSyntax must have a parent VariableDeclarationSyntax", nameof(decl));
+
+        _varDB.Add(decl, parent.Type.ToString());
+    }
+
+    public void ResetVar(SyntaxToken token)
+    {
+        if (_varDB.TryGetValue(token, out var V))
+        {
+            _logger.debug($"Resetting variable {V}");
+            _values[V.id] = Default(V.id);
+        }
+        else
+        {
+            _logger.warn($"Variable not found in VarDB for SyntaxToken {token}");
+        }
+    }
+
+    public void Remove(int key) => _values.Remove(key); // XXX _flags?
+
+    public void Set(int id, object? value, [CallerMemberName] string caller = "")
+    {
+        _logger.debug(() => $"{_varDB[id]} = {value} [caller: {caller}]");
+        _values[id] = value;
+    }
+
+    public void Set(SyntaxToken token, object? value)
+    {
+        if (_varDB.TryGetValue(token, out var V))
+        {
+            _logger.debug($"{V} = {value}");
+            _values[V.id] = value;
+        }
+        else
+        {
+            _logger.warn($"Variable not found in VarDB for {token}");
+        }
+    }
+
+    public void Set(IdentifierNameSyntax id, object? value) => Set(id.Identifier, value);
 
     public VarDict ShallowClone()
     {
-        var clonedDict = new VarDict();
+        var clonedDict = new VarDict(_varDB);
         clonedDict._flags = _flags; // XXX byRef!
 
         foreach (var entry in this._values)
-            clonedDict.Set(entry.Key, entry.Value);
+            clonedDict._values[entry.Key] = entry.Value;
 
         return clonedDict;
     }
 
     public VarDict Clone()
     {
-        var clonedDict = new VarDict();
+        var clonedDict = new VarDict(_varDB);
         clonedDict._flags = _flags; // XXX byRef!
 
         // Deep copy the dictionary
@@ -55,26 +147,15 @@ public class VarDict
         {
             if (entry.Value is ICloneable cloneableValue)
             {
-                clonedDict.Set(entry.Key, cloneableValue.Clone());
+                clonedDict._values[entry.Key] = cloneableValue.Clone();
             }
             else
             {
-                clonedDict.Set(entry.Key, entry.Value);
+                clonedDict._values[entry.Key] = entry.Value;
             }
         }
 
         return clonedDict;
-    }
-
-    public VarDict CloneWithoutLoopVars()
-    {
-        VarDict clone = (VarDict)Clone();
-        foreach (var kvp in _flags)
-        {
-            if ((kvp.Value & FLAG_LOOP) != 0)
-                clone.Remove(kvp.Key);
-        }
-        return clone;
     }
 
     public void UpdateExisting(VarDict other)
@@ -91,10 +172,10 @@ public class VarDict
         }
     }
 
-    void UpdateVar(string key, object newValue)
+    void UpdateVar(int key, object newValue)
     {
-        if (Logger.HasTag("UpdateVar"))
-            Logger.info($"{key,-10} {this[key],-20} => {newValue}");
+        // if (_logger.HasTag("UpdateVar"))
+        //     _logger.info($"{key,-10} {this[key],-20} => {newValue}");
 
         Set(key, newValue);
     }
@@ -109,7 +190,7 @@ public class VarDict
             if (object.Equals(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
-            Set(other_kvp.Key, VarProcessor.MergeVar(other_kvp.Key, thisValue, other_kvp.Value));
+            Set(other_kvp.Key, VarProcessor.MergeVar("_", thisValue, other_kvp.Value)); // TODO: return back var name (display only)
         }
     }
 
@@ -128,10 +209,10 @@ public class VarDict
 
     public VarDict VarsFromNode(SyntaxNode node)
     {
-        VarDict vars = new VarDict();
+        VarDict vars = new VarDict(_varDB);
         foreach (var id in node.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
-            if (ContainsKey(id.Identifier.ValueText))
-                vars.Set(id.Identifier.ValueText, this[id.Identifier.ValueText]);
+            if (ContainsKey(id.Identifier))
+                vars.Set(id.Identifier, this[id.Identifier]);
         return vars;
     }
 
@@ -142,7 +223,7 @@ public class VarDict
 
         foreach (var kvp in _values)
         {
-            if ((_flags[kvp.Key] & FLAG_LOOP) != 0)
+            if (_varDB[kvp.Key].IsLoopVar)
                 continue; // Skip loop variables
 
             if (!other.TryGetValue(kvp.Key, out var value) || !Equals(kvp.Value, value))
@@ -156,7 +237,7 @@ public class VarDict
         int hash = 17;
         foreach (var kvp in _values.OrderBy(kvp => kvp.Key)) // Ensure order doesn't affect hash
         {
-            if ((_flags[kvp.Key] & FLAG_LOOP) != 0)
+            if (_varDB[kvp.Key].IsLoopVar)
                 continue; // Skip loop variables
 
             hash = hash * 31 + kvp.Key.GetHashCode();
@@ -165,11 +246,5 @@ public class VarDict
         return hash;
     }
 
-    public override string ToString()
-    {
-        if (Verbosity > 2)
-            return "<VarDict " + string.Join(", ", _values.Select(kvp => $"{kvp.Key}=({kvp.Value?.GetType()}){kvp.Value}")) + ">";
-        else
-            return "<VarDict " + string.Join(", ", _values.Select(kvp => $"{kvp.Key}={kvp.Value}")) + ">";
-    }
+    public override string ToString() => "<VarDict " + string.Join(", ", _values.Select(kvp => $"{_varDB[kvp.Key].Name}={kvp.Value}")) + ">";
 }

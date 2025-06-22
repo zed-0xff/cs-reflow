@@ -45,7 +45,7 @@ public partial class VarTracker
                     return;
             }
 
-            _sym2ann[symbol] = _varDB.Add(node, typeSymbol).Annotation;
+            _sym2ann[symbol] = _varDB.Add(node, typeSymbol.ToString()).Annotation;
         }
     }
 }

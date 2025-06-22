@@ -80,45 +80,6 @@ public static class SyntaxNodeExtensions
         return newRoot.GetAnnotatedNodes(annotation).OfType<BlockSyntax>().First();
     }
 
-    public static bool IsSameVar(this SyntaxNode node1, SyntaxNode node2)
-    {
-        if (node1.IsSameStmt(node2))
-            return true;
-
-        var ann2 = node2.GetAnnotations("VarID").FirstOrDefault();
-
-        if (ann2 != null && node1.IsSameVar(ann2))
-            return true;
-
-        if (node2 is LocalDeclarationStatementSyntax decl2 && decl2.Declaration.Variables.Count == 1)
-        {
-            node2 = decl2.Declaration.Variables[0];
-            ann2 = node2.GetAnnotations("VarID").FirstOrDefault();
-            if (ann2 != null && node1.IsSameVar(ann2))
-                return true;
-        }
-
-        return false;
-    }
-
-    public static bool IsSameVar(this SyntaxNode node1, SyntaxAnnotation ann2)
-    {
-        var ann1 = node1.GetAnnotations("VarID").FirstOrDefault();
-
-        if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
-            return true;
-
-        if (node1 is LocalDeclarationStatementSyntax decl1 && decl1.Declaration.Variables.Count == 1)
-        {
-            node1 = decl1.Declaration.Variables[0];
-            ann1 = node1.GetAnnotations("VarID").FirstOrDefault();
-            if (ann1 != null && ann2 != null && ann1.Data == ann2.Data)
-                return true;
-        }
-
-        return false;
-    }
-
     public static bool IsSameStmt(this SyntaxNode node1, SyntaxNode node2)
     {
         var ann1 = node1.GetAnnotations("StmtID").FirstOrDefault();
@@ -134,16 +95,24 @@ public static class SyntaxNodeExtensions
         {
             annotations.Add($"{ann.Kind}:{ann.Data}");
         }
-        return annotations.Count > 0 ? ("[" + string.Join(", ", annotations) + "]") : null;
+        return annotations.Count > 0 ? string.Join(", ", annotations) : null;
     }
 
-    public static string? NestedAnnotationsAsString(this SyntaxNode node)
+    public static string? NestedAnnotationsAsString(this SyntaxNode node, SyntaxNode? addNode = null)
     {
         var stuff = node.GetAnnotatedNodesAndTokens(ANNOTATION_KINDS);
         if (stuff.Count() == 0)
             return null;
 
         HashSet<string> annotations = new();
+        if (addNode != null)
+        {
+            foreach (var ann in addNode.GetAnnotations(ANNOTATION_KINDS))
+            {
+                annotations.Add($"{ann.Kind}:{ann.Data}");
+            }
+        }
+
         foreach (var item in stuff)
         {
             if (item.IsNode)
@@ -207,4 +176,6 @@ public static class SyntaxNodeExtensions
                     new SyntaxAnnotation("LineNo", node.LineNo().ToString())
                     );
     }
+
+    public static SyntaxAnnotation VarID(this VariableDeclaratorSyntax node) => node.Identifier.VarID();
 }

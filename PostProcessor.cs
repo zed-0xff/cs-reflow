@@ -326,7 +326,7 @@ public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
                     i + 1 < stmts.Count &&
                     stmts[i] is LocalDeclarationStatementSyntax decl1 &&
                     stmts[i + 1] is LocalDeclarationStatementSyntax decl2 &&
-                    (decl1.IsSameStmt(decl2) || decl1.IsSameVar(decl2))
+                    decl1.IsSameVar(decl2)
                 )
             {
                 if (decl1.IsSameStmt(decl2) || (decl1.Declaration.Variables[0].Initializer == null && decl2.Declaration.Variables[0].Initializer == null))
@@ -383,7 +383,7 @@ public class DeclarationAssignmentMerger : CSharpSyntaxRewriter
                 stmts[i + 1] is ExpressionStatementSyntax assignStmt &&
                 assignStmt.Expression is AssignmentExpressionSyntax assignExpr &&
                 assignExpr.Left is IdentifierNameSyntax leftId &&
-                leftId.IsSameVar(declStmt))
+                leftId.Identifier.IsSameVar(declStmt.Declaration.Variables[0].Identifier))
             {
                 // Build combined declaration
                 var variable = declStmt.Declaration.Variables[0]

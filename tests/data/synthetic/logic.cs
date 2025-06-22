@@ -26,3 +26,12 @@ void case3()
     var c = a ? 123 : (b ? 456 : 789); // b is unknown but it should not be evaluated
     stub(c); // prevent 'c' to be dropped by post-processor
 }
+
+void case4()
+{
+    var b = true;
+    if (b)
+    {
+        call_me();
+    }
+}

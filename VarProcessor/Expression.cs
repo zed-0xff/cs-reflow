@@ -13,7 +13,7 @@ public partial class VarProcessor
     public class Expression
     {
         CSharpSyntaxNode node;
-        VarDict variableValues;
+        VarDict _varDict;
         public int Verbosity = 0;
 
         public List<string> VarsWritten { get; } = new();
@@ -22,10 +22,10 @@ public partial class VarProcessor
 
         public object? Result { get; private set; } = UnknownValue.Create();
 
-        public Expression(CSharpSyntaxNode node, VarDict variableValues)
+        public Expression(CSharpSyntaxNode node, VarDict varDict)
         {
             this.node = node;
-            this.variableValues = variableValues;
+            this._varDict = varDict;
         }
 
         public Expression SetVerbosity(int verbosity)
@@ -34,16 +34,16 @@ public partial class VarProcessor
             return this;
         }
 
-        public object Evaluate()
+        public object? Evaluate()
         {
-            object result;
+            object? result = null;
             switch (node)
             {
                 case ExpressionSyntax expression:
                     result = EvaluateExpression(expression);
                     break;
                 case LocalDeclarationStatementSyntax localDeclaration:
-                    result = ProcessLocalDeclaration(localDeclaration);
+                    ProcessLocalDeclaration(localDeclaration);
                     break;
                 case ExpressionStatementSyntax expressionStatement:
                     result = EvaluateExpression(expressionStatement.Expression);
@@ -57,86 +57,100 @@ public partial class VarProcessor
                 result = ice.Value;
             }
             Result = result;
+            Logger.debug(() => $"{node.Title()} => {result}", "Expression.Evaluate");
             return result;
         }
 
-        object ProcessLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
+        void ProcessLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
         {
             if (Verbosity > 2)
             {
-                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: {localDeclaration}");
+                Logger.debug($"{localDeclaration}", "Expression.ProcessLocalDeclaration");
                 if (Verbosity > 3)
                 {
-                    Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: .Declaration = {localDeclaration.Declaration}");
-                    Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: .Declaration.Type = {localDeclaration.Declaration.Type}");
-                    Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: .Declaration.Variables = {localDeclaration.Declaration.Variables}");
+                    Logger.debug($"Expression.ProcessLocalDeclaration: .Declaration = {localDeclaration.Declaration}", "Expression.ProcessLocalDeclaration");
+                    Logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Type = {localDeclaration.Declaration.Type}", "Expression.ProcessLocalDeclaration");
+                    Logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Variables = {localDeclaration.Declaration.Variables}", "Expression.ProcessLocalDeclaration");
                 }
             }
 
-            // Extract the variable declaration
-            var decl = localDeclaration.Declaration.Variables.First();
-            //if (decl == null) return;
-
-            // Get the variable name (e.g., "num3")
-            string varName = decl.Identifier.Text;
-
-            if (string.IsNullOrEmpty(varName))
-                throw new NotSupportedException($"Empty variable name in: {localDeclaration}");
-
-            VarsWritten.Add(varName);
-
-            // Extract the right-hand side expression (e.g., "(num4 = (uint)(num2 ^ 0x76ED016F))")
-            var initializerExpression = decl.Initializer?.Value;
-
-            object value = new UnknownValue();
-            if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
-                value = UnknownValue.Create(localDeclaration.Declaration.Type);
-
-            if (initializerExpression != null)
+            foreach (var variable in localDeclaration.Declaration.Variables)
             {
-                setVar(varName, value); // set to UnknownValue first, because EvaluateExpression() may throw an exception
-                value = EvaluateExpression(initializerExpression);
-            }
+                if (Verbosity > 2)
+                    Logger.debug($"Expression.ProcessLocalDeclaration: A Variable = {variable}", "Expression.ProcessLocalDeclaration");
 
-            // narrow returned value type, when possible
-            if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
-            {
-                switch (value)
+                // Get the variable name (e.g., "num3")
+                var varID = variable.Identifier;
+                if (!_varDict.IsVariableRegistered(varID))
                 {
-                    case UnknownValue:
-                        value = UnknownValue.Create(localDeclaration.Declaration.Type);
-                        break;
-                    case IntConstExpr ice:
-                        value = ice.Cast(localDeclaration.Declaration.Type.ToString());
-                        break;
+                    _varDict.RegisterVariable(variable);
                 }
+
+                // if (string.IsNullOrEmpty(varName))
+                //     throw new NotSupportedException($"Empty variable name in: {localDeclaration}");
+                // 
+                // VarsWritten.Add(varName);
+
+                // Extract the right-hand side expression (e.g., "(num4 = (uint)(num2 ^ 0x76ED016F))")
+                var initializerExpression = variable.Initializer?.Value;
+
+                object value = new UnknownValue();
+                if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
+                    value = UnknownValue.Create(localDeclaration.Declaration.Type);
+
+                if (Verbosity > 2)
+                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: B varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+
+                if (initializerExpression != null)
+                {
+                    setVar(varID, value); // set to UnknownValue first, because EvaluateExpression() may throw an exception
+                    value = EvaluateExpression(initializerExpression);
+                }
+
+                if (Verbosity > 2)
+                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: C varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+
+                // narrow returned value type, when possible
+                if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
+                {
+                    switch (value)
+                    {
+                        case UnknownValue:
+                            value = UnknownValue.Create(localDeclaration.Declaration.Type);
+                            break;
+                        case IntConstExpr ice:
+                            value = ice.Cast(localDeclaration.Declaration.Type.ToString());
+                            break;
+                    }
+                }
+
+                if (Verbosity > 3)
+                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: D varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+
+                // if (value is UnknownValueBase unk)
+                //     value = unk.WithTag(varID);
+
+                if (Verbosity > 3)
+                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: E varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+
+                // do not overwrite existing variable values if initializerExpression is null
+                if (initializerExpression != null || !_varDict.ContainsKey(varID))
+                {
+                    setVar(varID, value);
+                }
+
+                if (Verbosity > 3)
+                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: F varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+
+                // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
+                //return _varDict[varID];
             }
-
-            if (Verbosity > 3)
-                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: varName={varName} value={value}");
-
-            if (value is UnknownValueBase unk)
-                value = unk.WithTag(varName);
-
-            if (Verbosity > 3)
-                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: varName={varName} value={value}");
-
-            // do not overwrite existing variable values if initializerExpression is null
-            if (initializerExpression != null || !variableValues.ContainsKey(varName))
-            {
-                setVar(varName, value);
-            }
-
-            if (Verbosity > 3)
-                Console.WriteLine($"[d] Expression.ProcessLocalDeclaration: varName={varName} value={value}");
-
-            // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
-            return variableValues[varName];
         }
 
-        void setVar(string varName, object value)
+        void setVar(IdentifierNameSyntax id, object value) => setVar(id.Identifier, value);
+        void setVar(SyntaxToken token, object value)
         {
-            if (variableValues.TryGetValue(varName, out var existingValue))
+            if (_varDict.TryGetValue(token, out var existingValue))
             {
                 switch (value)
                 {
@@ -163,14 +177,14 @@ public partial class VarProcessor
                 }
             }
 
-            if (value is UnknownValueBase unk)
-                value = unk.WithTag(varName);
+            // if (value is UnknownValueBase unk)
+            //     value = unk.WithTag(varName);
 
             // both after previous if/switch or if the variable does not exist
             if (value is IntConstExpr ice2)
                 value = ice2.Value; // int
 
-            variableValues.Set(varName, value);
+            _varDict.Set(token, value);
         }
 
         object cast_var(dynamic value, string toType)
@@ -213,9 +227,9 @@ public partial class VarProcessor
             try
             {
                 object result = EvaluateExpression_(expr);
-                if (Verbosity > 0 || Logger.HasTag("EvaluateExpression"))
+                if (Verbosity > 0 || Logger.HasTag("Expression.EvaluateExpression"))
                 {
-                    Console.Error.WriteColor($"[EvaluateExpression] ", ConsoleColor.DarkGray);
+                    Console.Error.WriteColor($"[.] ", ConsoleColor.DarkGray);
                     Console.Error.Write($"{expr,-50}");
                     Console.Error.WriteColor(" => ", ConsoleColor.DarkGray);
                     switch (result)
@@ -252,7 +266,7 @@ public partial class VarProcessor
                 if (ex is not NotSupportedException && !_excLogged) // log only from the deepest level
                 {
                     string msg = $"Error evaluating expr '{expr.TitleWithLineNo()}': {ex.GetType()}";
-                    var vars = variableValues.VarsFromNode(expr);
+                    var vars = _varDict.VarsFromNode(expr);
                     if (vars.Count > 0)
                         msg += $" ({vars})";
 
@@ -281,11 +295,12 @@ public partial class VarProcessor
                     var left = assignmentExpr.Left;
                     var right = assignmentExpr.Right;
 
-                    if (!(left is IdentifierNameSyntax))
+                    if (!(left is IdentifierNameSyntax idNameLeft))
                         throw new NotSupportedException($"Assignment to '{left.Kind()}' is not supported");
+                    SyntaxToken idLeft = idNameLeft.Identifier;
 
-                    string varName = left.ToString(); // XXX arrays?
-                    VarsWritten.Add(varName);
+                    // string varName = left.ToString(); // XXX arrays?
+                    // VarsWritten.Add(varName);
 
                     // Evaluate the right-hand side expression
                     try
@@ -294,7 +309,7 @@ public partial class VarProcessor
                         switch (assignmentExpr.Kind())
                         {
                             case SyntaxKind.SimpleAssignmentExpression:
-                                setVar(varName, rValue);
+                                setVar(idLeft, rValue);
                                 break;
 
                             default:
@@ -313,24 +328,15 @@ public partial class VarProcessor
                                     SyntaxKind.RightShiftAssignmentExpression => SyntaxKind.RightShiftExpression,
                                     _ => throw new InvalidOperationException("Unsupported compound assignment operator")
                                 };
-                                setVar(varName, EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right)));
+                                setVar(idLeft, EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right)));
                                 break;
                         }
-                        return variableValues[varName];
+                        return _varDict[idLeft];
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        if (variableValues.TryGetValue(varName, out var varValue))
-                        {
-                            if (varValue is UnknownTypedValue utv)
-                                variableValues.Set(varName, UnknownValue.Create(utv.type));
-                            else
-                                variableValues.Set(varName, UnknownValue.Create(varValue?.GetType()));
-                        }
-                        else
-                        {
-                            variableValues.Set(varName, UnknownValue.Create());
-                        }
+                        Logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
+                        _varDict.ResetVar(idLeft);
                         throw;
                     }
 
@@ -383,14 +389,11 @@ public partial class VarProcessor
                         _ => throw new NotSupportedException($"Default expression '{defaultExpr.ToString()}' is not supported.")
                     };
 
-                case IdentifierNameSyntax identifierName:
+                case IdentifierNameSyntax id:
                     // If the expression is an identifier, fetch its value from the dictionary
-                    string varName2 = identifierName.Identifier.Text;
-                    VarsRead.Add(varName2);
-                    if (variableValues.ContainsKey(varName2))
-                        return variableValues[varName2];
-                    else
-                        return UnknownValue.Create();
+                    // string varName2 = id.Identifier.Text;
+                    // VarsRead.Add(varName2);
+                    return _varDict.GetValueOrDefault(id);
 
                 case LiteralExpressionSyntax literal:
                     if (literal.Token.Value is int i)
@@ -499,10 +502,10 @@ public partial class VarProcessor
                 switch (expr.Operand)
                 {
                     case IdentifierNameSyntax id:
-                        string varName = id.Identifier.Text;
-                        VarsWritten.Add(varName);
-                        VarsRead.Add(varName);
-                        variableValues.Set(varName, retValue);
+                        // string varName = id.Identifier.Text;
+                        // VarsWritten.Add(varName);
+                        // VarsRead.Add(varName);
+                        _varDict.Set(id, retValue);
                         break;
                     case LiteralExpressionSyntax num:
                         Logger.warn_once($"Prefix operator '{expr.TitleWithLineNo()}' on literal '{num}'. Returning {retValue}");
@@ -549,10 +552,9 @@ public partial class VarProcessor
             };
             if (expr.Operand is IdentifierNameSyntax id)
             {
-                string varName = id.Identifier.Text;
-                VarsWritten.Add(varName);
-                VarsRead.Add(varName);
-                variableValues.Set(varName, newValue);
+                // VarsWritten.Add(varName);
+                // VarsRead.Add(varName);
+                _varDict.Set(id, newValue);
             }
             else
             {
@@ -741,7 +743,7 @@ public partial class VarProcessor
             where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
         {
             if (Verbosity > 2)
-                Console.WriteLine($"[d] eval_binary: ({l.GetType()}) #{l} {kind} ({r.GetType()}) {r}");
+                Console.Error.WriteLine($"[d] eval_binary: ({l.GetType()}) #{l} {kind} ({r.GetType()}) {r}");
 
             // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
             if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
@@ -824,7 +826,6 @@ public partial class VarProcessor
             }
 
             var lValue = EvaluateExpression(binaryExpr.Left); // always evaluated
-                                                              // Console.WriteLine($"[d] {binaryExpr.Left} => {lValue}");
 
             // handle logic expressions bc rValue might not need to be evaluated
             if (op == "&&" || op == "||")
@@ -854,7 +855,6 @@ public partial class VarProcessor
 
             // evaluate rValue, handle everything else
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
-                                                               // Console.WriteLine($"[d] {binaryExpr.Right} => {rValue}");
 
             if (lValue is UnknownValueBase luv)
                 return luv.Op(op, rValue);

@@ -9,20 +9,21 @@ public class Variable
     public readonly string TypeName;
 
     public readonly SyntaxAnnotation Annotation;
-    public readonly VariableDeclaratorSyntax Declarator;
     public readonly TypeDB.IntInfo? IntType;
 
     public const int FLAG_LOOP = 1;
 
-    public Variable(int id, VariableDeclaratorSyntax node, ITypeSymbol type)
+    public Variable(int id, string name, string typeName)
     {
-        this.Declarator = node;
         this.id = id;
-        this.Name = node.Identifier.ValueText;
+        this.Name = name;
         this.Annotation = new SyntaxAnnotation("VarID", id.ToString("X4"));
-        this.IntType = TypeDB.TryFind(type.ToString());
-        this.TypeName = type.ToString();
+        this.IntType = TypeDB.TryFind(typeName);
+        this.TypeName = typeName;
     }
 
-    public override string ToString() => $"Var{id:X4} ({TypeName} {Name ?? "?"})";
+    public bool IsLoopVar => (Flags & FLAG_LOOP) != 0;
+
+    public override string ToString() => $"<Var{id:X4}.{Name ?? "?"}>";
+    public string ToFullString() => $"<Var{id:X4} type={TypeName} name={Name ?? "?"}>";
 }

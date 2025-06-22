@@ -40,6 +40,10 @@ public class UnknownValueTests
         Type? type = null;
         var b = UnknownValue.Create(type);
         Assert.True(b is UnknownValue);
+
+        TypeDB.IntInfo? intType = null;
+        var c = UnknownValue.Create(intType);
+        Assert.True(c is UnknownValue);
     }
 
     [Fact]

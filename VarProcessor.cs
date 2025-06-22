@@ -6,50 +6,52 @@ using System.Runtime.CompilerServices;
 
 public partial class VarProcessor : ICloneable
 {
-    public static VarDict Constants { get; private set; } = new();
+    public static Dictionary<string, object?> Constants { get; private set; } = new();
     public int Verbosity = 0;
 
-    VarDict _vars = new();
+    readonly VarDB _varDB;
+    VarDict _varDict;
     Dictionary<string, bool> _traceVars = new(); // value is true if trace only unique
     Dictionary<string, HashSet<object>> _uniqValues = new(); // shared, r/w
 
-    public VarProcessor(int verbosity = 0)
+    public VarProcessor(VarDB db, int verbosity = 0, VarDict? varDict = null) // vars arg is for tests
     {
+        _varDB = db;
+        _varDict = varDict ?? new VarDict(db);
         Verbosity = verbosity;
     }
 
     static VarProcessor()
     {
-        Constants.Set("string.Empty", string.Empty);
-        Constants.Set("int.MinValue", int.MinValue);
-        Constants.Set("int.MaxValue", int.MaxValue);
-        Constants.Set("uint.MinValue", uint.MinValue);
-        Constants.Set("uint.MaxValue", uint.MaxValue);
+        Constants["string.Empty"] = string.Empty;
+        Constants["int.MinValue"] = int.MinValue;
+        Constants["int.MaxValue"] = int.MaxValue;
+        Constants["uint.MinValue"] = uint.MinValue;
+        Constants["uint.MaxValue"] = uint.MaxValue;
 
-        Constants.Set("Png_a7cb.BZh", 0x00685a42);
-        Constants.Set("Png_e0d5.IDAT", 0x54414449);
-        Constants.Set("Png_e0d5.IEND", 0x444e4549);
-        Constants.Set("Png_e0d5.IHDR", 0x52444849);
-        Constants.Set("Png_e0d5.PLTE", 0x45544c50);
-        Constants.Set("Png_e0d5.QRR", 0x00525251);
-        Constants.Set("Png_e0d5.tRNS", 0x534e5274);
+        Constants["Png_a7cb.BZh"] = 0x00685a42;
+        Constants["Png_e0d5.IDAT"] = 0x54414449;
+        Constants["Png_e0d5.IEND"] = 0x444e4549;
+        Constants["Png_e0d5.IHDR"] = 0x52444849;
+        Constants["Png_e0d5.PLTE"] = 0x45544c50;
+        Constants["Png_e0d5.QRR"] = 0x00525251;
+        Constants["Png_e0d5.tRNS"] = 0x534e5274;
 
-        Constants.Set("Structs_a7cb.BZh", 0x00685a42);
-        Constants.Set("Structs_e0d5.IDAT", 0x54414449);
-        Constants.Set("Structs_e0d5.IEND", 0x444e4549);
-        Constants.Set("Structs_e0d5.IHDR", 0x52444849);
-        Constants.Set("Structs_e0d5.PLTE", 0x45544c50);
-        Constants.Set("Structs_e0d5.QRR", 0x00525251);
-        Constants.Set("Structs_e0d5.tRNS", 0x534e5274);
+        Constants["Structs_a7cb.BZh"] = 0x00685a42;
+        Constants["Structs_e0d5.IDAT"] = 0x54414449;
+        Constants["Structs_e0d5.IEND"] = 0x444e4549;
+        Constants["Structs_e0d5.IHDR"] = 0x52444849;
+        Constants["Structs_e0d5.PLTE"] = 0x45544c50;
+        Constants["Structs_e0d5.QRR"] = 0x00525251;
+        Constants["Structs_e0d5.tRNS"] = 0x534e5274;
 
-        Constants.Set("Type.EmptyTypes.LongLength", Type.EmptyTypes.LongLength);
+        Constants["Type.EmptyTypes.LongLength"] = Type.EmptyTypes.LongLength;
     }
 
     public object Clone()
     {
-        var clonedProcessor = new VarProcessor();
-        clonedProcessor._vars = (VarDict)this._vars.Clone();
-        clonedProcessor.Verbosity = this.Verbosity;
+        var clonedProcessor = new VarProcessor(_varDB, Verbosity);
+        clonedProcessor._varDict = (VarDict)this._varDict.Clone();
         clonedProcessor._traceVars = this._traceVars; // shared, r/o
         clonedProcessor._uniqValues = this._uniqValues; // shared, r/w
         return clonedProcessor;
@@ -69,9 +71,9 @@ public partial class VarProcessor : ICloneable
                 _caller = caller;
                 _processor = processor;
                 _node = node;
-                _original = processor._vars.ReadOnlyDict
-                    .Where(kvp => processor._traceVars.ContainsKey(kvp.Key))
-                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                // _original = processor._varDict.ReadOnlyDict
+                //     .Where(kvp => processor._traceVars.ContainsKey(kvp.Key))
+                //     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
         }
 
@@ -80,43 +82,42 @@ public partial class VarProcessor : ICloneable
             if (_original == null)
                 return;
 
-            foreach (var (key, isUniq) in _processor._traceVars)
-            {
-                object? oldValue = null;
-                if (_original.TryGetValue(key, out var value))
-                    oldValue = value;
-                object? newValue = null;
-                if (_processor._vars.TryGetValue(key, out var newVal))
-                    newValue = newVal;
-
-                if (Equals(oldValue, newValue))
-                    continue;
-
-                bool log = !isUniq;
-                if (isUniq)
-                {
-                    if (_processor._uniqValues.TryGetValue(key, out var uniqSet))
-                    {
-                        if (uniqSet.Add(oldValue)) // cannot use '||' because both values may be unique
-                            log = true;
-                        if (uniqSet.Add(newValue))
-                            log = true;
-                    }
-                    else
-                    {
-                        _processor._uniqValues[key] = new HashSet<object> { oldValue, newValue };
-                        log = true;
-                    }
-                }
-
-                if (log)
-                    Logger.log($"[d] {_node?.TitleWithLineNo() ?? _caller,-90} // {key}: {oldValue,-12} => {newValue,-12}");
-            }
+            // foreach (var (key, isUniq) in _processor._traceVars)
+            // {
+            //     object? oldValue = null;
+            //     if (_original.TryGetValue(key, out var value))
+            //         oldValue = value;
+            //     object? newValue = null;
+            //     if (_processor._varDict.TryGetValue(key, out var newVal))
+            //         newValue = newVal;
+            // 
+            //     if (Equals(oldValue, newValue))
+            //         continue;
+            // 
+            //     bool log = !isUniq;
+            //     if (isUniq)
+            //     {
+            //         if (_processor._uniqValues.TryGetValue(key, out var uniqSet))
+            //         {
+            //             if (uniqSet.Add(oldValue)) // cannot use '||' because both values may be unique
+            //                 log = true;
+            //             if (uniqSet.Add(newValue))
+            //                 log = true;
+            //         }
+            //         else
+            //         {
+            //             _processor._uniqValues[key] = new HashSet<object> { oldValue, newValue };
+            //             log = true;
+            //         }
+            //     }
+            // 
+            //     if (log)
+            //         Logger.log($"[d] {_node?.TitleWithLineNo() ?? _caller,-90} // {key}: {oldValue,-12} => {newValue,-12}");
+            // }
         }
     }
 
-    public VarDict VariableValues() => _vars;
-    public void SetLoopVar(string varName) => _vars.SetLoopVar(varName);
+    public VarDict VariableValues() => _varDict;
 
     public void TraceVars(List<string> vars)
     {
@@ -134,7 +135,7 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, null))
         {
-            _vars.MergeExisting(other._vars);
+            _varDict.MergeExisting(other._varDict);
         }
     }
 
@@ -142,7 +143,7 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, null))
         {
-            _vars.UpdateExisting(other);
+            _varDict.UpdateExisting(other);
         }
     }
 
@@ -150,15 +151,26 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, null))
         {
-            _vars.UpdateExisting(other._vars);
+            _varDict.UpdateExisting(other._varDict);
         }
     }
 
-    public object EvaluateExpression(CSharpSyntaxNode node)
+    public object? EvaluateString(string expr)
+    {
+        var tree = CSharpSyntaxTree.ParseText(expr);
+        object? result = null;
+        foreach (var stmt in tree.GetRoot().DescendantNodes().OfType<GlobalStatementSyntax>())
+        {
+            result = EvaluateExpression(stmt.Statement);
+        }
+        return result;
+    }
+
+    public object? EvaluateExpression(CSharpSyntaxNode node)
     {
         using (new TraceScope(this, node))
         {
-            return new Expression(node, _vars)
+            return new Expression(node, _varDict)
                 .SetVerbosity(Verbosity)
                 .Evaluate();
         }
@@ -168,7 +180,7 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, stmt))
         {
-            var e = new Expression(stmt, _vars);
+            var e = new Expression(stmt, _varDict);
             e.SetVerbosity(Verbosity);
             e.Evaluate();
             return e;
@@ -179,7 +191,7 @@ public partial class VarProcessor : ICloneable
     {
         using (new TraceScope(this, expr))
         {
-            var e = new Expression(expr, _vars);
+            var e = new Expression(expr, _varDict);
             e.SetVerbosity(Verbosity);
             e.Evaluate();
             return e;
@@ -191,38 +203,10 @@ public partial class VarProcessor : ICloneable
         foreach (var v in decl.Declaration.Variables)
         {
             // TODO: check type
-            if (!_vars.ContainsKey(v.Identifier.ValueText))
+            if (!_varDict.ContainsKey(v.Identifier))
                 return false;
         }
         return true;
-    }
-
-    public void SetVar(string name, object? value)
-    {
-        _vars.Set(name, value);
-    }
-
-    public object? GetVar(string name)
-    {
-        if (_vars.TryGetValue(name, out var value))
-            return value;
-
-        return UnknownValue.Create();
-    }
-
-    public void SetVarTypes(LocalDeclarationStatementSyntax decl)
-    {
-        foreach (var v in decl.Declaration.Variables)
-        {
-            if (_vars.ContainsKey(v.Identifier.ValueText))
-            {
-                // TODO: check type
-            }
-            else
-            {
-                _vars.Set(v.Identifier.ValueText, UnknownValue.Create(decl.Declaration.Type));
-            }
-        }
     }
 
     public static (dynamic, dynamic) PromoteInts(dynamic l, dynamic r)
@@ -297,7 +281,6 @@ public partial class VarProcessor : ICloneable
 
         return (l, r);
     }
-
 
     // input: value1 != value2 and both of them are not null
     public static object MergeVar(string key, object value1, object value2, int depth = 0)

@@ -7,7 +7,7 @@ using System;
 
 class SyntaxTreePrinter : SyntaxTreeProcessor
 {
-    VarProcessor variableProcessor = new VarProcessor();
+    VarProcessor variableProcessor = new VarProcessor(new VarDB()); // XXX empty vardb
 
     private SyntaxTree tree;
     private SyntaxNode root;

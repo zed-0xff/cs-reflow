@@ -8,37 +8,34 @@ public class VarDB
 
     Dictionary<SyntaxAnnotation, Variable> _ann2vars = new();
     Dictionary<int, Variable> _vars = new();
+    Dictionary<string, Variable> _name2vars = new();
 
-    public Variable? TryFind(SyntaxAnnotation annotation)
+    public Variable this[int id] => _vars[id];
+    public Variable? FindByName(string name) => _name2vars.TryGetValue(name, out var variable) ? variable : null;
+
+    public bool TryGetValue(string varName, out Variable? variable) => _name2vars.TryGetValue(varName, out variable);
+    public bool TryGetValue(SyntaxToken token, out Variable? variable)
     {
-        Variable? v = null;
-        if (!_ann2vars.TryGetValue(annotation, out v))
+        var ann = token.VarID();
+        if (ann == null)
         {
-            int id = int.Parse(annotation.Data, System.Globalization.NumberStyles.HexNumber);
-            _vars.TryGetValue(id, out v);
+            Logger.warn_once($"Variable definition not found for {token}", "VarDB.TryGetValue");
+            return TryGetValue(token.ToString(), out variable);
         }
-        Logger.debug(() => $"{annotation.Data}: {v}", "VarDB.TryFind");
-        return v;
+        return _ann2vars.TryGetValue(ann, out variable);
     }
 
-    public Variable Find(SyntaxAnnotation annotation)
-    {
-        if (!_ann2vars.TryGetValue(annotation, out var v))
-        {
-            Logger.error($"Variable not found for annotation {annotation.Data}", "VarDB.Find");
-            throw new KeyNotFoundException($"Variable not found for annotation {annotation.Data}");
-        }
-        Logger.debug(() => $"{annotation.Data}: {v}", "VarDB.Find");
-        return v;
-    }
-
-    public Variable Add(VariableDeclaratorSyntax node, ITypeSymbol type)
+    public Variable Add(VariableDeclaratorSyntax node, string typeName) => Add(node.Identifier.ValueText, typeName);
+    public Variable Add(string name, string typeName)
     {
         int id = ++_var_id;
-        var v = new Variable(id, node, type);
+        var v = new Variable(id, name, typeName);
         _ann2vars[v.Annotation] = v;
         _vars[id] = v;
-        Logger.debug(() => $"{v}: ({type}) {node}", "VarDB.Add");
+        _name2vars[v.Name] = v;
+        Logger.debug(() => $"{v}: ({typeName}) {name}", "VarDB.Add");
         return v;
     }
+
+    public void SetLoopVar(int id) => _vars[id].Flags |= Variable.FLAG_LOOP;
 }

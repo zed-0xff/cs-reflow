@@ -4,61 +4,105 @@ using Xunit;
 
 public partial class ExpressionTests
 {
+    VarDB _varDB = new();
+    VarDict _varDict;
+    VarProcessor _processor;
+
+    public ExpressionTests()
+    {
+        _varDict = new VarDict(_varDB);
+        _processor = new VarProcessor(_varDB, varDict: _varDict);
+        var v = Environment.GetEnvironmentVariable("REFLOW_VERBOSITY");
+        if (v != null)
+        {
+            _processor.Verbosity = int.Parse(v);
+        }
+    }
+
+    void AddVar(string name, object value)
+    {
+        string typeName = value switch
+        {
+            UnknownTypedValue ut => ut.Type.Name,
+            _ => value.GetType().Name
+        };
+        var V = _varDB.Add(name, typeName);
+        _varDict.Set(V.id, value);
+    }
+
+    object? GetVar(string name)
+    {
+        var V = _varDB.FindByName(name);
+        // XXX should still query the _processor if the variable is not found?
+        return V == null ? UnknownValue.Create() : _processor.VariableValues()[V.id];
+    }
+
+    object? Eval(string expr_str) => _processor.EvaluateString(expr_str);
+
+    [Fact]
+    public void Test_get_known_var_from_decl()
+    {
+        Eval("int x");
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), Eval("+x"));
+    }
+
+    [Fact]
+    public void Test_get_known_var_from_db()
+    {
+        AddVar("x", UnknownValue.Create(TypeDB.Int));
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), Eval("+x"));
+    }
+
     [Fact]
     public void Test_int_decl()
     {
         string stmt_str = "int x = 123";
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(123, processor.GetVar("x"));
+        var result = Eval(stmt_str);
+        Assert.IsType<int>(GetVar("x"));
+        Assert.Equal(123, GetVar("x"));
     }
 
     [Fact]
     public void Test_int_unk_init()
     {
         string stmt_str = "int x = Foo.bar";
-        VarProcessor processor = new();
         try
         {
-            processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+            Eval(stmt_str);
         }
         catch (NotSupportedException)
         {
         }
-        Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.GetVar("x"));
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), GetVar("x"));
     }
 
     [Fact]
     public void Test_int_unk_assign()
     {
-        string stmt_str = "x = Foo.bar";
-        VarProcessor processor = new();
-        processor.SetVar("x", 123);
+        Eval("int x = 123");
         try
         {
-            processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+            Eval("x = Foo.bar");
         }
         catch (NotSupportedException)
         {
         }
-        Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.GetVar("x"));
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), GetVar("x"));
     }
 
     [Fact]
     public void Test_unk_int_unk_assign()
     {
         string stmt_str = "x = Foo.bar";
-        VarProcessor processor = new();
-        processor.SetVar("x", UnknownValue.Create(TypeDB.Int));
+        AddVar("x", UnknownValue.Create(TypeDB.Int));
         try
         {
-            processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
+            Eval(stmt_str);
         }
         catch (NotSupportedException)
         {
         }
-        Assert.Equal(UnknownValue.Create(TypeDB.Int), processor.GetVar("x"));
+        Assert.Equal(UnknownValue.Create(TypeDB.Int), GetVar("x"));
     }
 
     [Fact]
@@ -69,121 +113,107 @@ public partial class ExpressionTests
         Assert.Equal(-124, y);
         Assert.Equal(123, x);
 
+        Eval("int x = 123");
         string stmt_str = "int y = ~x";
-        VarProcessor processor = new();
-        processor.SetVar("x", 123);
-        var result = processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
-        Assert.IsType<int>(processor.GetVar("y"));
-        Assert.Equal(-124, processor.GetVar("y"));
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(123, processor.GetVar("x"));
+        var result = Eval(stmt_str);
+        Assert.IsType<int>(GetVar("y"));
+        Assert.Equal(-124, GetVar("y"));
+        Assert.IsType<int>(GetVar("x"));
+        Assert.Equal(123, GetVar("x"));
     }
 
     [Fact]
     public void Test_int_assign_existing()
     {
-        string expr_str = "x = 123";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", 0);
-        var result = processor.EvaluateExpression(expr);
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(123, processor.GetVar("x"));
+        string expr_str = "int x = 0; x = 123";
+
+        var result = Eval(expr_str);
+        Assert.IsType<int>(GetVar("x"));
+        Assert.Equal(123, GetVar("x"));
     }
 
     [Fact]
     public void Test_int_or_assign_existing()
     {
-        string expr_str = "x |= 123";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", 0);
-        var result = processor.EvaluateExpression(expr);
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(123, processor.GetVar("x"));
+        string expr_str = "int x=0; x |= 123";
+
+        var result = Eval(expr_str);
+        Assert.IsType<int>(GetVar("x"));
+        Assert.Equal(123, GetVar("x"));
     }
 
     [Fact]
-    public void Test_int_assign_new()
+    public void Test_unk_assign()
     {
-        string expr_str = "x = 123";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(expr);
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(123, processor.GetVar("x"));
+        string expr_str = "x = 123"; // x type is not known, maybe int, uint, long, etc.
+
+        var result = Eval(expr_str);
+        Assert.Equal(UnknownValue.Create(), result);
+        Assert.Equal(UnknownValue.Create(), GetVar("x"));
     }
 
     [Fact]
     public void Test_uint_decl()
     {
         string stmt_str = "uint x = 123";
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(SyntaxFactory.ParseStatement(stmt_str));
-        Assert.IsType<uint>(processor.GetVar("x"));
-        Assert.Equal(123U, processor.GetVar("x"));
+
+        var result = Eval(stmt_str);
+        Assert.IsType<uint>(GetVar("x"));
+        Assert.Equal(123U, GetVar("x"));
     }
 
     [Fact]
     public void Test_uint_assign_existing()
     {
-        string expr_str = "x = 123";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", 0U);
-        var result = processor.EvaluateExpression(expr);
-        Assert.IsType<uint>(processor.GetVar("x"));
-        Assert.Equal(123U, processor.GetVar("x"));
+        string expr_str = "var x = 0U; x = 123";
+
+        var result = Eval(expr_str);
+        Assert.IsType<uint>(GetVar("x"));
+        Assert.Equal(123U, GetVar("x"));
     }
 
     [Fact]
     public void Test_uint_assign_new()
     {
-        string expr_str = "x = 123U";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(expr);
-        Assert.IsType<uint>(processor.GetVar("x"));
-        Assert.Equal(123U, processor.GetVar("x"));
+        string expr_str = "var x = 123U";
+
+        var result = Eval(expr_str);
+        Assert.IsType<uint>(GetVar("x"));
+        Assert.Equal(123U, GetVar("x"));
     }
 
     [Fact]
     public void Test_postIncr()
     {
-        string expr_str = "x++";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", 1);
-        var result = processor.EvaluateExpression(expr);
+        Eval("int x = 1");
+        var result = Eval("x++");
         Assert.IsType<int>(result);
         Assert.Equal(1, result);
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(2, processor.GetVar("x"));
+        Assert.IsType<int>(GetVar("x"));
+        Assert.Equal(2, GetVar("x"));
     }
 
     [Fact]
     public void Test_preIncr()
     {
         string expr_str = "++x";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", 1);
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("x", 1);
+        var result = Eval(expr_str);
         Assert.IsType<int>(result);
         Assert.Equal(2, result);
-        Assert.IsType<int>(processor.GetVar("x"));
-        Assert.Equal(2, processor.GetVar("x"));
+        Assert.IsType<int>(GetVar("x"));
+        Assert.Equal(2, GetVar("x"));
     }
 
     [Fact]
     public void Test_exprA()
     {
         string expr_str = "(0x359 ^ ((0x82E & num4) * (int)(num9 << 14))) == 0"; // always false
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num4", UnknownValue.Create("int"));
-        processor.SetVar("num9", UnknownValue.Create("uint"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num4", UnknownValue.Create("int"));
+        AddVar("num9", UnknownValue.Create("uint"));
+        var result = Eval(expr_str);
         Assert.Equal(false, result);
     }
 
@@ -195,12 +225,10 @@ public partial class ExpressionTests
         //string expr_str = "(num32 << 9) + 0x20c60 == num11 << 11";
         //string expr_str = "(num32 << 5) + 0x20c6  == num11 << 7";
         //                                    00110 == 0
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
 
-        VarProcessor processor = new();
-        processor.SetVar("num32", UnknownValue.Create("int"));
-        processor.SetVar("num11", UnknownValue.Create("uint"));
-        var result = processor.EvaluateExpression(expr);
+        AddVar("num32", UnknownValue.Create("int"));
+        AddVar("num11", UnknownValue.Create("uint"));
+        var result = Eval(expr_str);
         Assert.Equal(false, result);
     }
 
@@ -208,10 +236,9 @@ public partial class ExpressionTests
     public void Test_exprC()
     {
         string expr_str = "((4 * num252 + num252 * 4) & 4) == 0";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num252", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num252", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -219,10 +246,9 @@ public partial class ExpressionTests
     public void Test_exprD()
     {
         string expr_str = "0 == ((4 * (num10 & (num10 << 2))) & 4)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num10", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num10", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -230,12 +256,11 @@ public partial class ExpressionTests
     public void Test_exprE()
     {
         string expr_str = "(((0x300 & ((num13 * 1939 + 109 * num13) ^ ((0xC86 & num12) >>> 5))) == 0) ? (-5579) : ((num14 << 5) - -48224 != 32 * (16402 * idat2 - (num14 & 0x1A85)))";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num12", UnknownValue.Create("int"));
-        processor.SetVar("num13", UnknownValue.Create("int"));
-        processor.SetVar("num14", 0);
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num12", UnknownValue.Create("int"));
+        AddVar("num13", UnknownValue.Create("int"));
+        AddVar("num14", 0);
+        var result = Eval(expr_str);
         Assert.IsType<int>(result);
         Assert.Equal(-5579, result);
     }
@@ -244,10 +269,9 @@ public partial class ExpressionTests
     public void Test_exprF1()
     {
         string expr_str = "!(~num11 == num11)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num11", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num11", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -255,10 +279,9 @@ public partial class ExpressionTests
     public void Test_exprF2()
     {
         string expr_str = "!(~num11 != num11)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num11", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num11", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(false, result);
     }
 
@@ -266,10 +289,9 @@ public partial class ExpressionTests
     public void Test_exprF3()
     {
         string expr_str = "!(num11 == ~num11)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num11", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num11", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -277,46 +299,34 @@ public partial class ExpressionTests
     public void Test_exprF4()
     {
         string expr_str = "!(num11 != ~num11)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num11", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num11", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(false, result);
     }
 
     [Fact]
     public void Test_exprG()
     {
-        string expr_str = "(((-(num12 + num12) << 1) ^ (10792 * num3 - 8444)) & 2) == 0";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num3", UnknownValue.Create("int"));
-        processor.SetVar("num12", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
-        Assert.Equal(true, result);
+        string expr_str = "int num12, num3; (((-(num12 + num12) << 1) ^ (10792 * num3 - 8444)) & 2) == 0";
+        Assert.Equal(true, Eval(expr_str));
     }
 
     [Fact]
     public void Test_exprH()
     {
-        string expr_str = "~(num116 + num116) != num117 * 3 + num117 - 708559999 >>> 1";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num116", UnknownValue.Create("int"));
-        processor.SetVar("num117", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
-        Assert.Equal(true, result);
+        string expr_str = "int num116, num117; ~(num116 + num116) != num117 * 3 + num117 - 708559999 >>> 1";
+        Assert.Equal(true, Eval(expr_str));
     }
 
     [Fact]
     public void Test_exprI1()
     {
         string expr_str = "QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("QRR2", UnknownValue.Create("int"));
-        processor.SetVar("QRR3", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("QRR2", UnknownValue.Create("int"));
+        AddVar("QRR3", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -324,11 +334,10 @@ public partial class ExpressionTests
     public void Test_exprI2()
     {
         string expr_str = "QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("QRR2", UnknownValue.Create("int"));
-        processor.SetVar("QRR3", 0);
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("QRR2", UnknownValue.Create("int"));
+        AddVar("QRR3", 0);
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -336,11 +345,10 @@ public partial class ExpressionTests
     public void Test_exprJ()
     {
         string expr_str = "342177280 + (x >>> 11 >>> 1) != QRR11 >>> 4";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", UnknownValue.Create("int"));
-        processor.SetVar("QRR11", 0);
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("x", UnknownValue.Create("int"));
+        Eval("int QRR11 = 0");
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -348,11 +356,10 @@ public partial class ExpressionTests
     public void Test_exprK()
     {
         string expr_str = "(int)num8 - x * -1275068416 != -1135615528";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("num8", new UnknownValueRange(TypeDB.UInt, 0, 1194));
-        processor.SetVar("x", UnknownValue.Create("int"));
-        var result = processor.EvaluateExpression(expr);
+
+        AddVar("num8", new UnknownValueRange(TypeDB.UInt, 0, 1194));
+        AddVar("x", UnknownValue.Create("int"));
+        var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
 
@@ -360,9 +367,8 @@ public partial class ExpressionTests
     public void Test_exprL()
     {
         string expr_str = "(((uint)(64 * (int)num) % 40u) | 0xABA40BBFu) != 2879654847u";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(expr);
+
+        var result = Eval(expr_str);
         Assert.Equal(false, result);
     }
 
@@ -370,9 +376,8 @@ public partial class ExpressionTests
     public void Test_exprM()
     {
         string expr_str = "(3 & ((uint)e093257623e347d2a45b8e4d5fa2 % 4558u << 15 >> 4)) != (uint)((124656 * (int)e093257623e347d2a45b8e4d5fa2) & 3)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(expr);
+
+        var result = Eval(expr_str);
         Assert.Equal(false, result);
     }
 
@@ -380,9 +385,8 @@ public partial class ExpressionTests
     public void Test_sizeof_ulong()
     {
         string expr_str = "sizeof(ulong)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(expr);
+
+        var result = Eval(expr_str);
         Assert.Equal(sizeof(ulong), result);
     }
 
@@ -390,9 +394,8 @@ public partial class ExpressionTests
     public void Test_sizeof_Guid()
     {
         string expr_str = "sizeof(Guid)";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        var result = processor.EvaluateExpression(expr);
+
+        var result = Eval(expr_str);
         Assert.Equal(16, result);
     }
 
@@ -406,13 +409,11 @@ public partial class ExpressionTests
         int y = 4;
         var res = x % y; // long
 
-        string expr_str = "x % y";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", x);
-        processor.SetVar("y", y);
-        var result = processor.EvaluateExpression(expr);
-        Assert.Equal(res.GetType(), result.GetType());
+        Eval("uint x = 1653725481");
+        Eval("int y = 4");
+        var result = Eval("x % y");
+
+        Assert.Equal(res.GetType(), result!.GetType());
         Assert.Equal(res, result);
     }
 
@@ -423,13 +424,11 @@ public partial class ExpressionTests
         uint y = 4;
         var res = x % y; // long
 
-        string expr_str = "x % y";
-        ExpressionSyntax expr = SyntaxFactory.ParseExpression(expr_str);
-        VarProcessor processor = new();
-        processor.SetVar("x", x);
-        processor.SetVar("y", y);
-        var result = processor.EvaluateExpression(expr);
-        Assert.Equal(res.GetType(), result.GetType());
+        Eval("int x = 1653725481");
+        Eval("uint y = 4");
+        var result = Eval("x % y");
+
+        Assert.Equal(res.GetType(), result!.GetType());
         Assert.Equal(res, result);
     }
 
@@ -448,10 +447,9 @@ public partial class ExpressionTests
         var decl = $"{type1} x = {value1}";
         var expr = $"x {op} {value2}";
 
-        VarProcessor processor = new();
-        processor.EvaluateExpression(SyntaxFactory.ParseStatement(decl));
-        var result = processor.EvaluateExpression(SyntaxFactory.ParseExpression(expr));
-        var short_res_type = TypeDB.ShortType(result.GetType().Name);
+        Eval(decl);
+        var result = Eval(expr);
+        var short_res_type = TypeDB.ShortType(result!.GetType().Name);
         Assert.True(exprected_res_type == short_res_type, $"{decl}; {expr} == ({exprected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
         Assert.Equal(expected_res.ToString(), result.ToString());
     }
@@ -461,10 +459,9 @@ public partial class ExpressionTests
         var decl = $"{type1} x = {value1}";
         var expr = $"{value2} {op} x";
 
-        VarProcessor processor = new();
-        processor.EvaluateExpression(SyntaxFactory.ParseStatement(decl));
-        var result = processor.EvaluateExpression(SyntaxFactory.ParseExpression(expr));
-        var short_res_type = TypeDB.ShortType(result.GetType().Name);
+        Eval(decl);
+        var result = Eval(expr);
+        var short_res_type = TypeDB.ShortType(result!.GetType().Name);
         Assert.True(exprected_res_type == short_res_type, $"{decl}; {expr} == ({exprected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
         Assert.Equal(expected_res.ToString(), result.ToString());
     }

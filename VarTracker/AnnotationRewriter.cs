@@ -22,29 +22,33 @@ public partial class VarTracker
 
         public override SyntaxNode VisitVariableDeclarator(VariableDeclaratorSyntax node)
         {
-            ISymbol? symbol = null;
+            // capture annotation first bc base.VisitVariableDeclarator may return rewritten node, so semantic model would not match
+            SyntaxAnnotation? annotation = null;
             if (node.SyntaxTree == _semanticModel.SyntaxTree)
-                symbol = _semanticModel.GetDeclaredSymbol(node);
+                _sym2ann.TryGetValue(_semanticModel.GetDeclaredSymbol(node), out annotation);
 
             node = base.VisitVariableDeclarator(node) as VariableDeclaratorSyntax;
+            if (node == null)
+                return node;
 
-            if (symbol == null && node.SyntaxTree == _semanticModel.SyntaxTree)
-                symbol = _semanticModel.GetDeclaredSymbol(node);
-
-            if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
-                node = node.WithAdditionalAnnotations(annotation);
+            if (annotation != null)
+                node = node.WithIdentifier(
+                        node.Identifier.WithAdditionalAnnotations(annotation)
+                        );
             return node;
         }
 
         public override SyntaxNode VisitIdentifierName(IdentifierNameSyntax node)
         {
             node = base.VisitIdentifierName(node) as IdentifierNameSyntax;
-            if (node.SyntaxTree == _semanticModel.SyntaxTree)
-            {
-                var symbol = _semanticModel.GetSymbolInfo(node).Symbol;
-                if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
-                    node = node.WithAdditionalAnnotations(annotation);
-            }
+            if (node == null || node.SyntaxTree != _semanticModel.SyntaxTree)
+                return node;
+
+            var symbol = _semanticModel.GetSymbolInfo(node).Symbol;
+            if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
+                node = node.WithIdentifier(
+                        node.Identifier.WithAdditionalAnnotations(annotation)
+                        );
             return node;
         }
 

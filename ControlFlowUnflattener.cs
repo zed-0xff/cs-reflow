@@ -71,11 +71,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
-
+    VarDB _varDB = new();
 
     // local
     FlowDictionary _localFlowDict = new();
-    VarProcessor _varProcessor = new();
+    VarProcessor _varProcessor;
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
     Dictionary<State, int> _states = new();
@@ -101,7 +101,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     public void Reset()
     {
-        _varProcessor = new();
+        _varProcessor = new(_varDB);
         _flowHints = new();
         _traceLog = new();
         _states = new();
@@ -298,6 +298,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         if (flowHints != null)
             _flowHints = new(flowHints);
+
+        _varProcessor = new(_varDB);
     }
 
     // private empty constructor for cloning exclusively
@@ -323,6 +325,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone._tree = _tree;                   // shared, r/o
         clone._flowRoot = _flowRoot;           // shared, r/o, but may have clone's own override(s)
         clone._parentReturns = _parentReturns; // shared, r/o
+        clone._varDB = _varDB;                 // shared, mostly r/o, may update flags
 
         clone._flowDict = _flowDict;           // shared, r/w 
         clone._flowInfos = _flowInfos;         // shared, r/w
@@ -1042,12 +1045,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
         }
 
-        // scan decls for types (but not initializers yet!)
-        foreach (var stmt in statements.OfType<LocalDeclarationStatementSyntax>())
-        {
-            _varProcessor.SetVarTypes(stmt);
-        }
-
         // main loop
         for (int i = start_idx; i < statements.Count; i++)
         {
@@ -1328,9 +1325,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
-    public List<string> find_loop_vars(int lineno)
+    public List<int> find_loop_vars(int lineno)
     {
-        List<string> loopVars = find_loop_vars(_condStates[lineno][^3..]);
+        List<int> loopVars = find_loop_vars(_condStates[lineno][^3..]);
         if (loopVars.Count != 0)
             return loopVars;
 
@@ -1364,7 +1361,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         throw new Exception($"Loop var not found at line {lineno}");
     }
 
-    public static List<string> find_loop_vars(List<State> states)
+    public static List<int> find_loop_vars(List<State> states)
     {
         if (states.Count < 2)
             return new();
@@ -1388,11 +1385,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 }
 
                 var baseVal = baseVars[key];
-
-                if (
-                    baseVal is null || val is null ||
-                    baseVal.Equals(val) || key == "_"
-                )
+                if (baseVal is null || val is null || baseVal.Equals(val) /* || key == "_" */)
                 {
                     baseVars.Remove(key);
                 }
@@ -1571,12 +1564,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 }
                 catch (ConditionalLoopException e)
                 {
-                    List<string> loopVars = clone.find_loop_vars(e.lineno);
-                    foreach (var loopVar in loopVars)
+                    List<int> loopVars = clone.find_loop_vars(e.lineno);
+                    foreach (int loopVar in loopVars)
                     {
                         if (Verbosity > 0)
                             Console.WriteLine($"[.] conditional loop at line {e.lineno}, loopVar: {loopVar}");
-                        _varProcessor.SetLoopVar(loopVar);
+                        _varDB.SetLoopVar(loopVar);
                     }
                     continue;
                 }
@@ -1734,9 +1727,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .OfType<LocalDeclarationStatementSyntax>()
                 .SelectMany(ld => ld.Declaration.Variables))
         {
-            var key = variable.GetAnnotations("VarID").First().Data;
+            var key = variable.VarID()?.Data;
             if (key == null)
-                throw new ArgumentException($"Local variable '{variable.Identifier}' has no 'VarID' annotation data");
+                throw new ArgumentException($"variable '{variable.Identifier}' has no 'VarID' annotation data: {variable.Parent.TitleWithLineNo()}");
 
             var value = variable.Parent as VariableDeclarationSyntax;
             if (localDecls0.TryGetValue(key, out var existingDecl))
@@ -1815,7 +1808,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var localDecls1 = result.DescendantNodesAndSelf()
             .OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(ld => ld.Declaration.Variables)
-            .Select(v => v.GetAnnotations("VarID").First().Data)
+            .Select(v => v.VarID()?.Data)
             .ToHashSet();
 
         if (Verbosity > 2)
@@ -1828,7 +1821,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var newDecls = new List<LocalDeclarationStatementSyntax>();
         foreach (var id in result.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
-            var ann = id.GetAnnotations("VarID").FirstOrDefault();
+            var ann = id.VarID();
             if (ann == null)
             {
                 if (Verbosity > 1)
@@ -1908,7 +1901,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         // collect all declarations from body prior to any processing
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
-        var tracker = new VarTracker();
+        var tracker = new VarTracker(_varDB);
         var trackedBody = tracker.Track(body) as BlockSyntax;
         body = body.ReplaceWith(trackedBody);
 
