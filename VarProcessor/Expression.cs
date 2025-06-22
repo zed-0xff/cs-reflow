@@ -286,7 +286,7 @@ public partial class VarProcessor
             }
         }
 
-        object EvaluateExpression_(ExpressionSyntax expression)
+        object? EvaluateExpression_(ExpressionSyntax expression)
         {
             switch (expression)
             {

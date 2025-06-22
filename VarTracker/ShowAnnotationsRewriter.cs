@@ -9,43 +9,44 @@ public partial class VarTracker
     {
         T add_comment<T>(T node) where T : SyntaxNode
         {
-            if (node != null)
-            {
-                bool append = node is EmptyStatementSyntax;
-                string? ann_str;
-                switch (node)
-                {
-                    case BlockSyntax:
-                        ann_str = node.AnnotationsAsString();
-                        break;
-                    case DoStatementSyntax doStmt:
-                        ann_str = doStmt.Condition.NestedAnnotationsAsString(doStmt);
-                        break;
-                    case IfStatementSyntax ifStmt:
-                        ann_str = ifStmt.Condition.NestedAnnotationsAsString(ifStmt);
-                        break;
-                    case WhileStatementSyntax whileStmt:
-                        ann_str = whileStmt.Condition.NestedAnnotationsAsString(whileStmt);
-                        break;
-                    default:
-                        ann_str = node.NestedAnnotationsAsString();
-                        break;
-                }
-                if (ann_str != null)
-                {
-                    if (ann_str.Length > 100)
-                        ann_str = ann_str.Substring(0, 100) + "…";
+            if (node == null)
+                return node;
 
-                    if (append)
-                    {
-                        string cmt = node.GetTrailingTrivia().ToString();
-                        cmt = string.IsNullOrEmpty(cmt) ? "" : cmt.Trim().Replace("// ", "");
-                        return node.WithComment($"{cmt} // {ann_str}");
-                    }
-                    else
-                    {
-                        return node.WithComment(ann_str);
-                    }
+            bool append = node is EmptyStatementSyntax;
+            string? ann_str;
+            switch (node)
+            {
+                case BlockSyntax:
+                    ann_str = node.AnnotationsAsString();
+                    break;
+                case DoStatementSyntax doStmt:
+                    ann_str = doStmt.Condition.NestedAnnotationsAsString(doStmt);
+                    break;
+                case IfStatementSyntax ifStmt:
+                    ann_str = ifStmt.Condition.NestedAnnotationsAsString(ifStmt);
+                    break;
+                case WhileStatementSyntax whileStmt:
+                    ann_str = whileStmt.Condition.NestedAnnotationsAsString(whileStmt);
+                    break;
+                default:
+                    ann_str = node.NestedAnnotationsAsString();
+                    break;
+            }
+
+            if (ann_str != null)
+            {
+                if (ann_str.Length > 100)
+                    ann_str = ann_str.Substring(0, 100) + "…";
+
+                if (append)
+                {
+                    string cmt = node.GetTrailingTrivia().ToString();
+                    cmt = string.IsNullOrEmpty(cmt) ? "" : cmt.Trim().Replace("// ", "");
+                    return node.WithComment($"{cmt} // {ann_str}");
+                }
+                else
+                {
+                    return node.WithComment(ann_str);
                 }
             }
             return node;

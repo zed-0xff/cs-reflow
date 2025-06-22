@@ -526,7 +526,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             .WithStatement(newBlock);
     }
 
-    void trace_switch(SwitchStatementSyntax switchStmt, object value)
+    void trace_switch(SwitchStatementSyntax switchStmt, object? value)
     {
         if (value is VarProcessor.Expression ex)
         {
@@ -1729,7 +1729,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             var key = variable.VarID()?.Data;
             if (key == null)
-                throw new ArgumentException($"variable '{variable.Identifier}' has no 'VarID' annotation data: {variable.Parent.TitleWithLineNo()}");
+                throw new ArgumentException($"variable '{variable.Identifier}' has no 'VarID' annotation data: {variable.Parent?.TitleWithLineNo()}");
 
             var value = variable.Parent as VariableDeclarationSyntax;
             if (localDecls0.TryGetValue(key, out var existingDecl))
