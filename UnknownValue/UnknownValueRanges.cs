@@ -159,7 +159,7 @@ public class UnknownValueRanges : UnknownTypedValue
 
     }
 
-    public override UnknownValueBase Xor(object right)
+    public override UnknownValueBase TypedXor(object right)
     {
         if (!TryConvertToLong(right, out long l) || Cardinality() > (long)MAX_DISCRETE_CARDINALITY)
             return UnknownValue.Create(type);

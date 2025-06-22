@@ -15,8 +15,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract UnknownValueBase TypedMod(object right);
     // TypedMul is defined in UnknownValueBitsBase
     public abstract UnknownValueBase TypedSub(object right);
-    // public abstract UnknownValueBase TypedXor(object right);
-    // 
+    public abstract UnknownValueBase TypedXor(object right);
+
     // public abstract UnknownValueBase TypedBitwiseAnd(object right);
     // public abstract UnknownValueBase TypedBitwiseOr(object right);
     // public abstract UnknownValueBase TypedShiftLeft(object right);
@@ -269,6 +269,31 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return new UnknownValueSet(type, values.OrderBy(x => x).ToList());
     }
 
+    public sealed override UnknownValueBase Xor(object right)
+    {
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
+        if (right == this)
+            return Zero(type);
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return this;
+            if (l == -1)
+                return BitwiseNot();
+        }
+
+        if (right is UnknownTypedValue otherTyped)
+        {
+            if (otherTyped.IsZero())
+                return this;
+        }
+
+        return TypedXor(right);
+    }
+
     public override object Cast(TypeDB.IntInfo toType)
     {
         if (toType == TypeDB.Bool)
@@ -308,7 +333,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return UnknownValueBits.CreateFromOr(type, mask);
     }
 
-    public override UnknownValueBase Sub(object right)
+    public sealed override UnknownValueBase Sub(object right)
     {
         if (right is UnknownValue)
             return UnknownValue.Create();

@@ -120,7 +120,7 @@ public class UnknownValueBitTrackerTest
     public void Test_Xor()
     {
         var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
-        Assert.Equal("UnknownValueBitTracker<byte>[00000000]", a.Xor(a).ToString());
+        Assert.Equal(UnknownTypedValue.Zero(TypeDB.Byte), a.Xor(a));
         var b = a.Xor(129);
         Assert.Equal("UnknownValueBitTracker<byte>[AbcdefgH]", b.ToString());
         b = b.Xor(129);

@@ -39,7 +39,7 @@ public class UnknownValueSet : UnknownTypedValue
             ? new UnknownValueSet(type, _values.Select(v => v % l))
             : new UnknownValueSet(type);
 
-    public override UnknownValueBase Xor(object right) =>
+    public override UnknownValueBase TypedXor(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => v ^ l))
             : new UnknownValueSet(type);

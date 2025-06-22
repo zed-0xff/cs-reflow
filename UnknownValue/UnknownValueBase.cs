@@ -139,10 +139,22 @@ public abstract class UnknownValueBase
         };
     }
 
-    protected static bool TryConvertToLong(object obj, out long result)
+    public static bool TryConvertToLong(object? obj, out long result)
     {
         switch (obj)
         {
+            case byte b:
+                result = b;
+                return true;
+            case sbyte sb:
+                result = sb;
+                return true;
+            case short s:
+                result = s;
+                return true;
+            case ushort us:
+                result = us;
+                return true;
             case int i:
                 result = i;
                 return true;

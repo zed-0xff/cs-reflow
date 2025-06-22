@@ -262,7 +262,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
         throw new NotImplementedException();
     }
 
-    public override UnknownValueBase Xor(object right)
+    public override UnknownValueBase TypedXor(object right)
     {
         if (TryConvertToLong(right, out long l))
         {

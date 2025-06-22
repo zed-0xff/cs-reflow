@@ -362,11 +362,8 @@ public class UnknownValueBits : UnknownValueBitsBase
         return calc_symm((a, b) => a + b, right, 0, this);
     }
 
-    public override UnknownValueBase Xor(object right)
+    public override UnknownValueBase TypedXor(object right)
     {
-        if (right == this) // '==' and not 'equals' because we want to use the same instance
-            return Zero(type);
-
         if (TryConvertToLong(right, out long l))
         {
             // just do a bit-by-bit xor on known _bits, no carry involved
