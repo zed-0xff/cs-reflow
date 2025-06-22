@@ -96,7 +96,7 @@ public class UnknownValueRanges : UnknownTypedValue
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override UnknownValueBase Sub(object right)
+    public override UnknownValueBase TypedSub(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownValue.Create(type);

@@ -13,8 +13,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract UnknownValueBase TypedAdd(object right);
     public abstract UnknownValueBase TypedDiv(object right);
     public abstract UnknownValueBase TypedMod(object right);
-    // public abstract UnknownValueBase TypedMul(object right);
-    // public abstract UnknownValueBase TypedSub(object right);
+    // TypedMul is defined in UnknownValueBitsBase
+    public abstract UnknownValueBase TypedSub(object right);
     // public abstract UnknownValueBase TypedXor(object right);
     // 
     // public abstract UnknownValueBase TypedBitwiseAnd(object right);
@@ -310,19 +310,31 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public override UnknownValueBase Sub(object right)
     {
+        if (right is UnknownValue)
+            return UnknownValue.Create();
+
         if (right == this)
             return Zero(type);
 
-        if (right is not UnknownTypedValue otherTyped)
-            return UnknownValue.Create(type);
+        if (TryConvertToLong(right, out long l) && (l == 0))
+            return this;
 
-        long resultCardinality = Cardinality() * otherTyped.Cardinality();
-        if (resultCardinality > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(type);
+        if (right is UnknownTypedValue otherTyped)
+        {
+            if (otherTyped.IsZero())
+                return this;
 
-        return new UnknownValueSet(type,
-                Values()
-                .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
+            long productCardinality = Cardinality() * otherTyped.Cardinality(); // pessimistic
+            var typedResult = TypedSub(right);
+
+            if (typedResult.Cardinality() < productCardinality)
+                return typedResult;
+
+            return new UnknownValueSet(type,
+                    Values()
+                    .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
+        }
+        return TypedSub(right);
     }
 
     public override UnknownValueBase Merge(object other)

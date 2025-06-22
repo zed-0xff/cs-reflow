@@ -85,16 +85,13 @@ public class UnknownValueRange : UnknownTypedValue
         }
     }
 
-    public override UnknownValueBase Sub(object right)
+    public override UnknownValueBase TypedSub(object right)
     {
-        if (right as UnknownValueRange == this)
-            return Zero(type);
-
         if (IsFullRange())
             return new UnknownValueRange(type);
 
         if (!TryConvertToLong(right, out long l))
-            return base.Sub(right);
+            return new UnknownValueRange(type);
 
         var newMin = MaskWithSign(Range.Min - l);
         var newMax = MaskWithSign(Range.Max - l);

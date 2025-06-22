@@ -337,7 +337,7 @@ public class UnknownValueBitTracker : UnknownValueBitsBase
     }
 
     public override UnknownValueBase TypedDiv(object right) => calc_asym((a, b) => a / b, right, 1, this);
-    public override UnknownValueBase Sub(object right) => calc_asym((a, b) => a - b, right, 0, this);
+    public override UnknownValueBase TypedSub(object right) => calc_asym((a, b) => a - b, right, 0, this);
 
     public override bool Equals(object obj) => (obj is UnknownValueBitTracker other) && type.Equals(other.type) && _var_id == other._var_id && _bits.SequenceEqual(other._bits);
 
