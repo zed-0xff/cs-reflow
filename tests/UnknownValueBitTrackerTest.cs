@@ -5,6 +5,22 @@ public class UnknownValueBitTrackerTest
     IEnumerable<int> gen_range(int start, int end) => Enumerable.Range(start, end - start + 1);
 
     [Fact]
+    public void Test_ctor()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0, 0, 0);
+        Assert.Equal("UnknownValueBitTracker<byte>[abcdefgh]", a.ToString());
+
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, 0, 1);
+        Assert.Equal("UnknownValueBitTracker<byte>[abcdefg0]", a.ToString());
+
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, 1, 1);
+        Assert.Equal("UnknownValueBitTracker<byte>[abcdefg1]", a.ToString());
+
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, 1, 129);
+        Assert.Equal("UnknownValueBitTracker<byte>[0bcdefg1]", a.ToString());
+    }
+
+    [Fact]
     public void Test_Bits()
     {
         // lists are reversed to keep visually natural order, i.e. "abcdefgh" instead of "hgfedcba"

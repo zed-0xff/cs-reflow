@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 public abstract class UnknownValueBase
 {
     protected object? _tag { get; init; } = null;
-    protected int? _var_id { get; init; } = null;
+    public int? _var_id { get; init; } = null; // public for UnknownValueBitTracker
 
     protected string TagStr()
     {
@@ -16,6 +16,8 @@ public abstract class UnknownValueBase
             _ => $"`{_tag}"
         };
     }
+
+    protected string VarIDStr() => _var_id.HasValue ? $"`{_var_id.Value}" : string.Empty;
 
     public abstract UnknownValueBase WithTag(object? tag);
     public abstract UnknownValueBase WithVarID(int id);

@@ -254,7 +254,7 @@ public class UnknownValueRange : UnknownValueRangeBase
     public override bool Contains(long value) => Range.Contains(value);
     public override int GetHashCode() => HashCode.Combine(type, Range);
 
-    public override string ToString() => $"UnknownValue<{type}>" + (IsFullRange() ? "" : Range.ToString()) + TagStr();
+    public override string ToString() => $"UnknownValue<{type}>" + (IsFullRange() ? "" : Range.ToString()) + TagStr() + VarIDStr();
 
     public override bool Typed_IntersectsWith(UnknownTypedValue right)
     {

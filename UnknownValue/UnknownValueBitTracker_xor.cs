@@ -33,7 +33,7 @@ public partial class UnknownValueBitTracker
                     ANY,
             };
         }
-        return new UnknownValueBitTracker(type, _var_id, newBits);
+        return new UnknownValueBitTracker(this, newBits);
     }
 
     UnknownValueBitTracker xor(UnknownValueBits other)
@@ -62,7 +62,7 @@ public partial class UnknownValueBitTracker
                     _ => throw new NotImplementedException($"Cannot XOR {type} with {other.type} at bit {i}")
                 };
         }
-        return new UnknownValueBitTracker(type, _var_id, newBits);
+        return new UnknownValueBitTracker(this, newBits);
     }
 
 }

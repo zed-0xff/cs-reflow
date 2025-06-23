@@ -382,6 +382,33 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_exprN()
+    {
+        string expr_str = "int num,x; (int)((uint)x / 4u) - int.MinValue == (858510224 + (num << 8)) * int.MinValue";
+
+        var result = Eval(expr_str);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
+    public void Test_exprO_BitTracker()
+    {
+        string expr_str = "int num6; ((num6 ^ ((num6 * -1788084224) | (num6 - 400) | (num6 + num6))) & 1) != 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
+    public void Test_exprP_BitTracker()
+    {
+        string expr_str = "int num6; (0x1DC240 & ((num6 * 1024 >>> 10) ^ num6)) != 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
     public void Test_sizeof_ulong()
     {
         string expr_str = "sizeof(ulong)";

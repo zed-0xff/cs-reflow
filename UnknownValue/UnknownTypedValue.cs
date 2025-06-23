@@ -33,10 +33,6 @@ public abstract class UnknownTypedValue : UnknownValueBase
         _ones.TryGetValue(type, out var one) ? one :
         (_ones[type] = new UnknownValueRange(type, 1, 1));
 
-    public UnknownValueBitsBase ToBits() =>
-        (this is UnknownValueBitsBase bits) ? bits :
-        (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
-
     public bool IsZero() => Equals(Zero(type));
     public bool IsOne() => Equals(One(type));
 
@@ -68,6 +64,39 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract bool Typed_IntersectsWith(UnknownTypedValue right);
     public abstract override long Min();
     public abstract override long Max();
+
+    public UnknownValueBitsBase ToBits() =>
+        (this is UnknownValueBitsBase bits) ? bits :
+        (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
+
+    public UnknownValueBitsBase ToBits(long val, long mask) =>
+        (this is UnknownValueBitsBase bits) ? bits :
+        (_var_id == null) ? new UnknownValueBits(type, val, mask) : new UnknownValueBitTracker(type, _var_id.Value, val, mask);
+
+    public bool CanConvertTo(UnknownTypedValue other)
+    {
+        if (type != other.type)
+            return false;
+
+        if (other is UnknownValueBitTracker)
+        {
+            return CanConvertTo<UnknownValueBitTracker>();
+        }
+
+        return false;
+    }
+
+    public bool CanConvertTo<T>()
+    {
+        if (typeof(T) == typeof(UnknownValueBitTracker))
+        {
+            return this is not UnknownValueBitTracker
+                && _var_id is not null
+                && IsFullRange();
+        }
+
+        return false;
+    }
 
     public override object Eq(object other)
     {
@@ -331,7 +360,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (pow > 0)
         {
             // TODO: alternative way: gather bits from all discrete values
-            var unkBits = new UnknownValueBits(type, 0, (1 << pow) - 1); // too wide!
+            var unkBits = ToBits(0, (1 << pow) - 1); // too wide!
             if (Cardinality() < MAX_DISCRETE_CARDINALITY)
             {
                 var unkSet = new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l))); // precise
@@ -388,7 +417,11 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (otherTyped.IsZero())
                 return this;
             if (otherTyped is UnknownValueBitTracker otherBT)
+            {
+                if (CanConvertTo<UnknownValueBitTracker>())
+                    return otherBT.TypedXor(ToBits());
                 return otherBT.TypedXor(this);
+            }
         }
 
         return TypedXor(right);
@@ -488,8 +521,14 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right == this)
             return Zero(type);
 
-        if (TryConvertToLong(right, out long l) && (l == 0))
-            return this;
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l == 0)
+                return this;
+
+            if (CanConvertTo<UnknownValueBitTracker>())
+                return ToBits().Sub(l);
+        }
 
         if (right is UnknownTypedValue otherTyped)
         {

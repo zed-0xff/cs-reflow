@@ -51,7 +51,7 @@ public partial class UnknownValueBitTracker
                     throw new NotImplementedException($"Cannot add: ({newBits[i]}, {add_bit}, {carry})");
             }
         }
-        return new UnknownValueBitTracker(type, _var_id, newBits);
+        return new UnknownValueBitTracker(this, newBits);
     }
 
     UnknownValueBitTracker add(UnknownValueBitTracker other)
@@ -104,6 +104,6 @@ public partial class UnknownValueBitTracker
                     throw new NotImplementedException($"Cannot add: ({newBits[i]}, {add_bit}, {carry})");
             }
         }
-        return new UnknownValueBitTracker(type, _var_id, newBits);
+        return new UnknownValueBitTracker(this, newBits);
     }
 }
