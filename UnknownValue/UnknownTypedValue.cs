@@ -100,17 +100,28 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public bool IntersectsWith(UnknownTypedValue right)
     {
-        if (type == right.type)
+        var left = this;
+        var cardL = left.Cardinality();
+        if (cardL == 0)
+            return false;
+
+        var cardR = right.Cardinality();
+        if (cardR == 0)
+            return false;
+
+        if (left.type == right.type)
         {
-            var left = this;
-            if (left.IsFullRange() && right.Cardinality() > 0)
+            if (left.IsFullRange() || right.IsFullRange())
                 return true;
 
-            if (left.Cardinality() > 0 && right.IsFullRange())
-                return true;
+            if (cardL == 1)
+                return right.Contains(left.Values().First());
+
+            if (cardR == 1)
+                return left.Contains(right.Values().First());
         }
 
-        return Typed_IntersectsWith(right);
+        return left.Typed_IntersectsWith(right);
     }
 
     public override object Gt(object right)
