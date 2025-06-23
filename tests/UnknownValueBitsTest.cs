@@ -6,23 +6,23 @@ public class UnknownValueBitsTest
     public void Test_ctor()
     {
         var a = new UnknownValueBits(TypeDB.Byte, 0, 0);
-        Assert.Equal("UnknownValueBits<byte>[]", a.ToString());
+        Assert.Equal("UnknownValueBits<byte>[…]", a.ToString());
 
         a = new UnknownValueBits(TypeDB.Byte, 0, 1);
-        Assert.Equal("UnknownValueBits<byte>[0]", a.ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0]", a.ToString());
 
         a = new UnknownValueBits(TypeDB.Byte, 1, 1);
-        Assert.Equal("UnknownValueBits<byte>[1]", a.ToString());
+        Assert.Equal("UnknownValueBits<byte>[…1]", a.ToString());
     }
 
     [Fact]
     public void Test_ToString()
     {
         var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, 1, 0, -1, -1, -1, -1, -1 });
-        Assert.Equal("UnknownValueBits<byte>[01_]", a.ToString());
+        Assert.Equal("UnknownValueBits<byte>[…01_]", a.ToString());
 
         a = new UnknownValueBits(TypeDB.Byte);
-        Assert.Equal("UnknownValueBits<byte>[]", a.ToString());
+        Assert.Equal("UnknownValueBits<byte>[…]", a.ToString());
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class UnknownValueBitsTest
     {
         var a = new UnknownValueBits(TypeDB.Byte);
         var b = a.ShiftLeft(2);
-        Assert.Equal("UnknownValueBits<byte>[00]", b.ToString());
+        Assert.Equal("UnknownValueBits<byte>[…00]", b.ToString());
     }
 
     [Fact]
@@ -220,14 +220,14 @@ public class UnknownValueBitsTest
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 1, -1, -1, 1, 0, 1, -1 });
         Assert.Equal(a, a.Add(0));
-        Assert.Equal("UnknownValueBits<byte>[101__11]", a.Add(1).ToString());
-        Assert.Equal("UnknownValueBits<byte>[00]", a.Add(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[01]", a.Add(3).ToString());
-        Assert.Equal("UnknownValueBits<byte>[01]", a.Add(7).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__11]", a.Add(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…00]", a.Add(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…01]", a.Add(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…01]", a.Add(7).ToString());
 
         // no-unknown-carry add
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, -1, -1, 1, 0, 1, -1 });
-        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Add(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__01]", a.Add(1).ToString());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, -1, 0, 0, 0, 0, 0, 0 });
         Assert.Equal("UnknownValueBits<byte>[000011__]", a.Add(0b1100).ToString());
@@ -237,7 +237,7 @@ public class UnknownValueBitsTest
     public void Test_Add_self()
     {
         var a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, -1, -1, -1, -1, -1, -1 });
-        Assert.Equal("UnknownValueBits<byte>[000]", a.Add(a).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…000]", a.Add(a).ToString());
         Assert.NotEqual(a, a.Add(a));
 
         // not self but same
@@ -255,13 +255,13 @@ public class UnknownValueBitsTest
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 1, -1, -1, 1, 0, 1, -1 });
         Assert.Equal(a, a.Xor(0));
-        Assert.Equal("UnknownValueBits<byte>[101__11]", a.Xor(1).ToString());
-        Assert.Equal("UnknownValueBits<byte>[101__00]", a.Xor(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Xor(3).ToString());
-        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Xor(7).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__11]", a.Xor(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__00]", a.Xor(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__01]", a.Xor(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__01]", a.Xor(7).ToString());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 0, -1, -1, 1, 0, 1, -1 });
-        Assert.Equal("UnknownValueBits<byte>[101__01]", a.Xor(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…101__01]", a.Xor(1).ToString());
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { -1, -1, 0, 0, 0, 0, 0, 0 });
         Assert.Equal("UnknownValueBits<byte>[000011__]", a.Xor(0b1100).ToString());
@@ -289,10 +289,10 @@ public class UnknownValueBitsTest
     public void Test_And_Or()
     {
         var a = UnknownValueBits.CreateFromAnd(TypeDB.Int, -265);
-        Assert.Equal("UnknownValueBits<int>[0____0___]", a.ToString());
+        Assert.Equal("UnknownValueBits<int>[…0____0___]", a.ToString());
 
         var b = a.BitwiseOr(0x82);
-        Assert.Equal("UnknownValueBits<int>[01___0_1_]", b.ToString());
+        Assert.Equal("UnknownValueBits<int>[…01___0_1_]", b.ToString());
     }
 
     [Fact]
@@ -302,32 +302,32 @@ public class UnknownValueBitsTest
         var u = UnknownValue.Create(TypeDB.Byte);
         Assert.Equal(u, a.Mul(u));
         Assert.Equal(a, a.Mul(1));
-        Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0]", a.Mul(2).ToString());
 
         a = a.SetBit(0, 0);
         Assert.Equal(u, a.Mul(u));
-        Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(1).ToString());
-        Assert.Equal("UnknownValueBits<byte>[00]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(3).ToString());
-        Assert.Equal("UnknownValueBits<byte>[000]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(5).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0]", a.Mul(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…00]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…000]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0]", a.Mul(5).ToString());
 
         a = a.SetBit(0, 1);
         Assert.Equal(u, a.Mul(u));
-        Assert.Equal("UnknownValueBits<byte>[1]", a.Mul(1).ToString());
-        Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[1]", a.Mul(3).ToString());
-        Assert.Equal("UnknownValueBits<byte>[100]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueBits<byte>[1]", a.Mul(5).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…1]", a.Mul(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…10]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…1]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…100]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…1]", a.Mul(5).ToString());
 
         a = a.SetBit(0, 0);
         a = a.SetBit(1, 1);
         Assert.Equal(u, a.Mul(u));
-        Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(1).ToString());
-        Assert.Equal("UnknownValueBits<byte>[100]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(3).ToString());
-        Assert.Equal("UnknownValueBits<byte>[1000]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(5).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…10]", a.Mul(1).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…100]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…10]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…1000]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…10]", a.Mul(5).ToString());
     }
 
     [Fact]

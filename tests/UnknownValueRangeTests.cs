@@ -184,17 +184,17 @@ public class UnknownValueRangeTests
     public void Test_int_mul_pow2()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        Assert.Equal("UnknownValueBits<int>[0]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<int>[…0]", a.Mul(2).ToString());
         Assert.Equal(a, a.Mul(3));
-        Assert.Equal("UnknownValueBits<int>[00]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBits<int>[…00]", a.Mul(4).ToString());
         Assert.Equal(a, a.Mul(5));
-        Assert.Equal("UnknownValueBits<int>[0]", a.Mul(6).ToString());
+        Assert.Equal("UnknownValueBits<int>[…0]", a.Mul(6).ToString());
         Assert.Equal(a, a.Mul(7));
-        Assert.Equal("UnknownValueBits<int>[000]", a.Mul(8).ToString());
+        Assert.Equal("UnknownValueBits<int>[…000]", a.Mul(8).ToString());
         Assert.Equal(a, a.Mul(0x0f));
-        Assert.Equal("UnknownValueBits<int>[0000]", a.Mul(0x10).ToString());
+        Assert.Equal("UnknownValueBits<int>[…0000]", a.Mul(0x10).ToString());
         Assert.Equal(a, a.Mul(0x11));
-        Assert.Equal("UnknownValueBits<int>[0000]", a.Mul(0xab0).ToString());
+        Assert.Equal("UnknownValueBits<int>[…0000]", a.Mul(0xab0).ToString());
     }
 
     [Fact]
@@ -315,7 +315,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.UInt);
         var b = a.ShiftLeft(1);
-        Assert.Equal("UnknownValueBits<uint>[0]", b.ToString());
+        Assert.Equal("UnknownValueBits<uint>[…0]", b.ToString());
 
         b = a.ShiftLeft(30);
         Assert.Equal(4UL, b.Cardinality());
@@ -328,7 +328,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.Int);
         var b = a.ShiftLeft(1);
-        Assert.Equal("UnknownValueBits<int>[0]", b.ToString());
+        Assert.Equal("UnknownValueBits<int>[…0]", b.ToString());
 
         b = a.ShiftLeft(30);
         Assert.Equal(4UL, b.Cardinality());

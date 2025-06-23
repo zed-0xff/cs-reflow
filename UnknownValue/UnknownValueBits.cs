@@ -65,9 +65,11 @@ public class UnknownValueBits : UnknownValueBitsBase
         string result = $"UnknownValueBits<{type}>[";
         int start = type.nbits - 1;
         while (start >= 0 && _bits[start] == ANY)
-        {
             start--;
-        }
+
+        if (start != type.nbits - 1)
+            result += "…";
+
         for (int i = start; i >= 0; i--)
         {
             result += _bits[i] == ANY ? "_" : _bits[i].ToString();

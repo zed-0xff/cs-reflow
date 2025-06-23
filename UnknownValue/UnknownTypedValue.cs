@@ -102,10 +102,11 @@ public abstract class UnknownTypedValue : UnknownValueBase
     {
         if (type == right.type)
         {
-            if (IsFullRange() && right.Cardinality() > 0)
+            var left = this;
+            if (left.IsFullRange() && right.Cardinality() > 0)
                 return true;
 
-            if (right.IsFullRange() && Cardinality() > 0)
+            if (left.Cardinality() > 0 && right.IsFullRange())
                 return true;
         }
 

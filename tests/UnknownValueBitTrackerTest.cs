@@ -129,7 +129,7 @@ public class UnknownValueBitTrackerTest
         Assert.Equal(a, a.Xor(129).Xor(1).Xor(128));
 
         b = new UnknownValueBitTracker(TypeDB.Byte, 1);
-        Assert.Equal("UnknownValueBitTracker<byte>[]", a.Xor(b).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…]", a.Xor(b).ToString());
 
         b = a.SetBit(0, -1).SetBit(1, 1).SetBit(2, 0);
         Assert.Equal("UnknownValueBitTracker<byte>[abcde01_]", b.ToString());
@@ -169,11 +169,11 @@ public class UnknownValueBitTrackerTest
     {
         var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
         Assert.Equal(a, a.TypedAdd(0));
-        Assert.Equal("UnknownValueBitTracker<byte>[H]", a.TypedAdd(1).ToString());
-        Assert.Equal("UnknownValueBitTracker<byte>[Gh]", a.TypedAdd(2).ToString());
-        Assert.Equal("UnknownValueBitTracker<byte>[H]", a.TypedAdd(3).ToString());
-        Assert.Equal("UnknownValueBitTracker<byte>[Fgh]", a.TypedAdd(4).ToString());
-        Assert.Equal("UnknownValueBitTracker<byte>[H]", a.TypedAdd(5).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…H]", a.TypedAdd(1).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…Gh]", a.TypedAdd(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…H]", a.TypedAdd(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…Fgh]", a.TypedAdd(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…H]", a.TypedAdd(5).ToString());
 
         var b = a.BitwiseAnd(0b11100111) as UnknownValueBitTracker;
         Assert.NotNull(b);
@@ -185,6 +185,6 @@ public class UnknownValueBitTrackerTest
         Assert.Equal("UnknownValueBitTracker<byte>[abc0___H]", b.TypedAdd(5).ToString());
         Assert.Equal("UnknownValueBitTracker<byte>[abc01fgh]", b.TypedAdd(8).ToString());
         Assert.Equal("UnknownValueBitTracker<byte>[abc10fgh]", b.TypedAdd(16).ToString());
-        Assert.Equal("UnknownValueBitTracker<byte>[C00fgh]", b.TypedAdd(32).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…C00fgh]", b.TypedAdd(32).ToString());
     }
 }

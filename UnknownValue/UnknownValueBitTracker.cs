@@ -514,9 +514,11 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         string result = $"UnknownValueBitTracker<{type}>[";
         int start = type.nbits - 1;
         while (start >= 0 && _bits[start] == ANY)
-        {
             start--;
-        }
+
+        if (start != type.nbits - 1)
+            result += "…";
+
         for (int i = start; i >= 0; i--)
         {
             BitType bit = _bits[i];
