@@ -91,7 +91,7 @@ public class UnknownValueSet : UnknownTypedValue
     public override long Min() => _values.Min();
     public override long Max() => _values.Max();
 
-    public override bool IntersectsWith(UnknownTypedValue other)
+    public override bool Typed_IntersectsWith(UnknownTypedValue other)
     {
         return _values.Any(v => other.Contains(v));
     }

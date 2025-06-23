@@ -65,7 +65,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
     public abstract bool IsFullRange();
     public abstract override bool Contains(long value);
-    public abstract bool IntersectsWith(UnknownTypedValue right);
+    public abstract bool Typed_IntersectsWith(UnknownTypedValue right);
     public abstract override long Min();
     public abstract override long Max();
 
@@ -75,7 +75,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             if (Contains(l))
             {
-                if (Cardinality() == 1UL)
+                if (Cardinality() == 1)
                     return true;
                 else
                     return UnknownValue.Create("bool");
@@ -88,7 +88,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         if (other is UnknownTypedValue r)
         {
-            if (Cardinality() == 1UL && r.Cardinality() == 1UL && Values().First() == r.Values().First())
+            if (Cardinality() == 1 && r.Cardinality() == 1 && Values().First() == r.Values().First())
                 return true;
 
             if (!IntersectsWith(r))
@@ -96,6 +96,20 @@ public abstract class UnknownTypedValue : UnknownValueBase
         }
 
         return UnknownValue.Create("bool");
+    }
+
+    public bool IntersectsWith(UnknownTypedValue right)
+    {
+        if (type == right.type)
+        {
+            if (IsFullRange() && right.Cardinality() > 0)
+                return true;
+
+            if (right.IsFullRange() && Cardinality() > 0)
+                return true;
+        }
+
+        return Typed_IntersectsWith(right);
     }
 
     public override object Gt(object right)

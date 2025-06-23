@@ -190,7 +190,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         }
     }
 
-    public override bool IntersectsWith(UnknownTypedValue other)
+    public override bool Typed_IntersectsWith(UnknownTypedValue other)
     {
         var (mask, val) = MaskVal();
         if (other is UnknownValueBits otherBits)

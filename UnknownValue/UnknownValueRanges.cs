@@ -205,14 +205,14 @@ public class UnknownValueRanges : UnknownValueRangeBase
             return $"UnknownValueRanges<{type}>[{_rangeSet.Count}]";
     }
 
-    public override bool IntersectsWith(UnknownTypedValue right)
+    public override bool Typed_IntersectsWith(UnknownTypedValue right)
     {
         return right switch
         {
             UnknownValueRange r => _rangeSet.Ranges.Any(range => range.IntersectsWith(r.Range)),
             UnknownValueRanges rr => _rangeSet.Ranges.Any(range => rr._rangeSet.Ranges.Any(r2 => range.IntersectsWith(r2))),
             UnknownValueSet l => l.Values().Any(v => Contains(v)),
-            _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
+            _ => throw new NotImplementedException($"{ToString()}.Typed_IntersectsWith({right}): not implemented.")
         };
     }
 

@@ -256,7 +256,7 @@ public class UnknownValueRange : UnknownValueRangeBase
 
     public override string ToString() => $"UnknownValue<{type}>" + (IsFullRange() ? "" : Range.ToString()) + TagStr();
 
-    public override bool IntersectsWith(UnknownTypedValue right)
+    public override bool Typed_IntersectsWith(UnknownTypedValue right)
     {
         return right switch
         {
@@ -264,7 +264,7 @@ public class UnknownValueRange : UnknownValueRangeBase
             UnknownValueSet l => l.Values().Any(v => Range.Contains(v)),
             UnknownValueRange r => Range.IntersectsWith(r.Range),
             UnknownValueRanges rr => rr.IntersectsWith(this),
-            _ => throw new NotImplementedException($"{ToString()}.IntersectsWith({right}): not implemented.")
+            _ => throw new NotImplementedException($"{ToString()}.Typed_IntersectsWith({right}): not implemented.")
         };
     }
 
