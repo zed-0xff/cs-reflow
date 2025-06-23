@@ -197,18 +197,37 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
 
     public override bool IntersectsWith(UnknownTypedValue other)
     {
-        if (other is not UnknownValueBitTracker otherBT)
-            throw new NotImplementedException();
-
-        int min_nbits = Math.Min(type.nbits, otherBT.type.nbits); // XXX should we check types?
-        for (int i = 0; i < min_nbits; i++)
+        if (other is UnknownValueBitTracker otherBT)
         {
-            if (_bits[i] == otherBT._bits[i] || _bits[i] == ANY || otherBT._bits[i] == ANY)
-                continue;
+            if (type.nbits != otherBT.type.nbits)
+                return false;
 
-            return false;
+            for (int i = 0; i < type.nbits; i++)
+            {
+                if (_bits[i] == otherBT._bits[i] || _bits[i] == ANY || otherBT._bits[i] == ANY)
+                    continue;
+
+                return false;
+            }
+            return true;
         }
-        return true;
+
+        if (other is UnknownValueBits otherBits)
+        {
+            if (type.nbits != otherBits.type.nbits)
+                return false;
+
+            for (int i = 0; i < type.nbits; i++)
+            {
+                if (_bits[i] == otherBits.Bits[i] || _bits[i] == ANY || otherBits.Bits[i] == UnknownValueBits.ANY)
+                    continue;
+
+                return false;
+            }
+            return true;
+        }
+
+        throw new NotImplementedException($"Cannot check intersection with {other.GetType()}");
     }
 
     public override UnknownTypedValue TypedShiftLeft(object right)
