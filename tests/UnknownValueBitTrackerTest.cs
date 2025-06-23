@@ -135,4 +135,56 @@ public class UnknownValueBitTrackerTest
         Assert.Equal("UnknownValueBitTracker<byte>[abcde01_]", b.ToString());
         Assert.Equal("UnknownValueBitTracker<byte>[00000fG_]", a.Xor(b).ToString());
     }
+
+    [Fact]
+    public void Test_Add()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a.ShiftLeft(1), a.Add(a));
+
+        var a2 = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a.ShiftLeft(1), a.Add(a2));
+        Assert.Equal(a.ShiftLeft(1), a2.Add(a));
+
+        var b = new UnknownValueBitTracker(TypeDB.Byte, 1);
+        Assert.NotEqual(a.ShiftLeft(1), a.Add(b));
+        Assert.NotEqual(a.ShiftLeft(1), b.Add(a));
+    }
+
+    [Fact]
+    public void Test_TypedAdd_BT()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a.ShiftLeft(1), a.TypedAdd(a));
+
+        var b = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a.ShiftLeft(1), a.TypedAdd(b));
+
+        var c = new UnknownValueBitTracker(TypeDB.Byte, 1);
+        Assert.True(a.TypedAdd(c).IsFullRange());
+    }
+
+    [Fact]
+    public void Test_TypedAdd_const()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a, a.TypedAdd(0));
+        Assert.Equal("UnknownValueBitTracker<byte>[H]", a.TypedAdd(1).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[Gh]", a.TypedAdd(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[H]", a.TypedAdd(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[Fgh]", a.TypedAdd(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[H]", a.TypedAdd(5).ToString());
+
+        var b = a.BitwiseAnd(0b11100111) as UnknownValueBitTracker;
+        Assert.NotNull(b);
+        Assert.Equal("UnknownValueBitTracker<byte>[abc00fgh]", b.ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc0___H]", b.TypedAdd(1).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc0__Gh]", b.TypedAdd(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc0___H]", b.TypedAdd(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc0fFgh]", b.TypedAdd(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc0___H]", b.TypedAdd(5).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc01fgh]", b.TypedAdd(8).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[abc10fgh]", b.TypedAdd(16).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[C00fgh]", b.TypedAdd(32).ToString());
+    }
 }

@@ -56,7 +56,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         ? new UnknownValueRange(type, Range / l)
         : new UnknownValueRange(type);
 
-    public override UnknownValueBase TypedAdd(object right)
+    public override UnknownTypedValue TypedAdd(object right)
     {
         if (IsFullRange())
             return new UnknownValueRange(type);
@@ -116,7 +116,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         return new UnknownValueRange(type, MaskWithSign(Range.Min - l), MaskWithSign(Range.Max - l));
     }
 
-    public override UnknownValueBase TypedShiftLeft(object right)
+    public override UnknownTypedValue TypedShiftLeft(object right)
     {
         if (!TryConvertToLong(right, out long l))
             return new UnknownValueRange(type);
@@ -126,7 +126,7 @@ public class UnknownValueRange : UnknownValueRangeBase
 
         ulong shiftedCardinality = 1UL << (type.nbits - (int)l);
         if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || (_var_id != null && IsFullRange())) // TODO: not full range can also be converted to bits
-            return ToBits().ShiftLeft(l);
+            return ToBits().TypedShiftLeft(l);
 
         if (Cardinality() < MAX_DISCRETE_CARDINALITY)
         {

@@ -308,26 +308,26 @@ public class UnknownValueBitsTest
         Assert.Equal(u, a.Mul(u));
         Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(1).ToString());
         Assert.Equal("UnknownValueBits<byte>[00]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[00]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(3).ToString());
         Assert.Equal("UnknownValueBits<byte>[000]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueBits<byte>[000]", a.Mul(5).ToString());
+        Assert.Equal("UnknownValueBits<byte>[0]", a.Mul(5).ToString());
 
         a = a.SetBit(0, 1);
         Assert.Equal(u, a.Mul(u));
         Assert.Equal("UnknownValueBits<byte>[1]", a.Mul(1).ToString());
         Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[11]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[1]", a.Mul(3).ToString());
         Assert.Equal("UnknownValueBits<byte>[100]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueBits<byte>[101]", a.Mul(5).ToString());
+        Assert.Equal("UnknownValueBits<byte>[1]", a.Mul(5).ToString());
 
         a = a.SetBit(0, 0);
         a = a.SetBit(1, 1);
         Assert.Equal(u, a.Mul(u));
         Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(1).ToString());
         Assert.Equal("UnknownValueBits<byte>[100]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueBits<byte>[110]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(3).ToString());
         Assert.Equal("UnknownValueBits<byte>[1000]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueBits<byte>[1010]", a.Mul(5).ToString());
+        Assert.Equal("UnknownValueBits<byte>[10]", a.Mul(5).ToString());
     }
 
     [Fact]
@@ -346,5 +346,19 @@ public class UnknownValueBitsTest
 
         a = new UnknownValueBits(TypeDB.Int);
         Assert.Equal(new UnknownValueRange(TypeDB.Int, -5, 5), a.Mod(6));
+    }
+
+    [Fact]
+    public void Test_Eq()
+    {
+        var a = new UnknownValueBits(TypeDB.Byte, 123, 0xff); // all bits are known
+        Assert.Equal(1UL, a.Cardinality());
+        Assert.Equal(true, a.Eq(123));
+        Assert.Equal(false, a.Ne(123));
+
+        a = new UnknownValueBits(TypeDB.Int, 0x24DA, 0xffffffff); // all bits are known
+        Assert.Equal(1UL, a.Cardinality());
+        Assert.Equal(true, a.Eq(0x24DA));
+        Assert.Equal(false, a.Ne(0x24DA));
     }
 }

@@ -21,7 +21,7 @@ public class UnknownValueSet : UnknownTypedValue
 
     public override bool IsFullRange() => Cardinality() == type.Range.Count && Min() == type.Range.Min && Max() == type.Range.Max;
 
-    public override UnknownValueBase TypedAdd(object right) =>
+    public override UnknownTypedValue TypedAdd(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v + l)))
             : new UnknownValueSet(type);
@@ -46,7 +46,7 @@ public class UnknownValueSet : UnknownTypedValue
             ? new UnknownValueSet(type, _values.Select(v => v ^ l))
             : new UnknownValueSet(type);
 
-    public override UnknownValueBase TypedShiftLeft(object right) =>
+    public override UnknownTypedValue TypedShiftLeft(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v << (int)l)))
             : new UnknownValueSet(type);

@@ -68,10 +68,10 @@ public class UnknownValueRanges : UnknownValueRangeBase
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override UnknownValueBase TypedAdd(object right)
+    public override UnknownTypedValue TypedAdd(object right)
     {
         if (!TryConvertToLong(right, out long l))
-            return UnknownValue.Create(type);
+            return UnknownTypedValue.Create(type);
 
         List<LongRange> newRanges = new();
         foreach (var range in _rangeSet.Ranges)
@@ -124,7 +124,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
             new UnknownValueRanges(type, newRangeSet);
     }
 
-    public override UnknownValueBase TypedShiftLeft(object right)
+    public override UnknownTypedValue TypedShiftLeft(object right)
     {
         throw new NotImplementedException();
     }

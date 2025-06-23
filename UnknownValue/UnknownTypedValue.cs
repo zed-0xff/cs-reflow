@@ -10,13 +10,13 @@ public abstract class UnknownTypedValue : UnknownValueBase
         this.type = type;
     }
 
-    public abstract UnknownValueBase TypedAdd(object right);
+    public abstract UnknownTypedValue TypedAdd(object right);
     public abstract UnknownValueBase TypedDiv(object right);
     public abstract UnknownValueBase TypedMod(object right);
     public abstract UnknownValueBase TypedSub(object right);
     public abstract UnknownValueBase TypedXor(object right);
 
-    public abstract UnknownValueBase TypedShiftLeft(object right);
+    public abstract UnknownTypedValue TypedShiftLeft(object right);
     public abstract UnknownValueBase TypedSignedShiftRight(object right);
     public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
 
@@ -33,9 +33,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         _ones.TryGetValue(type, out var one) ? one :
         (_ones[type] = new UnknownValueRange(type, 1, 1));
 
-    public UnknownValueBitsBase ToBits() => new UnknownValueBits(type);
-    // (this is UnknownValueBitsBase bits) ? bits :
-    // (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
+    public UnknownValueBitsBase ToBits() =>
+        (this is UnknownValueBitsBase bits) ? bits :
+        (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
 
     public bool IsZero() => Equals(Zero(type));
     public bool IsOne() => Equals(One(type));
@@ -75,7 +75,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             if (Contains(l))
             {
-                if (Cardinality() == 1)
+                if (Cardinality() == 1UL)
                     return true;
                 else
                     return UnknownValue.Create("bool");
@@ -88,13 +88,13 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         if (other is UnknownTypedValue r)
         {
-            if (Cardinality() == 1 && r.Cardinality() == 1 && Values().First() == r.Values().First())
+            if (Cardinality() == 1UL && r.Cardinality() == 1UL && Values().First() == r.Values().First())
                 return true;
 
             if (!IntersectsWith(r))
                 return false;
         }
-        ;
+
         return UnknownValue.Create("bool");
     }
 
@@ -126,20 +126,6 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return UnknownValue.Create("bool");
     }
 
-    bool TryGetTailPow2(long value, out int pow2)
-    {
-        pow2 = 0;
-        if (value == 0) return false;
-
-        while ((value & 1) == 0)
-        {
-            value >>= 1;
-            pow2++;
-        }
-
-        return (pow2 > 0);
-    }
-
     // sealed to prevent overriding in derived classes
     public sealed override UnknownValueBase Add(object right)
     {
@@ -152,10 +138,10 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
             return this;
 
-        if (right == this)
-            return ShiftLeft(1);
-
-        return TypedAdd(right);
+        UnknownTypedValue result = (right == this) ? TypedShiftLeft(1) : TypedAdd(right);
+        // if (result.IsFullRange())
+        //     return UnknownTypedValue.Create(type); // normalize full-range values to default range type
+        return result;
     }
 
     public sealed override UnknownValueBase ShiftLeft(object right)
@@ -273,6 +259,17 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return TypedDiv(right);
     }
 
+    public static int MaxPow2Divider(long x)
+    {
+        int result = 0;
+        while (x != 0 && (x & 1) == 0)
+        {
+            x >>= 1;
+            result++;
+        }
+        return result;
+    }
+
     public sealed override UnknownValueBase Mul(object right)
     {
         if (right is UnknownValue)
@@ -286,27 +283,40 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return this;
         }
 
+        int pow = 0;
         bool isNumeric = TryConvertToLong(right, out long l);
+
         if (isNumeric)
         {
             if (l == 0) return Zero(type);
             if (l == 1) return this;
             if (l == -1) return Negate();
+
+            pow = MaxPow2Divider(l);
+            if (Math.Pow(2, pow) == l) // multiplication by a power of 2
+                return ShiftLeft(pow);
         }
 
         if (this is UnknownValueBitsBase bits)
-        {
             return bits.TypedMul(right);
+
+        // multiplication by X*N, where N is power of 2
+        // TODO: compare cardinality
+        if (pow > 0)
+        {
+            // TODO: alternative way: gather bits from all discrete values
+            var unkBits = new UnknownValueBits(type, 0, (1 << pow) - 1); // too wide!
+            if (Cardinality() < MAX_DISCRETE_CARDINALITY)
+            {
+                var unkSet = new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l))); // precise
+                if (unkSet.Cardinality() < unkBits.Cardinality())
+                    return unkSet;
+            }
+            return unkBits;
         }
 
         if (Cardinality() > MAX_DISCRETE_CARDINALITY)
-        {
-            if (isNumeric && TryGetTailPow2(l, out int pow2)) // TODO
-            {
-                return new UnknownValueBits(type, 0, (1 << pow2) - 1);
-            }
             return UnknownValue.Create(type);
-        }
 
         if (isNumeric)
             return new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l)));
@@ -314,6 +324,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right is not UnknownTypedValue ru)
             return UnknownValue.Create(type);
 
+        // calculate product of two unknown sets
         HashSet<long> values = new();
         foreach (long v in Values())
         {
@@ -327,7 +338,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             }
         }
 
-        return new UnknownValueSet(type, values.OrderBy(x => x).ToList());
+        return new UnknownValueSet(type, values);
     }
 
     public sealed override UnknownValueBase Xor(object right)
@@ -350,6 +361,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
         {
             if (otherTyped.IsZero())
                 return this;
+            if (otherTyped is UnknownValueBitTracker otherBT)
+                return otherBT.TypedXor(this);
         }
 
         return TypedXor(right);
@@ -394,6 +407,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (IsFullRange() && right is UnknownValueBitsBase bb)
             return bb;
 
+        if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
+            return otherBT.TypedBitwiseAnd(this);
+
         if (this is UnknownValueBitsBase bits)
             return bits.TypedBitwiseAnd(right);
 
@@ -422,6 +438,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
             return this;
+
+        if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
+            return otherBT.TypedBitwiseOr(this);
 
         if (this is UnknownValueBitsBase bits)
             return bits.TypedBitwiseOr(right);

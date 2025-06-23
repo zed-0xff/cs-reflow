@@ -2,9 +2,9 @@ using System.Collections.ObjectModel;
 
 public class UnknownValueBits : UnknownValueBitsBase
 {
-    private const sbyte ANY = -1;
-    private const sbyte ONE = 1;
-    private const sbyte ZERO = 0;
+    public const sbyte ANY = -1;
+    public const sbyte ONE = 1;
+    public const sbyte ZERO = 0;
 
     readonly ReadOnlyCollection<sbyte> _bits;
 
@@ -86,7 +86,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return new UnknownValueBits(type, _bits.Select((b, i) => i == idx ? value : b));
     }
 
-    public (long, long) MaskVal(bool minimal = false)
+    public override (long, long) MaskVal(bool minimal = false)
     {
         long mask = 0;
         long val = 0;
@@ -104,19 +104,6 @@ public class UnknownValueBits : UnknownValueBitsBase
             }
         }
         return (mask, extend_sign(val));
-    }
-
-    long extend_sign(long v)
-    {
-        if (type.signed)
-        {
-            long sign_bit = (1L << (type.nbits - 1));
-            if ((v & sign_bit) != 0)
-            {
-                v |= ~type.Mask;
-            }
-        }
-        return v;
     }
 
     public override object Cast(TypeDB.IntInfo toType)
@@ -306,11 +293,11 @@ public class UnknownValueBits : UnknownValueBitsBase
 
     public override UnknownValueBase Negate() => BitwiseNot().Add(1);
 
-    private UnknownValueBase calc_symm(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val, bool useMinMask = true)
+    private UnknownTypedValue calc_symm(Func<long, long, long> op, object right, bool useMinMask = true)
     {
         switch (right)
         {
-            case UnknownValueBits otherBits:
+            case UnknownValueBitsBase otherBits:
                 var (mask1, val1) = MaskVal(useMinMask);
                 var (mask2, val2) = otherBits.MaskVal(useMinMask);
                 var newMask = mask1 & mask2;
@@ -318,7 +305,7 @@ public class UnknownValueBits : UnknownValueBitsBase
 
             case UnknownValueSet otherList:
                 if (Cardinality() > MAX_DISCRETE_CARDINALITY)
-                    return UnknownValue.Create(type);
+                    return UnknownTypedValue.Create(type);
 
                 var newValues = new HashSet<long>();
                 foreach (var v1 in Values())
@@ -327,23 +314,23 @@ public class UnknownValueBits : UnknownValueBitsBase
                     {
                         newValues.Add(MaskWithSign(op(v1, v2)));
                         if ((ulong)newValues.Count > MAX_DISCRETE_CARDINALITY)
-                            return UnknownValue.Create(type);
+                            return UnknownTypedValue.Create(type);
                     }
                 }
                 return new UnknownValueSet(type, newValues.OrderBy(x => x).ToList());
         }
 
-        return calc_asym(op, right, identity, id_val);
+        return calc_asym(op, right);
     }
 
-    public override UnknownValueBase TypedAdd(object right)
+    public override UnknownTypedValue TypedAdd(object right)
     {
         if (TryConvertToLong(right, out long l))
         {
             // bitwise add until carry to unknown bit
             var newBits = Enumerable.Repeat<sbyte>(ANY, type.nbits).ToList();
             sbyte carry = 0;
-            for (int i = 0; i < type.nbits; i++, l >>= 1)
+            for (int i = 0; i < type.nbits; i++, l >>>= 1)
             {
                 var add = carry + (l & 1);
                 if (_bits[i] == ANY)
@@ -361,7 +348,7 @@ public class UnknownValueBits : UnknownValueBitsBase
             return new UnknownValueBits(type, newBits);
         }
 
-        return calc_symm((a, b) => a + b, right, 0, this);
+        return calc_symm((a, b) => a + b, right);
     }
 
     public override UnknownValueBase TypedXor(object right)
@@ -377,33 +364,13 @@ public class UnknownValueBits : UnknownValueBitsBase
                 {
                     newBits[i] ^= (sbyte)(l & 1);
                 }
-                l >>= 1;
+                l >>>= 1;
                 i++;
             }
             return new UnknownValueBits(type, newBits);
         }
 
-        return calc_symm((a, b) => a ^ b, right, 0, this, false);
-    }
-
-    public override UnknownValueBase TypedMul(object right)
-    {
-        if (TryConvertToLong(right, out long l))
-        {
-            var (minMask, val) = MaskVal(true);
-            val *= l;
-            var newMask = minMask;
-
-            l >>= 1;
-            while (l > 0)
-            {
-                newMask = (newMask << 1) | 1;
-                l >>= 1;
-            }
-            return new UnknownValueBits(type, val, newMask);
-        }
-
-        return calc_symm((a, b) => a * b, right, 1, this);
+        return calc_symm((a, b) => a ^ b, right, false);
     }
 
     public override UnknownValueBase TypedMod(object right)
@@ -418,20 +385,17 @@ public class UnknownValueBits : UnknownValueBitsBase
         return type.signed ? new UnknownValueRange(type, -l + 1, l - 1) : new UnknownValueRange(type, 0, l - 1);
     }
 
-    private UnknownValueBase calc_asym(Func<long, long, long> op, object right, long identity, UnknownValueBase id_val)
+    private UnknownTypedValue calc_asym(Func<long, long, long> op, object right)
     {
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
-
-        if (l == identity)
-            return id_val;
 
         var (minMask, val) = MaskVal(true);
         return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
     }
 
-    public override UnknownValueBase TypedDiv(object right) => calc_asym((a, b) => a / b, right, 1, this);
-    public override UnknownValueBase TypedSub(object right) => calc_asym((a, b) => a - b, right, 0, this);
+    public override UnknownValueBase TypedDiv(object right) => calc_asym((a, b) => a / b, right);
+    public override UnknownValueBase TypedSub(object right) => calc_asym((a, b) => a - b, right);
 
     public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bits.SequenceEqual(other._bits);
 
