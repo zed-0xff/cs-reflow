@@ -469,6 +469,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
             return otherBT.TypedBitwiseAnd(this);
 
+        if (CanConvertTo<UnknownValueBitTracker>())
+            return ToBits().BitwiseAnd(right);
+
         if (this is UnknownValueBitsBase bits)
             return bits.TypedBitwiseAnd(right);
 
@@ -500,6 +503,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
             return otherBT.TypedBitwiseOr(this);
+
+        if (CanConvertTo<UnknownValueBitTracker>())
+            return ToBits().BitwiseOr(right);
 
         if (this is UnknownValueBitsBase bits)
             return bits.TypedBitwiseOr(right);

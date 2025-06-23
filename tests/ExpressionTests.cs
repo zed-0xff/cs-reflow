@@ -409,6 +409,15 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_exprQ_BitTracker()
+    {
+        string expr_str = "int x; -101875712 + 16384 * 1541962368 * x == -(x | -6684)";
+
+        var result = Eval(expr_str);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
     public void Test_sizeof_ulong()
     {
         string expr_str = "sizeof(ulong)";
