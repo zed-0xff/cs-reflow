@@ -9,9 +9,6 @@ public partial class VarTracker
     {
         T add_comment<T>(T node) where T : SyntaxNode
         {
-            if (node == null)
-                return node;
-
             bool append = node is EmptyStatementSyntax;
             string? ann_str;
             switch (node)

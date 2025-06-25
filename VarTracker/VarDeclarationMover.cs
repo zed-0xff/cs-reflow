@@ -204,7 +204,7 @@ public partial class VarTracker
                 return newNode;
 
             // Remove moved declarations from this block
-            var statements = newNode.Statements.Where(s => !_toRemove.Contains(s)).ToList();
+            var statements = newNode!.Statements.Where(s => !_toRemove.Contains(s)).ToList();
 
             // Insert moved declarations at the start of the block
             statements.InsertRange(0, declsToInsert);
@@ -212,7 +212,7 @@ public partial class VarTracker
             return newNode.WithStatements(SyntaxFactory.List(statements));
         }
 
-        public override SyntaxNode VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
+        public override SyntaxNode? VisitLocalDeclarationStatement(LocalDeclarationStatementSyntax node)
         {
             if (!_toRemove.Contains(node))
                 return base.VisitLocalDeclarationStatement(node);

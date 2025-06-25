@@ -175,8 +175,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     class GotoCaseException : FlowException
     {
-        public readonly object value;
-        public GotoCaseException(int lineno, object value) : base(lineno, $"goto case {value}")
+        public readonly object? value;
+        public GotoCaseException(int lineno, object? value) : base(lineno, $"goto case {value}")
         {
             this.value = value;
         }

@@ -226,7 +226,7 @@ public partial class VarProcessor
             _evalDepth++;
             try
             {
-                object result = EvaluateExpression_(expr);
+                var result = EvaluateExpression_(expr);
                 if (Verbosity > 0 || Logger.HasTag("Expression.EvaluateExpression"))
                 {
                     Console.Error.WriteColor($"[.] ", ConsoleColor.DarkGray);

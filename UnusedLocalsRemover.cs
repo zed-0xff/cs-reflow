@@ -40,7 +40,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 return false;
 
             var dataFlow = Model.AnalyzeDataFlow(node);
-            if (!dataFlow.Succeeded)
+            if (dataFlow == null || !dataFlow.Succeeded)
                 return false;
 
             if (dataFlow.WrittenInside.Any(w => !IsUnusedLocal(w)))

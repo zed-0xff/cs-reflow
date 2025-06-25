@@ -349,7 +349,6 @@ class Program
             }
 
             // define lambda
-            Action? lambda;
             if (opts.listMethods)
             {
                 if (methodDict.Count != 0)
