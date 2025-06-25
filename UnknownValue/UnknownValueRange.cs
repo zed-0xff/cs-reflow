@@ -27,6 +27,7 @@ public class UnknownValueRange : UnknownValueRangeBase
     public override long Min() => Range.Min;
     public override long Max() => Range.Max;
     public override bool IsFullRange() => Range.Equals(type.Range);
+    public override BitSpan BitSpan() => Range.BitSpan();
 
     public override object Cast(TypeDB.IntInfo toType)
     {

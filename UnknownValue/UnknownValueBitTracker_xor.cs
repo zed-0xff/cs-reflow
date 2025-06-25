@@ -42,7 +42,7 @@ public partial class UnknownValueBitTracker
             throw new NotImplementedException($"Cannot XOR {type} with {other.type}");
 
         List<BitType> newBits = new(_bits);
-        var otherBits = other.Bits;
+        var otherBits = other.GetBits().ToList();
         for (int i = 0; i < type.nbits; i++)
         {
             if (_bits[i] == ANY || otherBits[i] == UnknownValueBits.ANY)

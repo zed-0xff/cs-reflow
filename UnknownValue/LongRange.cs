@@ -33,6 +33,21 @@ public class LongRange
         }
     }
 
+    public BitSpan BitSpan()
+    {
+        long diff = Min ^ Max;
+
+        // Create a mask of the shared high bits (i.e., where start == end)
+        long mask = ~0L;
+        while ((diff & mask) != 0)
+            mask <<= 1;
+
+        long min = Min & mask;
+        long max = Max | ~mask;
+
+        return (min, max);
+    }
+
     public override string ToString()
     {
         return $"[{Min}..{Max}]";

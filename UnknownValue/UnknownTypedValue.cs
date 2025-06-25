@@ -37,41 +37,28 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public bool IsOne() => Equals(One(type));
 
     public bool IsOverflow(long value) => !type.CanFit(value);
+    public bool IsPositive(long value) => (value & type.SignMask) == 0;
+    public bool IsNegative(long value) => (value & type.SignMask) != 0;
+    public long SignExtend(long value) => IsNegative(value) ? (value | ~type.Mask) : value;
     public long MaskNoSign(long value) => value & type.Mask;
-
-    public long MaskWithSign(long value)
-    {
-        value = MaskNoSign(value);
-        if (type.signed && (value & (1L << (type.nbits - 1))) != 0)
-        {
-            value |= ~type.Mask;
-        }
-        return value;
-    }
-
-    public long Capacity()
-    {
-        return 1L << type.nbits;
-    }
-
-    public static bool IsTypeSupported(string typeName)
-    {
-        return TypeDB.TryFind(typeName) is not null;
-    }
+    public long MaskWithSign(long value) => SignExtend(MaskNoSign(value));
+    public long Capacity() => (1L << type.nbits);
+    public static bool IsTypeSupported(string typeName) => TypeDB.TryFind(typeName) is not null;
 
     public abstract bool IsFullRange();
     public abstract override bool Contains(long value);
     public abstract bool Typed_IntersectsWith(UnknownTypedValue right);
     public abstract override long Min();
     public abstract override long Max();
+    public abstract BitSpan BitSpan();
 
     public UnknownValueBitsBase ToBits() =>
         (this is UnknownValueBitsBase bits) ? bits :
         (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
 
-    public UnknownValueBitsBase ToBits(long val, long mask) =>
+    public UnknownValueBitsBase ToBits(BitSpan bitspan) =>
         (this is UnknownValueBitsBase bits) ? bits :
-        (_var_id == null) ? new UnknownValueBits(type, val, mask) : new UnknownValueBitTracker(type, _var_id.Value, val, mask);
+        (_var_id == null) ? new UnknownValueBits(type, bitspan) : new UnknownValueBitTracker(type, _var_id.Value, bitspan);
 
     public bool CanConvertTo(UnknownTypedValue other)
     {
@@ -86,6 +73,16 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return false;
     }
 
+    public UnknownTypedValue ConvertTo<T>()
+    {
+        if (typeof(T) == typeof(UnknownValueBitTracker))
+        {
+            return new UnknownValueBitTracker(type, _var_id.Value);
+        }
+
+        throw new NotSupportedException($"Cannot convert {GetType()} to {typeof(T)}");
+    }
+
     public bool CanConvertTo<T>()
     {
         if (typeof(T) == typeof(UnknownValueBitTracker))
@@ -98,6 +95,14 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return false;
     }
 
+    public UnknownTypedValue MaybeConvertTo<T>() where T : UnknownValueBitTracker
+    {
+        if (CanConvertTo<T>())
+            return ConvertTo<T>();
+
+        return this;
+    }
+
     public override object Eq(object other)
     {
         if (TryConvertToLong(other, out long l))
@@ -107,7 +112,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 if (Cardinality() == 1)
                     return true;
                 else
-                    return UnknownValue.Create("bool");
+                    return UnknownValue.Create(TypeDB.Bool);
             }
             else
             {
@@ -124,7 +129,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return false;
         }
 
-        return UnknownValue.Create("bool");
+        return UnknownValue.Create(TypeDB.Bool);
     }
 
     public bool IntersectsWith(UnknownTypedValue right)
@@ -164,7 +169,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return false;
         }
 
-        return UnknownValue.Create("bool");
+        return UnknownValue.Create(TypeDB.Bool);
     }
 
     public override object Lt(object right)
@@ -178,7 +183,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return false;
         }
 
-        return UnknownValue.Create("bool");
+        return UnknownValue.Create(TypeDB.Bool);
     }
 
     // sealed to prevent overriding in derived classes
@@ -359,8 +364,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         // TODO: compare cardinality
         if (pow > 0)
         {
-            // TODO: alternative way: gather bits from all discrete values
-            var unkBits = ToBits(0, (1 << pow) - 1); // too wide!
+            var unkBits = ToBits(new BitSpan(0, ~((1UL << pow) - 1))); // too wide!
             if (Cardinality() < MAX_DISCRETE_CARDINALITY)
             {
                 var unkSet = new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l))); // precise
@@ -409,7 +413,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (l == 0)
                 return this;
             if (l == -1 && TryGetSizeInBits(right) == type.nbits)
-                return BitwiseNot();
+                return MaybeConvertTo<UnknownValueBitTracker>().BitwiseNot();
         }
 
         if (right is UnknownTypedValue otherTyped)
@@ -419,12 +423,12 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (otherTyped is UnknownValueBitTracker otherBT)
             {
                 if (CanConvertTo<UnknownValueBitTracker>())
-                    return otherBT.TypedXor(ToBits());
+                    return otherBT.TypedXor(ConvertTo<UnknownValueBitTracker>());
                 return otherBT.TypedXor(this);
             }
         }
 
-        return TypedXor(right);
+        return MaybeConvertTo<UnknownValueBitTracker>().TypedXor(right);
     }
 
     public override object Cast(TypeDB.IntInfo toType)
@@ -470,7 +474,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return otherBT.TypedBitwiseAnd(this);
 
         if (CanConvertTo<UnknownValueBitTracker>())
-            return ToBits().BitwiseAnd(right);
+            return ConvertTo<UnknownValueBitTracker>().BitwiseAnd(right);
 
         if (this is UnknownValueBitsBase bits)
             return bits.TypedBitwiseAnd(right);
@@ -505,7 +509,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return otherBT.TypedBitwiseOr(this);
 
         if (CanConvertTo<UnknownValueBitTracker>())
-            return ToBits().BitwiseOr(right);
+            return ConvertTo<UnknownValueBitTracker>().BitwiseOr(right);
 
         if (this is UnknownValueBitsBase bits)
             return bits.TypedBitwiseOr(right);
@@ -533,7 +537,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return this;
 
             if (CanConvertTo<UnknownValueBitTracker>())
-                return ToBits().Sub(l);
+                return ConvertTo<UnknownValueBitTracker>().Sub(l);
         }
 
         if (right is UnknownTypedValue otherTyped)

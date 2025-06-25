@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 
 using BitType = int;
+using UnkBits = UnknownValueBits;
 
 public partial class UnknownValueBitTracker : UnknownValueBitsBase
 {
@@ -22,10 +23,9 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     //    2+ unique bit id (2**30 values, so 16M vars if vars are 64-bit)
     //  <-2  inverted bit id
     readonly ReadOnlyCollection<BitType> _bits;
-
     public ReadOnlyCollection<BitType> Bits => _bits; // for tests only?
 
-    public UnknownValueBitTracker(UnknownTypedValue parent, IEnumerable<BitType>? bits = null) : base(parent.type)
+    public UnknownValueBitTracker(UnknownTypedValue parent, IEnumerable<BitType>? bits = null) : base(parent.type, bits2span(parent.type, bits))
     {
         if (parent._var_id is null)
             throw new ArgumentException("Parent must have a var_id set.", nameof(parent));
@@ -34,28 +34,62 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         _bits = new(init(bits));
     }
 
-    public UnknownValueBitTracker(TypeDB.IntInfo type, int var_id, IEnumerable<BitType>? bits = null) : base(type)
+    public UnknownValueBitTracker(TypeDB.IntInfo type, int var_id, IEnumerable<BitType>? bits = null) : base(type, bits2span(type, bits))
     {
         _var_id = var_id;
         _bits = new(init(bits));
     }
 
-    public UnknownValueBitTracker(TypeDB.IntInfo type, int var_id, long val, long mask) : base(type) // mask represents the known _bits
+    public UnknownValueBitTracker(TypeDB.IntInfo type, int var_id, BitSpan bitspan) : base(type, bitspan)
     {
         _var_id = var_id;
-        var bits = init(null);
-        for (int i = 0; i < type.nbits; i++)
+        _bits = new(span2bits(init(null), bitspan, ZERO, ONE));
+    }
+
+    protected static BitSpan bits2span(TypeDB.IntInfo type, IEnumerable<BitType>? bits)
+    {
+        if (bits == null)
+            return type.BitSpan;
+
+        ulong min = 0, max = 0;
+        ulong v = 1;
+
+        int i = 0;
+        using var enumerator = bits.GetEnumerator();
+        while (i < type.nbits)
         {
-            if ((mask & (1L << i)) != 0)
+            if (!enumerator.MoveNext())
+                throw new ArgumentException($"bits is shorter than expected: expected {type.nbits}, got {i}");
+
+            var bit = enumerator.Current;
+            switch (bit)
             {
-                bits[i] = (sbyte)((val & (1L << i)) != 0 ? ONE : ZERO);
+                case ZERO:
+                    break;
+                case ONE:
+                    min |= v;
+                    max |= v;
+                    break;
+                default:
+                    max |= v;
+                    break;
             }
+
+            v <<= 1;
+            i++;
         }
-        _bits = new(bits);
+
+        if (enumerator.MoveNext())
+            throw new ArgumentException($"bits is longer than expected: expected {type.nbits}");
+
+        return new BitSpan(min, max);
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBitTracker(this, _bits) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBitTracker(type, id, _bits);
+
+    public override bool IsOneBit(int idx) => _bits[idx] == ONE;
+    public override bool IsZeroBit(int idx) => _bits[idx] == ZERO;
 
     public override bool IsFullRange() => _bits.All(b => !b.IsOneOrZero());
 
@@ -82,24 +116,30 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         return new UnknownValueBitTracker(this, _bits.Select((b, i) => i == idx ? value : b));
     }
 
-    public override (long, long) MaskVal(bool minimal = false)
+    public override BitSpan BitSpan()
     {
-        long mask = 0;
-        long val = 0;
-        for (int i = 0; i < type.nbits; i++)
+        long min = 0;
+        long max = 0;
+        long v = 1;
+        for (int i = 0; i < type.nbits; i++, v <<= 1)
         {
-            if (_bits[i] == ONE || _bits[i] == ZERO)
+            switch (_bits[i])
             {
-                mask |= 1L << i;
-                val |= (_bits[i] == ONE ? 1L : 0L) << i;
-            }
-            else if (minimal)
-            {
-                // all further _bits will be uncertain, so no need to decode them
-                return (mask, val);
+                case ZERO:
+                    // nothing to do
+                    break;
+                case ONE:
+                    // this bit is definitely 1
+                    min |= v;
+                    max |= v;
+                    break;
+                default:
+                    // this bit can be either 0 or 1
+                    max |= v;
+                    break;
             }
         }
-        return (mask, extend_sign(val));
+        return (min, max);
     }
 
     public override object Cast(TypeDB.IntInfo toType)
@@ -108,78 +148,6 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return new UnknownValueBitTracker(toType, _var_id.Value, _bits);
 
         return base.Cast(toType);
-    }
-
-    public override bool Contains(long value)
-    {
-        var (mask, val) = MaskVal();
-        return ((value & mask) == val);
-    }
-
-    public override ulong Cardinality()
-    {
-        ulong cardinality = 1;
-        for (int i = 0; i < type.nbits; i++)
-            if (!_bits[i].IsOneOrZero())
-                cardinality <<= 1;
-        return cardinality;
-    }
-
-    public override IEnumerable<long> Values()
-    {
-        var (mask, val) = MaskVal();
-
-        // Determine the bit positions that are "any" (i.e., mask bit = 1)
-        List<int> floatingBits = new();
-        for (int i = 0; i < _bits.Count; i++)
-        {
-            if (!_bits[i].IsOneOrZero())
-                floatingBits.Add(i);
-        }
-
-        int floatingCount = floatingBits.Count;
-        long combinations = 1L << floatingCount; // cardinality
-
-        for (long i = 0; i < combinations; i++)
-        {
-            long dynamicPart = 0;
-            for (int j = 0; j < floatingCount; j++)
-            {
-                if (((i >> j) & 1) != 0)
-                    dynamicPart |= (1L << floatingBits[j]);
-            }
-
-            yield return val | dynamicPart;
-        }
-    }
-
-    public override long Min()
-    {
-        var (mask, val) = MaskVal();
-        if (type.signed && !_bits[type.nbits - 1].IsOneOrZero())
-        {
-            long sign_bit = (1L << (type.nbits - 1));
-            return extend_sign(val | sign_bit);
-        }
-        else
-        {
-            return extend_sign(val);
-        }
-    }
-
-    public override long Max()
-    {
-        var (mask, val) = MaskVal();
-        if (type.signed && !_bits[type.nbits - 1].IsOneOrZero())
-        {
-            long sign_bit = (1L << (type.nbits - 1));
-            long type_mask_no_sign = sign_bit - 1;
-            return (~mask & type_mask_no_sign) | val;
-        }
-        else
-        {
-            return extend_sign((~mask & type.Mask) | val);
-        }
     }
 
     public override bool Typed_IntersectsWith(UnknownTypedValue other)
@@ -199,14 +167,15 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return true;
         }
 
-        if (other is UnknownValueBits otherBits)
+        if (other is UnkBits otherUnk)
         {
-            if (type.nbits != otherBits.type.nbits)
+            if (type.nbits != otherUnk.type.nbits)
                 return false;
 
+            var otherBits = otherUnk.GetBits().ToList();
             for (int i = 0; i < type.nbits; i++)
             {
-                if (_bits[i] == otherBits.Bits[i] || _bits[i] == ANY || otherBits.Bits[i] == UnknownValueBits.ANY)
+                if (_bits[i] == otherBits[i] || _bits[i] == ANY || otherBits[i] == UnkBits.ANY)
                     continue;
 
                 return false;
@@ -305,26 +274,26 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return new UnknownValueBitTracker(this, newBits);
         }
 
-        if (right is UnknownValueBits otherBits)
+        if (right is UnkBits otherUnk)
         {
-            if (type != otherBits.type)
-                throw new NotImplementedException($"Cannot AND {type} with {otherBits.type}");
+            if (type != otherUnk.type)
+                throw new NotImplementedException($"Cannot AND {type} with {otherUnk.type}");
 
             List<BitType> newBits = new(_bits);
-            var otherBitsList = otherBits.Bits;
+            var otherBitsList = otherUnk.GetBits().ToList();
             for (int i = 0; i < type.nbits; i++)
             {
                 newBits[i] = (newBits[i], otherBitsList[i]) switch
                 {
                     (ZERO, _) => ZERO,
-                    (_, UnknownValueBits.ZERO) => ZERO,
+                    (_, UnkBits.ZERO) => ZERO,
 
                     (ANY, _) => ANY,
-                    (_, UnknownValueBits.ANY) => ANY,
+                    (_, UnkBits.ANY) => ANY,
 
-                    (_, UnknownValueBits.ONE) => newBits[i],
+                    (_, UnkBits.ONE) => newBits[i],
 
-                    _ => throw new NotImplementedException($"Cannot AND {type} with {otherBits.type} at bit {i}")
+                    _ => throw new NotImplementedException($"Cannot AND {type} with {otherUnk.type} at bit {i}")
                 };
             }
             return new UnknownValueBitTracker(this, newBits);
@@ -348,6 +317,12 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return new UnknownValueBitTracker(this, newBits);
         }
 
+        if (right is not UnknownTypedValue otherTyped)
+            return UnknownTypedValue.Create(type);
+
+        if (otherTyped.CanConvertTo(this))
+            right = otherTyped.ConvertTo<UnknownValueBitTracker>();
+
         if (right is UnknownValueBitTracker otherBT)
         {
             if (type != otherBT.type)
@@ -358,11 +333,8 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             {
                 newBits[i] = (newBits[i], otherBT._bits[i]) switch
                 {
-                    (ONE, _) => ONE,
-                    (_, ONE) => ONE,
-
-                    (ANY, _) => ANY,
-                    (_, ANY) => ANY,
+                    (ONE, _) or (_, ONE) => ONE,
+                    (ANY, _) or (_, ANY) => ANY,
 
                     (ZERO, ZERO) => ZERO,
 
@@ -372,32 +344,29 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
                     (BitType x, BitType y) =>
                         x == y ? x :
                         x == -y ? ONE :
-                        ANY,
+                        ANY
+                    // all cases covered
                 };
             }
             return new UnknownValueBitTracker(this, newBits);
         }
 
-        if (right is UnknownValueBits otherBits)
+        if (right is UnkBits otherUnk)
         {
-            if (type != otherBits.type)
-                throw new NotImplementedException($"Cannot OR {type} with {otherBits.type}");
+            if (type != otherUnk.type)
+                throw new NotImplementedException($"Cannot OR {type} with {otherUnk.type}");
 
             List<BitType> newBits = new(_bits);
-            var otherBitsList = otherBits.Bits;
+            var otherBitsList = otherUnk.GetBits().ToList();
             for (int i = 0; i < type.nbits; i++)
             {
                 newBits[i] = (newBits[i], otherBitsList[i]) switch
                 {
-                    (ONE, _) => ONE,
-                    (_, UnknownValueBits.ONE) => ONE,
+                    (_, UnkBits.ONE) or (ONE, _) => ONE,
+                    (_, UnkBits.ANY) or (ANY, _) => ANY,
+                    (_, UnkBits.ZERO) => newBits[i],
 
-                    (ANY, _) => ANY,
-                    (_, UnknownValueBits.ANY) => ANY,
-
-                    (_, UnknownValueBits.ZERO) => newBits[i],
-
-                    _ => throw new NotImplementedException($"Cannot AND {type} with {otherBits.type} at bit {i}")
+                    _ => throw new NotImplementedException($"Cannot AND {type} with {otherUnk.type} at bit {i}")
                 };
             }
             return new UnknownValueBitTracker(this, newBits);
@@ -427,6 +396,14 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return add(otherBT);
         }
 
+        if (right is UnkBits otherUnk)
+        {
+            if (type != otherUnk.type)
+                throw new NotImplementedException($"Cannot add {type} with {otherUnk.type}");
+
+            return add(otherUnk);
+        }
+
         throw new NotImplementedException();
     }
 
@@ -454,13 +431,13 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         if (right is UnknownTypedValue otherTyped)
         {
             if (otherTyped.CanConvertTo(this))
-                otherTyped = otherTyped.ToBits();
+                otherTyped = otherTyped.ConvertTo<UnknownValueBitTracker>();
 
             if (otherTyped is UnknownValueBitTracker otherBT)
                 return xor(otherBT);
 
-            if (otherTyped is UnknownValueBits otherBits)
-                return xor(otherBits);
+            if (otherTyped is UnkBits otherUnk)
+                return xor(otherUnk);
         }
 
         return UnknownTypedValue.Create(type);
@@ -479,11 +456,53 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     public override UnknownValueBase TypedSub(object right)
     {
         if (TryConvertToLong(right, out long l))
-        {
             return add(-l);
-        }
+
+        if (right is UnknownTypedValue otherTyped)
+            return Add(otherTyped.Negate());
 
         throw new NotImplementedException();
+    }
+
+    public override object Eq(object other)
+    {
+        if (other is not UnknownValueBitTracker otherBT || otherBT.type != type)
+            return base.Eq(other);
+
+        bool inconclusive = false;
+        for (int i = 0; i < type.nbits; i++)
+        {
+            switch (_bits[i], otherBT._bits[i])
+            {
+                // can still be improved f.ex. when same bit _id_ is compared both with ONE and ZERO
+                // i.e. <bbcd> vs <01__>
+                case (_, ANY):
+                case (ANY, _):
+                case (ZERO, ZERO):
+                case (ONE, ONE):
+                    continue;
+
+                case (ZERO, ONE):
+                case (ONE, ZERO):
+                    return false;
+
+                case (BitType x1, ONE) when x1.IsPrivateBit():
+                case (BitType x2, ZERO) when x2.IsPrivateBit():
+                case (ONE, BitType y1) when y1.IsPrivateBit():
+                case (ZERO, BitType y2) when y2.IsPrivateBit():
+                    inconclusive = true; // but still maybe false if bit is compared with inverted self in other cases
+                    continue;
+
+                case (BitType x, BitType y) when x.IsPrivateBit() && y.IsPrivateBit():
+                    if (x == y)
+                        continue;
+                    if (x == -y)
+                        return false;
+                    inconclusive = true; // different bit ids
+                    break;
+            }
+        }
+        return inconclusive ? UnknownValue.Create(TypeDB.Bool) : true;
     }
 
     public override bool Equals(object obj) => (obj is UnknownValueBitTracker other) && type.Equals(other.type) && _var_id == other._var_id && _bits.SequenceEqual(other._bits);

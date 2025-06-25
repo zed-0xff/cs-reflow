@@ -23,6 +23,21 @@ public class LongRangeSet
         return count;
     }
 
+    public BitSpan BitSpan()
+    {
+        long min = ~0L; // all bits set initially
+        long max = 0;
+
+        foreach (var range in _ranges)
+        {
+            var (rmin, rmax) = range.BitSpan();
+            min &= rmin;
+            max |= rmax;
+        }
+
+        return (min, max);
+    }
+
     public void Add(IEnumerable<LongRange> newRanges)
     {
         foreach (var range in newRanges)

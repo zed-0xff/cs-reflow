@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Text;
+
+using BitType = System.SByte;
 
 public class UnknownValueBits : UnknownValueBitsBase
 {
@@ -6,217 +9,216 @@ public class UnknownValueBits : UnknownValueBitsBase
     public const sbyte ONE = 1;
     public const sbyte ZERO = 0;
 
-    readonly ReadOnlyCollection<sbyte> _bits;
-
-    public ReadOnlyCollection<sbyte> Bits => _bits;
-
-    public UnknownValueBits(TypeDB.IntInfo type, IEnumerable<sbyte>? bits = null) : base(type)
+    public UnknownValueBits(TypeDB.IntInfo type, BitSpan bitspan) : base(type, bitspan)
     {
-        _bits = new(init(bits));
     }
 
-    public UnknownValueBits(TypeDB.IntInfo type, long val, long mask) : base(type) // mask represents the known _bits
+    public UnknownValueBits(TypeDB.IntInfo type, IEnumerable<BitType>? bits = null) :
+        this(type, bits2span(type, bits))
+    { }
+
+    protected static BitSpan bits2span(TypeDB.IntInfo type, IEnumerable<BitType>? bits)
     {
-        var bits = init(null);
-        for (int i = 0; i < type.nbits; i++)
+        if (bits == null)
+            return type.BitSpan;
+
+        ulong min = 0, max = 0;
+        ulong v = 1;
+
+        int i = 0;
+        using var enumerator = bits.GetEnumerator();
+        while (i < type.nbits)
         {
-            if ((mask & (1L << i)) != 0)
+            if (!enumerator.MoveNext())
+                throw new ArgumentException($"bits is shorter than expected: expected {type.nbits}, got {i}");
+
+            var bit = enumerator.Current;
+            switch (bit)
             {
-                bits[i] = (sbyte)((val & (1L << i)) != 0 ? ONE : ZERO);
+                case ZERO:
+                    break;
+                case ONE:
+                    min |= v;
+                    max |= v;
+                    break;
+                case ANY:
+                    max |= v;
+                    break;
+                default:
+                    throw new ArgumentException($"Invalid BitType value at index {i}: {bit}");
             }
+
+            v <<= 1;
+            i++;
         }
-        _bits = new(bits);
+
+        if (enumerator.MoveNext())
+            throw new ArgumentException($"bits is longer than expected: expected {type.nbits}");
+
+        return new BitSpan(min, max);
     }
 
-    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bits) { _tag = tag };
-    public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bits) { _var_id = id };
+    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bitspan) { _tag = tag };
+    public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bitspan) { _var_id = id };
 
-    public override bool IsFullRange() => _bits.All(b => b == ANY);
+    public override bool IsOneBit(int idx) => (_bitspan.Min & (1UL << idx)) != 0;
+    public override bool IsZeroBit(int idx) => (_bitspan.Max & (1UL << idx)) == 0;
+
+    public override bool IsFullRange() => _bitspan.Equals(type.BitSpan);
 
     public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
-        var _bits = new sbyte[type.nbits];
-        for (int i = 0; i < type.nbits; i++)
-            _bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? ANY : ZERO);
-        return new UnknownValueBits(type, _bits);
+        return new UnknownValueBits(type, type.BitSpan & mask);
     }
 
     public static UnknownValueBits CreateFromOr(TypeDB.IntInfo type, long mask)
     {
-        var _bits = new sbyte[type.nbits];
-        for (int i = 0; i < type.nbits; i++)
-            _bits[i] = (sbyte)(((mask & (1L << i)) != 0) ? ONE : ANY);
-        return new UnknownValueBits(type, _bits);
+        return new UnknownValueBits(type, type.BitSpan | mask);
     }
 
-    List<sbyte> init(IEnumerable<sbyte>? bits)
+    List<BitType> init(IEnumerable<BitType>? bits)
     {
         if (bits == null)
-            bits = Enumerable.Repeat<sbyte>(ANY, type.nbits);
+            bits = Enumerable.Repeat<BitType>(ANY, type.nbits);
 
         if (bits.Count() != type.nbits)
-            throw new ArgumentException($"Expected {type.nbits} _bits, but got {bits.Count()} _bits.");
+            throw new ArgumentException($"Expected {type.nbits} bits, but got {bits.Count()} bits.");
 
-        return new List<sbyte>(bits);
+        return new List<BitType>(bits);
+    }
+
+    public IEnumerable<BitType> GetBits()
+    {
+        ulong v = 1;
+        for (int i = 0; i < type.nbits; i++, v <<= 1)
+        {
+            yield return (_bitspan & v) switch
+            {
+                (0, 0) => ZERO,
+                (0, _) => ANY,
+                (_, 0) => throw new ArgumentException($"Invalid bitwise range"),
+                (_, _) => ONE
+            };
+        }
+    }
+
+    IEnumerable<BitType> GetReverseBits()
+    {
+        ulong v = 1UL << (type.nbits - 1);
+        for (int i = 0; i < type.nbits; i++, v >>= 1)
+        {
+            yield return (_bitspan & v) switch
+            {
+                (0, 0) => ZERO,
+                (0, _) => ANY,
+                (_, 0) => throw new ArgumentException($"Invalid bitwise range"),
+                (_, _) => ONE
+            };
+        }
     }
 
     public override string ToString()
     {
-        string result = $"UnknownValueBits<{type}>[";
-        int start = type.nbits - 1;
-        while (start >= 0 && _bits[start] == ANY)
-            start--;
+        var sb = new StringBuilder();
+        sb.Append($"UnknownValueBits<{type}>[");
 
-        if (start != type.nbits - 1)
-            result += "…";
+        bool seenNonAny = false;
+        bool ellipsisAppeared = false;
 
-        for (int i = start; i >= 0; i--)
+        foreach (var bit in GetReverseBits())
         {
-            result += _bits[i] == ANY ? "_" : _bits[i].ToString();
+            if (bit == ANY)
+            {
+                if (seenNonAny)
+                    sb.Append('_');
+                else if (!ellipsisAppeared)
+                {
+                    sb.Append('…');
+                    ellipsisAppeared = true; // only append '?' once
+                }
+            }
+            else
+            {
+                seenNonAny = true;
+                sb.Append(bit.ToString());
+            }
         }
 
-        result += "]";
-        return result;
+        sb.Append(']');
+        return sb.ToString();
     }
 
     // returns new UnknownValueBits with the bit at idx set to value
-    public UnknownValueBits SetBit(int idx, sbyte value)
+    public UnknownValueBits SetBit(int idx, BitType value)
     {
         if (idx < 0 || idx >= type.nbits)
-            throw new ArgumentOutOfRangeException($"Index {idx} out of range for {type.nbits} _bits.");
+            throw new ArgumentOutOfRangeException($"Index {idx} out of range for {type.nbits} bits.");
 
-        return new UnknownValueBits(type, _bits.Select((b, i) => i == idx ? value : b));
+        ulong v = 1UL << idx;
+        return value switch
+        {
+            ZERO => new UnknownValueBits(type, _bitspan & ~v),
+            ONE => new UnknownValueBits(type, _bitspan | v),
+            ANY => new UnknownValueBits(type, new BitSpan(_bitspan.Min & ~v, _bitspan.Max | v)),
+            _ => throw new ArgumentException($"Invalid value {value} for bit at index {idx}.")
+        };
     }
 
-    public override (long, long) MaskVal(bool minimal = false)
-    {
-        long mask = 0;
-        long val = 0;
-        for (int i = 0; i < type.nbits; i++)
-        {
-            if (_bits[i] != ANY)
-            {
-                mask |= 1L << i;
-                val |= (long)_bits[i] << i;
-            }
-            else if (minimal)
-            {
-                // all further _bits will be uncertain, so no need to decode them
-                return (mask, val);
-            }
-        }
-        return (mask, extend_sign(val));
-    }
-
-    public override object Cast(TypeDB.IntInfo toType)
-    {
-        if (toType.nbits == type.nbits)
-            return new UnknownValueBits(toType, _bits);
-
-        return base.Cast(toType);
-    }
-
-    public override bool Contains(long value)
-    {
-        var (mask, val) = MaskVal();
-        return ((value & mask) == val);
-    }
-
-    public override ulong Cardinality()
-    {
-        ulong cardinality = 1;
-        for (int i = 0; i < type.nbits; i++)
-        {
-            if (_bits[i] == ANY)
-            {
-                cardinality <<= 1;
-            }
-        }
-        return cardinality;
-    }
-
-    public override IEnumerable<long> Values()
-    {
-        var (mask, val) = MaskVal();
-
-        // Determine the bit positions that are "any" (i.e., mask bit = 1)
-        List<int> floatingBits = new();
-        for (int i = 0; i < _bits.Count; i++)
-        {
-            if (_bits[i] == ANY)
-                floatingBits.Add(i);
-        }
-
-        int floatingCount = floatingBits.Count;
-        long combinations = 1L << floatingCount; // cardinality
-
-        for (long i = 0; i < combinations; i++)
-        {
-            long dynamicPart = 0;
-            for (int j = 0; j < floatingCount; j++)
-            {
-                if (((i >> j) & 1) != 0)
-                    dynamicPart |= (1L << floatingBits[j]);
-            }
-
-            yield return val | dynamicPart;
-        }
-    }
-
-    public override long Min()
-    {
-        var (mask, val) = MaskVal();
-        if (type.signed && _bits[type.nbits - 1] == ANY)
-        {
-            long sign_bit = (1L << (type.nbits - 1));
-            return extend_sign(val | sign_bit);
-        }
-        else
-        {
-            return extend_sign(val);
-        }
-    }
-
-    public override long Max()
-    {
-        var (mask, val) = MaskVal();
-        if (type.signed && _bits[type.nbits - 1] == ANY)
-        {
-            long sign_bit = (1L << (type.nbits - 1));
-            long type_mask_no_sign = sign_bit - 1;
-            return (~mask & type_mask_no_sign) | val;
-        }
-        else
-        {
-            return extend_sign((~mask & type.Mask) | val);
-        }
-    }
+    public override object Cast(TypeDB.IntInfo toType) => (toType.nbits == type.nbits) ? new UnknownValueBits(toType, _bitspan) : base.Cast(toType);
 
     public override bool Typed_IntersectsWith(UnknownTypedValue other)
     {
-        var (mask, val) = MaskVal();
+        if (other is UnknownValueBitTracker otherTracker)
+            return otherTracker.Typed_IntersectsWith(this);
+
         if (other is UnknownValueBits otherBits)
         {
-            var (other_mask, other_val) = otherBits.MaskVal();
-            var commonMask = mask & other_mask;
-            if ((val & commonMask) != (other_val & commonMask))
-                return false;
+            BitSpan a = this._bitspan;
+            BitSpan b = otherBits._bitspan;
+
+            // Intersect if there's at least one value that satisfies both BitSpans.
+            // That happens when: (a.Min & b.Max) <= (a.Max & b.Min)
+            // But we can check a more intuitive condition:
+            ulong mask = ~(a.Min ^ a.Max | b.Min ^ b.Max); // bits that are the same in both
+            return (a.Min & mask) == (b.Min & mask);
         }
-        return other.Values().Any(v => ((v & mask) == val));
+
+        if (other is UnknownValueRange otherRange)
+        {
+            // UnknownValueRange is easier to convert to UnknownValueBits than vice versa?
+            // if (otherRange.ToMinBitSpan().IntersectsWith(this)) // TODO
+            //     return true;
+        }
+
+        if (other.Cardinality() > 10_000 && this.Cardinality() > 10_000)
+            Logger.warn($"Large intersection check: {this} with {other}.");
+
+        if (other.Cardinality() < this.Cardinality())
+            return other.Values().Any(v => Contains(v));
+        else
+            return Values().Any(v => other.Contains(v));
     }
 
     public override UnknownTypedValue TypedShiftLeft(object right)
     {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
+        if (TryConvertToLong(right, out long l))
+            return new UnknownValueBits(type, _bitspan << l);
 
-        List<sbyte> newBits = new(_bits);
-        for (int i = 0; i < l; i++)
+        return UnknownTypedValue.Create(type);
+    }
+
+    public BitType GetSign()
+    {
+        if (!type.signed)
+            return ZERO;
+
+        return (_bitspan & type.SignMask) switch
         {
-            newBits.RemoveAt(_bits.Count - 1);
-            newBits.Insert(0, ZERO); // should be after remove!
-        }
-        return new UnknownValueBits(type, newBits);
+            (0, 0) => ZERO,
+            (0, _) => ANY,
+            (_, 0) => throw new ArgumentException("Invalid BitSpan"),
+            (_, _) => ONE
+        };
     }
 
     public override UnknownTypedValue TypedSignedShiftRight(object right)
@@ -224,155 +226,130 @@ public class UnknownValueBits : UnknownValueBitsBase
         if (!TryConvertToLong(right, out long l))
             return UnknownTypedValue.Create(type);
 
-        sbyte sign = type.signed ? _bits[type.nbits - 1] : ZERO;
-        List<sbyte> newBits = new(_bits);
-        for (int i = 0; i < l; i++)
-        {
-            newBits.RemoveAt(0);
-            newBits.Add(sign);
-        }
-        return new UnknownValueBits(type, newBits);
+        if (!type.signed)
+            return TypedUnsignedShiftRight(l);
+
+        return new UnknownValueBits(type, _bitspan.SignedShiftRight(l, type.nbits));
     }
 
     public override UnknownTypedValue TypedUnsignedShiftRight(object right)
     {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
+        if (TryConvertToLong(right, out long l))
+            return new UnknownValueBits(type, _bitspan >>> l);
 
-        List<sbyte> newBits = new(_bits);
-        for (int i = 0; i < l; i++)
-        {
-            newBits.RemoveAt(0);
-            newBits.Add(ZERO);
-        }
-        return new UnknownValueBits(type, newBits);
+        return UnknownTypedValue.Create(type);
     }
 
-    public override UnknownValueBase TypedBitwiseAnd(object right)
+    private UnknownValueBase bitwise_op(object right, Func<BitSpan, BitSpan, BitSpan> op, Func<BitSpan, long, BitSpan> opWithLong)
     {
-        if (right is UnknownValueBits otherBits)
-        {
-            var (mask1, val1) = MaskVal();
-            var (mask2, val2) = otherBits.MaskVal();
-            return new UnknownValueBits(type, val1 & val2, mask1 & mask2);
-        }
+        if (right is UnknownValueBits otherBits && otherBits.type.nbits == type.nbits)
+            return new UnknownValueBits(type, op(_bitspan, otherBits._bitspan));
 
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
+        if (TryConvertToLong(right, out long l))
+            return new UnknownValueBits(type, opWithLong(_bitspan, l));
 
-        List<sbyte> newBits = new(_bits);
-        for (int i = 0; i < type.nbits; i++)
-        {
-            if ((l & (1L << i)) == 0)
-            {
-                newBits[i] = ZERO;
-            }
-        }
-        return new UnknownValueBits(type, newBits);
+        return UnknownTypedValue.Create(type);
     }
 
-    public override UnknownValueBase TypedBitwiseOr(object right)
-    {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
+    public override UnknownValueBase TypedBitwiseAnd(object right) => bitwise_op(right, (a, b) => a & b, (a, b) => a & b);
+    public override UnknownValueBase TypedBitwiseOr(object right) => bitwise_op(right, (a, b) => a | b, (a, b) => a | b);
+    public override UnknownValueBase TypedXor(object right) => bitwise_op(right, (a, b) => a ^ b, (a, b) => a ^ b);
 
-        List<sbyte> newBits = new(_bits);
-        for (int i = 0; i < type.nbits; i++)
-        {
-            if ((l & (1L << i)) != 0)
-            {
-                newBits[i] = ONE;
-            }
-        }
-        return new UnknownValueBits(type, newBits);
-    }
-
-    public override UnknownValueBase BitwiseNot()
-    {
-        var (mask, val) = MaskVal();
-        return new UnknownValueBits(type, ~val, mask);
-    }
-
+    public override UnknownValueBits BitwiseNot() => new(type, ~_bitspan);
     public override UnknownValueBase Negate() => BitwiseNot().Add(1);
 
-    private UnknownTypedValue calc_symm(Func<long, long, long> op, object right, bool useMinMask = true)
+    UnknownTypedValue add(long l)
     {
-        switch (right)
+        List<BitType> newBits = GetBits().ToList();
+        BitType carry = ZERO;
+        for (int i = 0; i < type.nbits; i++, l >>>= 1)
         {
-            case UnknownValueBitsBase otherBits:
-                var (mask1, val1) = MaskVal(useMinMask);
-                var (mask2, val2) = otherBits.MaskVal(useMinMask);
-                var newMask = mask1 & mask2;
-                return new UnknownValueBits(type, op(val1, val2), newMask);
+            bool add_bit = ((l & 1) != 0);
 
-            case UnknownValueSet otherList:
-                if (Cardinality() > MAX_DISCRETE_CARDINALITY)
-                    return UnknownTypedValue.Create(type);
-
-                var newValues = new HashSet<long>();
-                foreach (var v1 in Values())
-                {
-                    foreach (var v2 in otherList.Values())
-                    {
-                        newValues.Add(MaskWithSign(op(v1, v2)));
-                        if ((ulong)newValues.Count > MAX_DISCRETE_CARDINALITY)
-                            return UnknownTypedValue.Create(type);
-                    }
-                }
-                return new UnknownValueSet(type, newValues.OrderBy(x => x).ToList());
+            switch (newBits[i], add_bit, carry)
+            {
+                case (_, false, ZERO):  // no change
+                case (_, true, ONE): // move carry along, still no change
+                    break;
+                case (ZERO, true, ZERO): // safe set bit
+                    newBits[i] = ONE;
+                    break;
+                case (ONE, true, ZERO): // clear bit, carry
+                    newBits[i] = ZERO;
+                    carry = ONE;
+                    break;
+                case (ZERO, false, _): // safe unload any carry, including ANY
+                    newBits[i] = carry;
+                    carry = ZERO;
+                    break;
+                case (ZERO, true, ANY):
+                    newBits[i] = ANY;
+                    // carry is kept
+                    break;
+                case (ANY, _, _):      // either or both of adds are nonzero
+                    carry = ANY;
+                    break;
+                case (ONE, false, ANY):
+                    newBits[i] = ANY; // carry is kept, but bit is set
+                    break;
+                default:
+                    throw new NotImplementedException($"Cannot add: ({newBits[i]}, {add_bit}, {carry})");
+            }
         }
+        return new UnknownValueBits(type, newBits);
+    }
 
-        return calc_asym(op, right);
+    UnknownTypedValue add(UnknownValueBits other)
+    {
+        List<BitType> newBits = GetBits().ToList();
+        List<BitType> otherBits = other.GetBits().ToList();
+        BitType carry = ZERO;
+        for (int i = 0; i < type.nbits; i++)
+        {
+            BitType add_bit = otherBits[i];
+
+            switch (newBits[i], add_bit, carry)
+            {
+                case (_, ZERO, ZERO):  // no change
+                case (_, ONE, ONE): // move carry along, still no change
+                    break;
+                case (ZERO, ONE, ZERO): // safe set bit
+                    newBits[i] = ONE;
+                    break;
+                case (ONE, ONE, ZERO): // clear bit, carry
+                    newBits[i] = ZERO;
+                    carry = ONE;
+                    break;
+                case (ZERO, ZERO, _): // safe unload any carry, including ANY
+                    newBits[i] = carry;
+                    carry = ZERO;
+                    break;
+                case (ZERO, ONE, ANY):
+                    newBits[i] = ANY;
+                    // carry is kept
+                    break;
+                case (ANY, _, _):      // either or both of adds are nonzero
+                    carry = ANY;
+                    break;
+                default:
+                    throw new NotImplementedException($"Cannot add: ({newBits[i]}, {add_bit}, {carry})");
+            }
+        }
+        return new UnknownValueBits(type, newBits);
     }
 
     public override UnknownTypedValue TypedAdd(object right)
     {
         if (TryConvertToLong(right, out long l))
-        {
-            // bitwise add until carry to unknown bit
-            var newBits = Enumerable.Repeat<sbyte>(ANY, type.nbits).ToList();
-            sbyte carry = 0;
-            for (int i = 0; i < type.nbits; i++, l >>>= 1)
-            {
-                var add = carry + (l & 1);
-                if (_bits[i] == ANY)
-                {
-                    if (add != 0)
-                        break;
-                }
-                else
-                {
-                    var sum = _bits[i] + add;
-                    newBits[i] = (sum & 1) == 1 ? ONE : ZERO;
-                    carry = (sbyte)(sum >> 1);
-                }
-            }
-            return new UnknownValueBits(type, newBits);
-        }
+            return add(l);
 
-        return calc_symm((a, b) => a + b, right);
-    }
+        if (right is UnknownValueBits otherBits)
+            return add(otherBits);
 
-    public override UnknownValueBase TypedXor(object right)
-    {
-        if (TryConvertToLong(right, out long l))
-        {
-            // just do a bit-by-bit xor on known _bits, no carry involved
-            var newBits = new List<sbyte>(_bits);
-            int i = 0;
-            while (l != 0 && i < type.nbits)
-            {
-                if (newBits[i] != ANY)
-                {
-                    newBits[i] ^= (sbyte)(l & 1);
-                }
-                l >>>= 1;
-                i++;
-            }
-            return new UnknownValueBits(type, newBits);
-        }
+        if (right is UnknownValueBitTracker otherTracker)
+            return otherTracker.Add(this) as UnknownTypedValue;
 
-        return calc_symm((a, b) => a ^ b, right, false);
+        return UnknownTypedValue.Create(type);
     }
 
     public override UnknownValueBase TypedMod(object right)
@@ -383,40 +360,48 @@ public class UnknownValueBits : UnknownValueBitsBase
         if (l <= 0)
             return UnknownValue.Create();
 
-        // TODO: apply knowledge of known _bits
+        // TODO: apply knowledge of known bits
         return type.signed ? new UnknownValueRange(type, -l + 1, l - 1) : new UnknownValueRange(type, 0, l - 1);
     }
 
-    private UnknownTypedValue calc_asym(Func<long, long, long> op, object right)
+    // retain top known zeroes
+    public override UnknownValueBits TypedDiv(object right)
     {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
-
-        var (minMask, val) = MaskVal(true);
-        return new UnknownValueBits(type, op(val, l), minMask); // apply conservative mask
+        ulong v = 1UL << (type.nbits - 1);
+        ulong max = type.BitSpan.Max;
+        while ((_bitspan.Min & v) == 0 && (_bitspan.Max & v) == 0)
+        {
+            v >>= 1;
+            max >>= 1;
+        }
+        return new(type, new BitSpan(0, max));
     }
 
-    public override UnknownValueBase TypedDiv(object right) => calc_asym((a, b) => a / b, right);
-    public override UnknownValueBase TypedSub(object right) => calc_asym((a, b) => a - b, right);
-
-    public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bits.SequenceEqual(other._bits);
-
-    public override int GetHashCode()
+    public override UnknownValueBase TypedSub(object right)
     {
-        var hash = new HashCode();
-        hash.Add(type);
-        foreach (var b in _bits)
-            hash.Add(b);
-        return hash.ToHashCode();
+        if (TryConvertToLong(right, out long l))
+            return Add(-l); // XXX what if 'this' is unsigned?
+
+        if (right is UnknownTypedValue otherTyped)
+            return Add(otherTyped.Negate());
+
+        return UnknownTypedValue.Create(type);
     }
+
+    public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bitspan.Equals(other._bitspan);
 
     public override UnknownValueBase Merge(object other)
     {
         return other switch
         {
             // TODO: narrower range with new class, that contains a list of UnknownValueBase
-            UnknownValueBits otherBits => new UnknownValueBits(type, _bits.Zip(otherBits._bits, (b1, b2) => (sbyte)(b1 == b2 ? b1 : ANY)).ToList()),
+            UnknownValueBits otherBits => new UnknownValueBits(type, _bitspan.Merge(otherBits._bitspan)),
             _ => base.Merge(other)
         };
+    }
+
+    public override int GetHashCode()
+    {
+        throw new NotImplementedException();
     }
 }

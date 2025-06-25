@@ -92,7 +92,9 @@ public static class TypeDB
         public readonly ulong MaxUnsignedValue;
 
         public readonly long Mask;
+        public readonly long SignMask;
         public readonly LongRange Range;
+        public readonly BitSpan BitSpan;
 
         public IntInfo(string name, System.Type type, int nbits, bool signed, SyntaxKind kind)
         {
@@ -106,7 +108,9 @@ public static class TypeDB
             MaxUnsignedValue = (nbits == 64 && !signed) ? unchecked((ulong)(-1L)) : (ulong)MaxSignedValue;
 
             Mask = (1L << nbits) - 1;
+            SignMask = signed ? (1L << (nbits - 1)) : 0;
             Range = new LongRange(MinValue, MaxSignedValue);
+            BitSpan = new BitSpan(0, Mask);
         }
 
         public override string ToString() => Name;

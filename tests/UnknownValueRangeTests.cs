@@ -55,7 +55,7 @@ public class UnknownValueRangeTests
     public void Test_mul_uv()
     {
         UnknownValueRange a = new(TypeDB.UInt, 0, 1194);
-        UnknownValueBits b = new(TypeDB.Int, 0, 0x3ffffff);
+        UnknownValueBits b = new(TypeDB.Int, new BitSpan(0, ~0x3ffffff));
         Assert.Equal(76480UL, a.Sub(b).Cardinality());
     }
 

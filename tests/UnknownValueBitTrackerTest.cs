@@ -7,16 +7,16 @@ public class UnknownValueBitTrackerTest
     [Fact]
     public void Test_ctor()
     {
-        var a = new UnknownValueBitTracker(TypeDB.Byte, 0, 0, 0);
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
         Assert.Equal("UnknownValueBitTracker<byte>[abcdefgh]", a.ToString());
 
-        a = new UnknownValueBitTracker(TypeDB.Byte, 0, 0, 1);
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, new BitSpan(0, 254));
         Assert.Equal("UnknownValueBitTracker<byte>[abcdefg0]", a.ToString());
 
-        a = new UnknownValueBitTracker(TypeDB.Byte, 0, 1, 1);
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, new BitSpan(1, 255));
         Assert.Equal("UnknownValueBitTracker<byte>[abcdefg1]", a.ToString());
 
-        a = new UnknownValueBitTracker(TypeDB.Byte, 0, 1, 129);
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, new BitSpan(1, 127));
         Assert.Equal("UnknownValueBitTracker<byte>[0bcdefg1]", a.ToString());
     }
 

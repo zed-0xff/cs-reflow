@@ -21,6 +21,24 @@ public class UnknownValueSet : UnknownTypedValue
 
     public override bool IsFullRange() => Cardinality() == type.Range.Count && Min() == type.Range.Min && Max() == type.Range.Max;
 
+    public override BitSpan BitSpan()
+    {
+        if (_values.Count == 0) // edge case
+            return (0, 0);
+
+        // bitwise min value, not necessarily the minimum arithmetical value
+        long min = ~0L; // all bits set initially
+        long max = 0;
+
+        foreach (var v in _values)
+        {
+            min &= v;
+            max |= v;
+        }
+
+        return (min, max);
+    }
+
     public override UnknownTypedValue TypedAdd(object right) =>
         TryConvertToLong(right, out long l)
             ? new UnknownValueSet(type, _values.Select(v => MaskWithSign(v + l)))

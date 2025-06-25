@@ -89,4 +89,24 @@ public class LongRangeTests
         b = new LongRange(1001, 2000);
         Assert.False(a.IntersectsWith(b));
     }
+
+    [Fact]
+    public void Test_BitSpan()
+    {
+        LongRange a = new LongRange(100, 200);
+        var (min, max) = a.BitSpan();
+        Assert.Equal(0, min);
+        Assert.Equal(255, max);
+
+        a = new LongRange(0b00001111, 0b11110000);
+        (min, max) = a.BitSpan();
+        Assert.Equal(0b00000000, min);
+        Assert.Equal(0b11111111, max);
+
+        a = new LongRange(0xff, 0x1ff);
+        Assert.Equal((0, 0x1ff), a.BitSpan());
+
+        a = new LongRange(0x100, 0x1ff);
+        Assert.Equal((0x100, 0x1ff), a.BitSpan());
+    }
 }

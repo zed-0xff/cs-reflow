@@ -32,6 +32,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
     public override long Min() => _rangeSet.Min;
     public override long Max() => _rangeSet.Max;
     public override bool IsFullRange() => _rangeSet.Count == 1 && _rangeSet.First().Equals(type.Range);
+    public override BitSpan BitSpan() => _rangeSet.BitSpan();
 
     // TODO: DRY with UnknownValueRange.Cast()
     public override object Cast(TypeDB.IntInfo toType)
