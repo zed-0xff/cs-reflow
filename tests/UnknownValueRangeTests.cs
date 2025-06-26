@@ -200,27 +200,38 @@ public class UnknownValueRangeTests
     [Fact]
     public void Test_int_lt()
     {
+        var unknown = UnknownValue.Create(TypeDB.Bool);
         UnknownValueRange a = new(TypeDB.Int);
-        Assert.Equal(new UnknownValueRange(TypeDB.Bool), a.Lt(0));
+        Assert.Equal(unknown, a.Lt(-1));
+        Assert.Equal(unknown, a.Lt(0));
+        Assert.Equal(unknown, a.Lt(1));
 
-        Assert.Equal(new UnknownValueRange(TypeDB.Bool), a.Lt(int.MaxValue));
+        Assert.Equal(unknown, a.Lt(int.MaxValue - 1L));
+        Assert.Equal(unknown, a.Lt(int.MaxValue));
         Assert.Equal(true, a.Lt(int.MaxValue + 1L));
 
-        Assert.Equal(new UnknownValueRange(TypeDB.Bool), a.Lt(int.MinValue));
         Assert.Equal(false, a.Lt(int.MinValue - 1L));
+        Assert.Equal(false, a.Lt(int.MinValue));
+        Assert.Equal(unknown, a.Lt(int.MinValue + 1L));
     }
 
     [Fact]
     public void Test_int_gt()
     {
+        var unknown = UnknownValue.Create(TypeDB.Bool);
         UnknownValueRange a = new(TypeDB.Int);
-        Assert.Equal(new UnknownValueRange(TypeDB.Bool), a.Gt(0));
 
-        Assert.Equal(new UnknownValueRange(TypeDB.Bool), a.Gt(int.MaxValue));
+        Assert.Equal(unknown, a.Gt(-1));
+        Assert.Equal(unknown, a.Gt(0));
+        Assert.Equal(unknown, a.Gt(1));
+
+        Assert.Equal(unknown, a.Gt(int.MaxValue - 1L));
+        Assert.Equal(unknown, a.Gt(int.MaxValue));
         Assert.Equal(false, a.Gt(int.MaxValue + 1L));
 
-        Assert.Equal(new UnknownValueRange(TypeDB.Bool), a.Gt(int.MinValue));
         Assert.Equal(true, a.Gt(int.MinValue - 1L));
+        Assert.Equal(unknown, a.Gt(int.MinValue));
+        Assert.Equal(unknown, a.Gt(int.MinValue + 1L));
     }
 
     [Fact]

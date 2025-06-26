@@ -436,6 +436,51 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_expr_uint_gt0()
+    {
+        string expr_str = "uint x; x > 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(UnknownValue.Create(TypeDB.Bool), result);
+    }
+
+    [Fact]
+    public void Test_expr_uint_lte0()
+    {
+        string expr_str = "uint x; x <= 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(UnknownValue.Create(TypeDB.Bool), result);
+    }
+
+    [Fact]
+    public void Test_expr_uint_eq0()
+    {
+        string expr_str = "uint x; x == 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(UnknownValue.Create(TypeDB.Bool), result);
+    }
+
+    [Fact]
+    public void Test_expr_uint_gte0()
+    {
+        string expr_str = "uint x; x >= 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_expr_uint_lt0()
+    {
+        string expr_str = "uint x; x < 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
     public void Test_sizeof_ulong()
     {
         string expr_str = "sizeof(ulong)";

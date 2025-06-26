@@ -48,33 +48,26 @@ public abstract class UnknownValueBase
 
     public abstract bool Contains(long value);
 
-    public static object LogicalOr(object left, object right)
-    {
-        if (left is bool lb && lb)
-            return true;
+    public abstract long Min();
+    public abstract long Max();
 
-        if (right is bool rb && rb)
-            return true;
-
-        return UnknownValue.Create(TypeDB.Bool);
-    }
-
-    public virtual object Lte(object right) => LogicalOr(Lt(right), Eq(right));
-    public virtual object Gte(object right) => LogicalOr(Gt(right), Eq(right));
-
-    public virtual object Ne(object right)
-    {
-        return Eq(right) switch
+    static object LogicalNot(object value) =>
+        value switch
         {
-            UnknownValueBase other => other.Cast(TypeDB.Bool),
             bool b => !b,
-            _ => throw new NotImplementedException($"{ToString()}.Ne(): unexpected type {right?.GetType()}")
+            UnknownValueBase u =>
+                u.Cast(TypeDB.Bool) switch
+                {
+                    bool b => !b,
+                    UnknownValueBase other => other.BitwiseNot(),
+                    _ => throw new NotImplementedException($"{value?.GetType()} is not supported for LogicalNot")
+                },
+            _ => throw new NotImplementedException($"{value?.GetType()} is not supported for LogicalNot")
         };
-    }
 
-    // syntax sugar
-    public virtual long Min() => Values().Min();
-    public virtual long Max() => Values().Max();
+    public virtual object Lte(object right) => LogicalNot(Gt(right));
+    public virtual object Gte(object right) => LogicalNot(Lt(right));
+    public virtual object Ne(object right) => LogicalNot(Eq(right));
 
     public object Op(SyntaxKind op) // unary op
     {
@@ -119,6 +112,7 @@ public abstract class UnknownValueBase
         };
     }
 
+    // swap the left and right operands
     public object InverseOp(string op, object lValue)
     {
         return op switch

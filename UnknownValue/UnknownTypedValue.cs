@@ -77,9 +77,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public virtual UnknownTypedValue ConvertTo<T>()
     {
         if (typeof(T) == typeof(UnknownValueBitTracker))
-        {
             return new UnknownValueBitTracker(type, _var_id.Value);
-        }
 
         throw new NotSupportedException($"Cannot convert {GetType()} to {typeof(T)}");
     }
@@ -180,7 +178,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (Max() < l)
                 return true;
 
-            if (Min() > l)
+            if (Min() >= l)
                 return false;
         }
 

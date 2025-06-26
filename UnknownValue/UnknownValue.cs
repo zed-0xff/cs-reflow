@@ -22,8 +22,6 @@ public class UnknownValue : UnknownValueBase
     {
     }
 
-    //public static Builder WithTag(object? tag) => new Builder(tag);
-
     public static UnknownValueBase Create() => new UnknownValue();
     public static UnknownValueBase Create(string type)
     {
@@ -44,17 +42,9 @@ public class UnknownValue : UnknownValueBase
 
     public override string ToString() => "UnknownValue" + TagStr();
 
-    public override bool Contains(long value) => true;
-
-    public override ulong Cardinality()
-    {
-        throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
-    }
-
-    public override IEnumerable<long> Values()
-    {
-        throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
-    }
+    public override bool Contains(long value) => throw new NotImplementedException($"{ToString()}.Contains(): not implemented.");
+    public override ulong Cardinality() => throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
+    public override IEnumerable<long> Values() => throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
 
     public override UnknownValue Add(object right) => new UnknownValue();
     public override UnknownValue Div(object right) => new UnknownValue();
@@ -71,6 +61,9 @@ public class UnknownValue : UnknownValueBase
     public override UnknownValue SignedShiftRight(object right) => new UnknownValue();
     public override UnknownValue UnsignedShiftRight(object right) => new UnknownValue();
     public override UnknownValue Negate() => new UnknownValue();
+
+    public override long Min() => throw new NotImplementedException($"{ToString()}.Min(): not implemented.");
+    public override long Max() => throw new NotImplementedException($"{ToString()}.Max(): not implemented.");
 
     public override object Eq(object right) => UnknownValue.Create("bool");
     public override object Gt(object right) => UnknownValue.Create("bool");
