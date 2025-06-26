@@ -272,10 +272,22 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         if (TryConvertToLong(right, out long l))
         {
+            if (l < 0)
+                l = -l; // in C# always x%y == x % (-y)
+
             if (l == 0)
                 return UnknownValue.Create(); // division by zero
-            if (l == 1 || l == -1)
+            if (l == 1)
                 return Zero(type);
+
+            int pow = MaxPow2Divider(l);
+            if (Math.Pow(2, pow) == l) // mod by a power of 2
+            {
+                if (!type.signed)
+                {
+                    return BitwiseAnd(l - 1); // XXX also valid for signed types when all values >= 0
+                }
+            }
         }
 
         if (right is UnknownTypedValue otherTyped)

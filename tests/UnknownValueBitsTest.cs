@@ -432,8 +432,8 @@ public class UnknownValueBitsTest
         Assert.Equal(zero, a.Mod(-1));
         Assert.Equal(new UnknownValue(), a.Mod(-10));
 
-        Assert.Equal(new UnknownValueRange(TypeDB.Byte, 0, 1), a.Mod(2));
-        Assert.Equal(new UnknownValueRange(TypeDB.Byte, 0, 3), a.Mod(4));
+        Assert.Equal("UnknownValueBits<byte>[0000000_]", a.Mod(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[000000__]", a.Mod(4).ToString());
 
         a = new UnknownValueBits(TypeDB.Int);
         Assert.Equal(new UnknownValueRange(TypeDB.Int, -5, 5), a.Mod(6));

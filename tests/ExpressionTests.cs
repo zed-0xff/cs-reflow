@@ -454,6 +454,15 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_exprV()
+    {
+        string expr_str = "int num; (uint)num % 16777216u - 1342177280 == (uint)((0x1000 & num) >>> 2)";
+
+        var result = Eval(expr_str);
+        Assert.Equal(false, result);
+    }
+
+    [Fact]
     public void Test_expr_uint_gt0()
     {
         string expr_str = "uint x; x > 0";

@@ -253,6 +253,9 @@ public partial class VarProcessor
                         case int i:
                             Console.Error.WriteLine($"{i,-11} (0x{i:X})");
                             break;
+                        case uint u:
+                            Console.Error.WriteLine($"{u,-11} (0x{u:X})");
+                            break;
                         default:
                             Console.Error.WriteLine($"{result}");
                             break;
