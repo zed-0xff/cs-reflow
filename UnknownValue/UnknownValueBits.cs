@@ -367,19 +367,6 @@ public class UnknownValueBits : UnknownValueBitsBase
         return type.signed ? new UnknownValueRange(type, -l + 1, l - 1) : new UnknownValueRange(type, 0, l - 1);
     }
 
-    // retain top known zeroes
-    public override UnknownValueBits TypedDiv(object right)
-    {
-        ulong v = 1UL << (type.nbits - 1);
-        ulong max = type.BitSpan.Max;
-        while ((_bitspan.Min & v) == 0 && (_bitspan.Max & v) == 0)
-        {
-            v >>= 1;
-            max >>= 1;
-        }
-        return new(type, new BitSpan(0, max));
-    }
-
     public override UnknownValueBase TypedSub(object right)
     {
         if (TryConvertToLong(right, out long l))

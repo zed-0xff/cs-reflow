@@ -451,11 +451,6 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         throw new NotImplementedException();
     }
 
-    public override UnknownValueBase TypedDiv(object right)
-    {
-        throw new NotImplementedException();
-    }
-
     public override UnknownValueBase TypedSub(object right)
     {
         if (TryConvertToLong(right, out long l))

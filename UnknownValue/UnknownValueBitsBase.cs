@@ -105,4 +105,17 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
 
         return UnknownTypedValue.Create(type);
     }
+
+    // retain top known zeroes
+    public override UnknownValueBitsBase TypedDiv(object right)
+    {
+        ulong v = 1UL << (type.nbits - 1);
+        ulong max = type.BitSpan.Max;
+        while ((_bitspan.Min & v) == 0 && (_bitspan.Max & v) == 0)
+        {
+            v >>= 1;
+            max >>= 1;
+        }
+        return new UnknownValueBits(type, new BitSpan(0, max));
+    }
 }
