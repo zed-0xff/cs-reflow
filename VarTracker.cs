@@ -31,7 +31,7 @@ public partial class VarTracker
 
         // First pass: collect and annotate declarators
         var collector = new VarCollector(this, semanticModel, sym2ann, _varDB);
-        collector.Visit(rootNode);
+        collector.Process(rootNode);
 
         // Second pass: rewrite and apply annotations
         var rewriter = new AnnotationRewriter(this, semanticModel, sym2ann);
