@@ -7,9 +7,14 @@ public class UnknownValueRange : UnknownValueRangeBase
         Range = range ?? this.type.Range;
     }
 
-    public UnknownValueRange(TypeDB.IntInfo type, long min, long max) : base(type)
+    public UnknownValueRange(TypeDB.IntInfo type, long min, long max) :
+        this(type, new LongRange(min, max))
+    { }
+
+    public UnknownValueRange(UnknownValueRange parent, TypeDB.IntInfo type, LongRange range) :
+        this(type, range)
     {
-        Range = new LongRange(min, max);
+        _var_id = parent._var_id;
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
@@ -33,19 +38,23 @@ public class UnknownValueRange : UnknownValueRangeBase
     {
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
+            if (IsFullRange())
+                return new UnknownValueRange(this, toType, toType.Range);
             if (Range.Min >= 0 && Range.Max <= int.MaxValue)
-                return new UnknownValueRange(TypeDB.Int, Range);
+                return new UnknownValueRange(this, toType, Range);
             if (Range.Min > int.MaxValue)
-                return new UnknownValueRange(TypeDB.Int, new LongRange((int)Range.Min, (int)Range.Max));
+                return new UnknownValueRange(this, toType, new LongRange((int)Range.Min, (int)Range.Max));
             return new UnknownValueRange(TypeDB.Int);
         }
 
         if (type == TypeDB.Int && toType == TypeDB.UInt) // int -> uint
         {
+            if (IsFullRange())
+                return new UnknownValueRange(this, toType, toType.Range);
             if (Range.Min >= 0 && Range.Max >= 0)
-                return new UnknownValueRange(TypeDB.UInt, Range);
+                return new UnknownValueRange(this, toType, Range);
             if (Range.Max < 0)
-                return new UnknownValueRange(TypeDB.UInt, new LongRange((uint)Range.Min, (uint)Range.Max));
+                return new UnknownValueRange(this, toType, new LongRange((uint)Range.Min, (uint)Range.Max));
             return new UnknownValueRange(TypeDB.UInt);
         }
 
@@ -298,6 +307,22 @@ public class UnknownValueRange : UnknownValueRangeBase
 
             _ => base.Merge(other)
         };
+    }
+
+    public override bool CanConvertTo<T>()
+    {
+        if (typeof(T) == typeof(UnknownValueBits))
+            return true;
+
+        return base.CanConvertTo<T>();
+    }
+
+    public override UnknownTypedValue ConvertTo<T>()
+    {
+        if (typeof(T) == typeof(UnknownValueBits))
+            return new UnknownValueBits(type, Range.BitSpan());
+
+        return base.ConvertTo<T>();
     }
 }
 

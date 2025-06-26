@@ -238,6 +238,11 @@ public class UnknownValueRangeTests
         UnknownValueRange a = new(TypeDB.UInt);
         UnknownValueRange? b = a.Div(0x100).Cast(TypeDB.Int) as UnknownValueRange;
         Assert.Equal(new LongRange(0, 16777215), b?.Range);
+
+        // cast should keep var_id
+        b = a.Cast(TypeDB.Int) as UnknownValueRange;
+        Assert.NotNull(b);
+        Assert.Equal(a._var_id, b._var_id);
     }
 
     [Fact]

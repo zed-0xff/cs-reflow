@@ -351,6 +351,9 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return new UnknownValueBitTracker(this, newBits);
         }
 
+        if (otherTyped.CanConvertTo<UnkBits>())
+            right = otherTyped.ConvertTo<UnkBits>();
+
         if (right is UnkBits otherUnk)
         {
             if (type != otherUnk.type)

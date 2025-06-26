@@ -66,10 +66,11 @@ public partial class VarProcessor : ICloneable
 
         public TraceScope(VarProcessor processor, SyntaxNode? node, [CallerMemberName] string caller = "")
         {
+            _caller = caller;
+            _processor = processor;
+
             if (processor._traceVars.Count > 0)
             {
-                _caller = caller;
-                _processor = processor;
                 _node = node;
                 // _original = processor._varDict.ReadOnlyDict
                 //     .Where(kvp => processor._traceVars.ContainsKey(kvp.Key))

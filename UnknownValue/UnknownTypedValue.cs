@@ -66,14 +66,15 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return false;
 
         if (other is UnknownValueBitTracker)
-        {
             return CanConvertTo<UnknownValueBitTracker>();
-        }
+
+        if (other is UnknownValueBits)
+            return CanConvertTo<UnknownValueBits>();
 
         return false;
     }
 
-    public UnknownTypedValue ConvertTo<T>()
+    public virtual UnknownTypedValue ConvertTo<T>()
     {
         if (typeof(T) == typeof(UnknownValueBitTracker))
         {
@@ -83,7 +84,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
         throw new NotSupportedException($"Cannot convert {GetType()} to {typeof(T)}");
     }
 
-    public bool CanConvertTo<T>()
+    public virtual bool CanConvertTo<T>()
     {
         if (typeof(T) == typeof(UnknownValueBitTracker))
         {
