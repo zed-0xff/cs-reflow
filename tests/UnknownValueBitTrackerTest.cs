@@ -203,4 +203,86 @@ public class UnknownValueBitTrackerTest
         Assert.Equal("UnknownValueBitTracker<byte>[abc10fgh]", b.TypedAdd(16).ToString());
         Assert.Equal("UnknownValueBitTracker<byte>[…C00fgh]", b.TypedAdd(32).ToString());
     }
+
+    [Fact]
+    public void Test_TypedMul_byte_const()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a, a.TypedMul(1));
+        Assert.Equal("UnknownValueBitTracker<byte>[bcdefgh0]", a.TypedMul(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[cdefgh00]", a.TypedMul(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[h0000000]", a.TypedMul(128).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[00000000]", a.TypedMul(256).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<byte>[…h]", a.TypedMul(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…fgh]", a.TypedMul(25).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…fgh00]", a.TypedMul(100).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<byte>[…h0]", a.TypedMul(2 + 4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…h0]", a.TypedMul(2 + 4 + 8).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…h0]", a.TypedMul(2 + 4 + 8 + 16).ToString());
+    }
+
+    [Fact]
+    public void Test_Mul_byte_const()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        Assert.Equal(a, a.Mul(1));
+        Assert.Equal("UnknownValueBitTracker<byte>[bcdefgh0]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[cdefgh00]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[h0000000]", a.Mul(128).ToString());
+        Assert.Equal(UnknownTypedValue.Zero(TypeDB.Byte), a.Mul(256));
+
+        Assert.Equal("UnknownValueBitTracker<byte>[…h]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…fgh]", a.Mul(25).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…fgh00]", a.Mul(100).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<byte>[…h0]", a.Mul(2 + 4).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…h0]", a.Mul(2 + 4 + 8).ToString());
+        Assert.Equal("UnknownValueBitTracker<byte>[…h0]", a.Mul(2 + 4 + 8 + 16).ToString());
+    }
+
+    [Fact]
+    public void Test_TypedMul_int_const()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Int, 0);
+        Assert.Equal(a, a.TypedMul(1));
+        Assert.Equal("UnknownValueBitTracker<int>[bcdefghijklmnopqrstuvwxyzабвгде0]", a.TypedMul(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[cdefghijklmnopqrstuvwxyzабвгде00]", a.TypedMul(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[е0000000000000000000000000000000]", a.TypedMul(0x80000000).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[00000000000000000000000000000000]", a.TypedMul(0x100000000L).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<int>[…е]", a.TypedMul(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…где]", a.TypedMul(25).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…где00]", a.TypedMul(100).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<int>[…е0]", a.TypedMul(2 + 4).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…е0]", a.TypedMul(2 + 4 + 8).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…е0]", a.TypedMul(2 + 4 + 8 + 16).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<int>[…е000000000000000000000]", a.TypedMul(0xB5E00000).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…е000000000000000000000]", a.TypedMul(-1243611136).ToString());
+    }
+
+    [Fact]
+    public void Test_Mul_int_const()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Int, 0);
+        Assert.Equal(a, a.Mul(1));
+        Assert.Equal("UnknownValueBitTracker<int>[bcdefghijklmnopqrstuvwxyzабвгде0]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[cdefghijklmnopqrstuvwxyzабвгде00]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[е0000000000000000000000000000000]", a.Mul(0x80000000).ToString());
+        Assert.Equal(UnknownTypedValue.Zero(TypeDB.Int), a.Mul(0x100000000L));
+
+        Assert.Equal("UnknownValueBitTracker<int>[…е]", a.Mul(3).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…где]", a.Mul(25).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…где00]", a.Mul(100).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<int>[…е0]", a.Mul(2 + 4).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…е0]", a.Mul(2 + 4 + 8).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…е0]", a.Mul(2 + 4 + 8 + 16).ToString());
+
+        Assert.Equal("UnknownValueBitTracker<int>[…е000000000000000000000]", a.Mul(0xB5E00000).ToString());
+        Assert.Equal("UnknownValueBitTracker<int>[…е000000000000000000000]", a.Mul(-1243611136).ToString());
+    }
 }

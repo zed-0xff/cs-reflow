@@ -40,10 +40,13 @@ public partial class VarTracker
                 if (blockDecls.TryGetValue(declInfo.block, out var existingDecl))
                 {
                     // If we already have a declaration in this block, keep the topmost one
-                    int oldIdx = declInfo.block.Statements.IndexOf(existingDecl);
-                    int newIdx = declInfo.block.Statements.IndexOf(declInfo.decl);
+                    int oldIdx = declInfo.block.IndexWithLabels(existingDecl);
+                    int newIdx = declInfo.block.IndexWithLabels(declInfo.decl);
                     if (oldIdx == -1 || newIdx == -1)
-                        throw new InvalidOperationException($"Declaration for {_varDB[key]} not found in block statements: {declInfo.block.TitleWithLineNo()}");
+                    {
+                        Console.Error.WriteLine(declInfo.block);
+                        throw new InvalidOperationException($"Declaration for {_varDB[key]} not found ({oldIdx}, {newIdx}) in block statements: {declInfo.block.TitleWithLineNo()}");
+                    }
                     if (newIdx < oldIdx)
                     {
                         blockDecls[declInfo.block] = declInfo.decl;

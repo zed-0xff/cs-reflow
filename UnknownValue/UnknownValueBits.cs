@@ -327,9 +327,10 @@ public class UnknownValueBits : UnknownValueBitsBase
                     newBits[i] = carry;
                     carry = ZERO;
                     break;
+                case (ZERO, ANY, ZERO):
                 case (ZERO, ONE, ANY):
                     newBits[i] = ANY;
-                    // carry is kept
+                    // carry is kept, if any
                     break;
                 case (ANY, _, _):      // either or both of adds are nonzero
                     carry = ANY;

@@ -135,7 +135,7 @@ public class UnknownValueRange : UnknownValueRangeBase
             throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {type}");
 
         ulong shiftedCardinality = 1UL << (type.nbits - (int)l);
-        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || (_var_id != null && IsFullRange())) // TODO: not full range can also be converted to bits
+        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || _var_id != null) // TODO: compare cardinality with set
             return ToBits().TypedShiftLeft(l);
 
         if (Cardinality() < MAX_DISCRETE_CARDINALITY)
@@ -211,19 +211,20 @@ public class UnknownValueRange : UnknownValueRangeBase
             return UnknownTypedValue.Create(type);
 
         // TODO: case when left is not full range
-        if (l > 0)
-            return new UnknownValueRange(type, new LongRange(0, l - 1));
-        else
-            return new UnknownValueRange(type, new LongRange(l + 1, 0));
-
+        return new UnknownValueRange(type, (l > 0) ? new LongRange(0, l - 1) : new LongRange(l + 1, 0));
     }
 
     public override UnknownValueBase TypedXor(object right)
     {
-        if (!TryConvertToLong(right, out long l) || Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(type);
+        if (TryConvertToLong(right, out long l))
+        {
+            if (Cardinality() < MAX_DISCRETE_CARDINALITY)
+                return new UnknownValueSet(type, Values().Select(v => v ^ l));
 
-        return new UnknownValueSet(type, Values().Select(v => v ^ l));
+            return ToBits().Xor(l);
+        }
+
+        return UnknownValue.Create(type);
     }
 
     public override UnknownValueBase Negate()
@@ -307,22 +308,6 @@ public class UnknownValueRange : UnknownValueRangeBase
 
             _ => base.Merge(other)
         };
-    }
-
-    public override bool CanConvertTo<T>()
-    {
-        if (typeof(T) == typeof(UnknownValueBits))
-            return true;
-
-        return base.CanConvertTo<T>();
-    }
-
-    public override UnknownTypedValue ConvertTo<T>()
-    {
-        if (typeof(T) == typeof(UnknownValueBits))
-            return new UnknownValueBits(type, Range.BitSpan());
-
-        return base.ConvertTo<T>();
     }
 }
 

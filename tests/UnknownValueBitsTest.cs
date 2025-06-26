@@ -239,9 +239,10 @@ public class UnknownValueBitsTest
     public void Test_Add()
     {
         var a = new UnknownValueBits(TypeDB.Byte);
+        var fullrange = UnknownTypedValue.Create(TypeDB.Byte);
         Assert.Equal(a, a.Add(0));
-        Assert.Equal(a, a.Add(7));
-        Assert.Equal(a, a.Add(255));
+        Assert.Equal(fullrange, a.Add(7));
+        Assert.Equal(fullrange, a.Add(255));
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 1, -1, -1, 1, 0, 1, -1 });
         Assert.Equal(a, a.Add(0));
@@ -274,9 +275,10 @@ public class UnknownValueBitsTest
     public void Test_Xor()
     {
         var a = new UnknownValueBits(TypeDB.Byte);
+        var fullrange = UnknownTypedValue.Create(TypeDB.Byte);
         Assert.Equal(a, a.Xor(0));
-        Assert.Equal(a, a.Xor(7));
-        Assert.Equal(a, a.Xor(255));
+        Assert.Equal(fullrange, a.Xor(7));
+        Assert.Equal(fullrange, a.Xor(255));
 
         a = new UnknownValueBits(TypeDB.Byte, new sbyte[] { 0, 1, -1, -1, 1, 0, 1, -1 });
         Assert.Equal(a, a.Xor(0));

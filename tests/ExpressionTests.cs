@@ -436,6 +436,24 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_exprT()
+    {
+        string expr_str = "int num; (0xFFFFEFECu ^ ((uint)num / 6u)) != 0";
+
+        var result = Eval(expr_str);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void Test_exprU()
+    {
+        string expr_str = "int num8; (0x200000 & (num8 * -1243611136)) == ((num8 << 21) & 0x200000)";
+
+        var result = Eval(expr_str);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
     public void Test_expr_uint_gt0()
     {
         string expr_str = "uint x; x > 0";

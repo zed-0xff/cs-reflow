@@ -1,6 +1,7 @@
 public abstract class UnknownTypedValue : UnknownValueBase
 {
     public static readonly ulong MAX_DISCRETE_CARDINALITY = 1_000_000UL;
+    public static readonly Type DEFAULT_TYPE = typeof(UnknownValueRange);
 
     public TypeDB.IntInfo type { get; }
     public TypeDB.IntInfo Type => type;
@@ -20,7 +21,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract UnknownValueBase TypedSignedShiftRight(object right);
     public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
 
-    public static UnknownValueRange Create(TypeDB.IntInfo type) => new UnknownValueRange(type);
+    public static UnknownValueRange Create(TypeDB.IntInfo type) => new UnknownValueRange(type); // DEFAULT_TYPE
 
     static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _zeroes = new();
     static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _ones = new();
@@ -52,10 +53,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract override long Max();
     public abstract BitSpan BitSpan();
 
-    public UnknownValueBitsBase ToBits() =>
-        (this is UnknownValueBitsBase bits) ? bits :
-        (_var_id == null) ? new UnknownValueBits(type) : new UnknownValueBitTracker(type, _var_id.Value);
-
+    public UnknownValueBitsBase ToBits() => ToBits(BitSpan());
     public UnknownValueBitsBase ToBits(BitSpan bitspan) =>
         (this is UnknownValueBitsBase bits) ? bits :
         (_var_id == null) ? new UnknownValueBits(type, bitspan) : new UnknownValueBitTracker(type, _var_id.Value, bitspan);
@@ -198,9 +196,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             return this;
 
         UnknownTypedValue result = (right == this) ? TypedShiftLeft(1) : TypedAdd(right);
-        // if (result.IsFullRange())
-        //     return UnknownTypedValue.Create(type); // normalize full-range values to default range type
-        return result;
+        return result.Normalize();
     }
 
     public sealed override UnknownValueBase ShiftLeft(object right)
@@ -215,7 +211,10 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (l < 0)
                 throw new ArgumentException("Shift count cannot be negative.");
             if (l >= type.nbits)
-                throw new ArgumentException($"Shift count {l} exceeds type bit width {type.nbits}.");
+            {
+                Logger.warn($"Shift count {l} exceeds type bit width {type.nbits}.");
+                return Zero(type);
+            }
         }
 
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
@@ -340,6 +339,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return Zero(type);
             if (otherTyped.IsOne())
                 return this;
+            if (otherTyped is UnknownValueBitsBase bitsRight && this is not UnknownValueBitsBase)
+                return bitsRight.TypedMul(this);
         }
 
         int pow = 0;
@@ -359,44 +360,61 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (this is UnknownValueBitsBase bits)
             return bits.TypedMul(right);
 
-        // multiplication by X*N, where N is power of 2
-        // TODO: compare cardinality
-        if (pow > 0)
+        var bitsResult = ToBits().TypedMul(right);
+        UnknownTypedValue result = bitsResult;
+
+        if (Cardinality() < MAX_DISCRETE_CARDINALITY)
         {
-            var unkBits = ToBits(new BitSpan(0, ~((1UL << pow) - 1))); // too wide!
-            if (Cardinality() < MAX_DISCRETE_CARDINALITY)
+            UnknownTypedValue setResult = UnknownTypedValue.Create(type);
+            if (isNumeric)
             {
-                var unkSet = new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l))); // precise
-                if (unkSet.Cardinality() < unkBits.Cardinality())
-                    return unkSet;
+                setResult = new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l)));
             }
-            return unkBits;
+            else
+            {
+                if (right is not UnknownTypedValue ru)
+                    return bitsResult;
+
+                // calculate product of two unknown sets
+                HashSet<long> values = new();
+                foreach (long v in Values())
+                {
+                    foreach (long r in ru.Values())
+                    {
+                        long maskedValue = MaskWithSign(v * r);
+                        if ((ulong)values.Count >= MAX_DISCRETE_CARDINALITY)
+                            return bitsResult;
+
+                        values.Add(maskedValue);
+                    }
+                }
+                setResult = new UnknownValueSet(type, values);
+            }
+
+            if (setResult.Cardinality() < bitsResult.Cardinality()) // check if bitsResult is a BitTracker?
+                result = setResult;
         }
 
-        if (Cardinality() > MAX_DISCRETE_CARDINALITY)
-            return UnknownValue.Create(type);
+        return result.Normalize();
+    }
 
-        if (isNumeric)
-            return new UnknownValueSet(type, Values().Select(v => MaskWithSign(v * l)));
+    public UnknownTypedValue Normalize()
+    {
+        if (this is UnknownValueBitTracker bt && bt.HasPrivateBits()) // still can be FullRange, but has more intel
+            return bt;
 
-        if (right is not UnknownTypedValue ru)
-            return UnknownValue.Create(type);
+        if (IsFullRange() && GetType() != DEFAULT_TYPE)
+            return UnknownTypedValue.Create(type);
 
-        // calculate product of two unknown sets
-        HashSet<long> values = new();
-        foreach (long v in Values())
-        {
-            foreach (long r in ru.Values())
-            {
-                long maskedValue = MaskWithSign(v * r);
-                if ((ulong)values.Count >= MAX_DISCRETE_CARDINALITY)
-                    return UnknownValue.Create(type);
+        return this;
+    }
 
-                values.Add(maskedValue);
-            }
-        }
+    public static UnknownValueBase MaybeNormalize(UnknownValueBase value)
+    {
+        if (value is UnknownTypedValue typedValue)
+            return typedValue.Normalize();
 
-        return new UnknownValueSet(type, values);
+        return value;
     }
 
     public sealed override UnknownValueBase Xor(object right)
@@ -427,7 +445,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             }
         }
 
-        return MaybeConvertTo<UnknownValueBitTracker>().TypedXor(right);
+        return MaybeNormalize(MaybeConvertTo<UnknownValueBitTracker>().TypedXor(right));
     }
 
     public override object Cast(TypeDB.IntInfo toType)
@@ -554,7 +572,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
                     Values()
                     .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
         }
-        return TypedSub(right);
+        return MaybeNormalize(TypedSub(right));
     }
 
     public override UnknownValueBase Merge(object other)

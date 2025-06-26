@@ -90,6 +90,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
 
     public override bool IsOneBit(int idx) => _bits[idx] == ONE;
     public override bool IsZeroBit(int idx) => _bits[idx] == ZERO;
+    public bool HasPrivateBits() => _bits.Any(b => b.IsPrivateBit());
 
     public override bool IsFullRange() => _bits.All(b => !b.IsOneOrZero());
 
@@ -351,9 +352,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return new UnknownValueBitTracker(this, newBits);
         }
 
-        if (otherTyped.CanConvertTo<UnkBits>())
-            right = otherTyped.ConvertTo<UnkBits>();
-
+        right = otherTyped.ToBits();
         if (right is UnkBits otherUnk)
         {
             if (type != otherUnk.type)
