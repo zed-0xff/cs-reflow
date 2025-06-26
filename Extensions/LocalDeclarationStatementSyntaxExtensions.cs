@@ -30,5 +30,13 @@ public static class LocalDeclarationStatementSyntaxExtensions
 
         return node.Declaration.Variables[0].Identifier.IsSameVar(otherNode.Identifier);
     }
+
+    public static bool IsSameVar(this LocalDeclarationStatementSyntax node, Variable V)
+    {
+        if (node.Declaration.Variables.Count != 1)
+            return false;
+
+        return node.Declaration.Variables[0].Identifier.IsSameVar(V);
+    }
 }
 

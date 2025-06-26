@@ -18,5 +18,11 @@ public static class SyntaxTokenExtensions
         var thisVarID = token.VarID();
         return thisVarID != null && otherVarID != null && thisVarID.Data == otherVarID.Data;
     }
+
+    public static bool IsSameVar(this SyntaxToken token, Variable V)
+    {
+        var thisVarID = token.VarID();
+        return thisVarID != null && thisVarID.Data == V.VarID;
+    }
 }
 

@@ -11,6 +11,8 @@ public class VarDB
     Dictionary<string, Variable> _name2vars = new();
 
     public Variable this[int id] => _vars[id];
+    public Variable this[SyntaxAnnotation ann] => _ann2vars.TryGetValue(ann, out var variable) ? variable : throw new KeyNotFoundException($"Variable with annotation {ann} not found.");
+
     public Variable? FindByName(string name) => _name2vars.TryGetValue(name, out var variable) ? variable : null;
 
     public bool TryGetValue(string varName, out Variable? variable) => _name2vars.TryGetValue(varName, out variable);

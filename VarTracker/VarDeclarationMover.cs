@@ -9,9 +9,10 @@ public partial class VarTracker
     {
         static readonly string LOG_TAG = "VarDeclarationMover";
 
+        readonly VarDB _varDB;
         readonly VarTracker _tracker;
         readonly VarScopeCollector _collector;
-        Dictionary<SyntaxAnnotation, BlockSyntax> _targetBlocks = new();
+        Dictionary<int, BlockSyntax> _targetBlocks = new();
         HashSet<LocalDeclarationStatementSyntax> _toRemove = new();
 
         static bool IsSafeToRemove(LocalDeclarationStatementSyntax decl)
@@ -31,7 +32,7 @@ public partial class VarTracker
             }
         }
 
-        Dictionary<BlockSyntax, LocalDeclarationStatementSyntax> collect_block_decls(SyntaxAnnotation key)
+        Dictionary<BlockSyntax, LocalDeclarationStatementSyntax> collect_block_decls(int key)
         {
             Dictionary<BlockSyntax, LocalDeclarationStatementSyntax> blockDecls = new();
             foreach (var declInfo in _collector.DeclInfos[key])
@@ -42,7 +43,7 @@ public partial class VarTracker
                     int oldIdx = declInfo.block.Statements.IndexOf(existingDecl);
                     int newIdx = declInfo.block.Statements.IndexOf(declInfo.decl);
                     if (oldIdx == -1 || newIdx == -1)
-                        throw new InvalidOperationException($"Declaration {key.Data} not found in block statements: {declInfo.block.TitleWithLineNo()}");
+                        throw new InvalidOperationException($"Declaration for {_varDB[key]} not found in block statements: {declInfo.block.TitleWithLineNo()}");
                     if (newIdx < oldIdx)
                     {
                         blockDecls[declInfo.block] = declInfo.decl;
@@ -61,6 +62,7 @@ public partial class VarTracker
 
         public VarDeclarationMover(VarTracker tracker, VarScopeCollector collector)
         {
+            _varDB = tracker.VarDB;
             _tracker = tracker;
             _collector = collector;
 
@@ -103,7 +105,7 @@ public partial class VarTracker
                 }
 
                 foreach (var usageBlk in orphanedUsageBlocks)
-                    fix_orphaned_block(key, usageBlk);
+                    fix_orphaned_block(_varDB[key], usageBlk);
 
                 var unusedDecls = _collector.DeclInfos[key]
                     .Where(d => !declToUsage.ContainsKey(d.block))
@@ -111,37 +113,37 @@ public partial class VarTracker
 
                 foreach (var decl in unusedDecls)
                 {
-                    Logger.debug($"{key.Data}: unused decl: {decl.TitleWithLineNo()}", LOG_TAG);
+                    Logger.debug($"{_varDB[key]}: unused decl: {decl.TitleWithLineNo()}", LOG_TAG);
                     _toRemove.Add(decl);
                 }
             }
         }
 
-        void fix_orphaned_block(SyntaxAnnotation key, BlockSyntax usageBlk)
+        void fix_orphaned_block(Variable V, BlockSyntax usageBlk)
         {
-            Logger.debug($"{key.Data}: usage block has no decl: {usageBlk.TitleWithLineNo()}", LOG_TAG);
+            Logger.debug($"{V}: usage block has no decl: {usageBlk.TitleWithLineNo()}", LOG_TAG);
             BlockSyntax? targetBlk = usageBlk
                 .AncestorsAndSelf()
                 .OfType<BlockSyntax>()
-                .FirstOrDefault(b => b.DescendantNodes().OfType<LocalDeclarationStatementSyntax>().Any(ld => ld.IsSameVar(key)));
+                .FirstOrDefault(b => b.DescendantNodes().OfType<LocalDeclarationStatementSyntax>().Any(ld => ld.IsSameVar(V)));
 
             if (targetBlk == null)
-                throw new TaggedException(LOG_TAG, $"{key.Data}: No parent block found for orphaned usage block {usageBlk.TitleWithLineNo()}");
+                throw new TaggedException(LOG_TAG, $"{V}: No parent block found for orphaned usage block {usageBlk.TitleWithLineNo()}");
 
             // targetBlk itself won't have the declaration of interest, but some of its children do
             targetBlk.DescendantNodes()
                 .OfType<LocalDeclarationStatementSyntax>()
-                .Where(ld => ld.IsSameVar(key))
+                .Where(ld => ld.IsSameVar(V))
                 .ToList()
                 .ForEach(ld => enqueue_removal(ld));
 
-            if (_targetBlocks.TryGetValue(key, out var existingTarget))
+            if (_targetBlocks.TryGetValue(V.id, out var existingTarget))
             {
                 if (existingTarget != targetBlk)
-                    _targetBlocks[key] = FindCommonAncestor(new[] { existingTarget, targetBlk });
+                    _targetBlocks[V.id] = FindCommonAncestor(new[] { existingTarget, targetBlk });
             }
             else
-                _targetBlocks[key] = targetBlk;
+                _targetBlocks[V.id] = targetBlk;
         }
 
         // Helper to find common ancestor block of many blocks

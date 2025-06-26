@@ -7,6 +7,7 @@ public class Variable
     public int Flags = 0;
     public readonly string Name;
     public readonly string TypeName;
+    public readonly string VarID;
 
     public readonly SyntaxAnnotation Annotation;
     public readonly TypeDB.IntInfo? IntType;
@@ -17,13 +18,14 @@ public class Variable
     {
         this.id = id;
         this.Name = name;
-        this.Annotation = new SyntaxAnnotation("VarID", id.ToString("X4"));
+        this.VarID = id.ToString("X4");
+        this.Annotation = new SyntaxAnnotation("VarID", VarID);
         this.IntType = TypeDB.TryFind(typeName);
         this.TypeName = typeName;
     }
 
     public bool IsLoopVar => (Flags & FLAG_LOOP) != 0;
 
-    public override string ToString() => $"<Var{id:X4}.{Name ?? "?"}>";
-    public string ToFullString() => $"<Var{id:X4} type={TypeName} name={Name ?? "?"}>";
+    public override string ToString() => $"<Var{VarID}.{Name ?? "?"}>";
+    public string ToFullString() => $"<Var{VarID} type={TypeName} name={Name ?? "?"}>";
 }

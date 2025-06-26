@@ -9,6 +9,7 @@ public partial class VarTracker
 {
     int _stmt_id = 0;
     readonly VarDB _varDB;
+    public VarDB VarDB => _varDB;
 
     public VarTracker(VarDB varDB)
     {
@@ -41,7 +42,7 @@ public partial class VarTracker
     public SyntaxNode MoveDeclarations(SyntaxNode rootNode)
     {
         // Collect variable declarations and usage blocks
-        var collector = new VarScopeCollector();
+        var collector = new VarScopeCollector(_varDB);
         collector.Visit(rootNode);
 
         // Move declarations to appropriate blocks

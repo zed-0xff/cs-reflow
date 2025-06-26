@@ -9,10 +9,16 @@ public partial class VarTracker
 
     class VarScopeCollector : CSharpSyntaxWalker
     {
-        public Dictionary<SyntaxAnnotation, List<DeclInfo>> DeclInfos = new();
-        public Dictionary<SyntaxAnnotation, HashSet<BlockSyntax>> UsageBlocks = new();
+        public Dictionary<int, List<DeclInfo>> DeclInfos = new();
+        public Dictionary<int, HashSet<BlockSyntax>> UsageBlocks = new();
 
+        private readonly VarDB _varDB;
         private Stack<BlockSyntax> _blockStack = new();
+
+        public VarScopeCollector(VarDB varDB)
+        {
+            _varDB = varDB;
+        }
 
         public override void VisitBlock(BlockSyntax node)
         {
@@ -31,10 +37,11 @@ public partial class VarTracker
                     if (annotation == null)
                         continue;
 
-                    if (!DeclInfos.TryGetValue(annotation, out var decls))
+                    var V = _varDB[annotation];
+                    if (!DeclInfos.TryGetValue(V.id, out var decls))
                     {
                         decls = new List<DeclInfo>();
-                        DeclInfos[annotation] = decls;
+                        DeclInfos[V.id] = decls;
                     }
                     decls.Add(new DeclInfo(node, _blockStack.Peek()));
                 }
@@ -49,10 +56,11 @@ public partial class VarTracker
             {
                 if (!_blockStack.Any()) return; // safety
 
-                if (!UsageBlocks.TryGetValue(annotation, out var blocks))
+                var V = _varDB[annotation];
+                if (!UsageBlocks.TryGetValue(V.id, out var blocks))
                 {
                     blocks = new HashSet<BlockSyntax>();
-                    UsageBlocks[annotation] = blocks;
+                    UsageBlocks[V.id] = blocks;
                 }
                 blocks.Add(_blockStack.Peek());
             }
