@@ -209,12 +209,7 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprA()
     {
-        string expr_str = "(0x359 ^ ((0x82E & num4) * (int)(num9 << 14))) == 0"; // always false
-
-        AddVar("num4", UnknownValue.Create("int"));
-        AddVar("num9", UnknownValue.Create("uint"));
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int num4; uint num9; (0x359 ^ ((0x82E & num4) * (int)(num9 << 14))) != 0");
     }
 
     [Fact]
@@ -235,21 +230,13 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprC()
     {
-        string expr_str = "((4 * num252 + num252 * 4) & 4) == 0";
-
-        AddVar("num252", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int x; ((4 * x + x * 4) & 4) == 0");
     }
 
     [Fact]
     public void Test_exprD()
     {
-        string expr_str = "0 == ((4 * (num10 & (num10 << 2))) & 4)";
-
-        AddVar("num10", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int x; 0 == ((4 * (x & (x << 2))) & 4)");
     }
 
     [Fact]
@@ -268,55 +255,37 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprF1()
     {
-        string expr_str = "!(~num11 == num11)";
-
-        AddVar("num11", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int x; !(~x == x)");
     }
 
     [Fact]
     public void Test_exprF2()
     {
-        string expr_str = "!(~num11 != num11)";
-
-        AddVar("num11", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int x; (~x != x)");
     }
 
     [Fact]
     public void Test_exprF3()
     {
-        string expr_str = "!(num11 == ~num11)";
-
-        AddVar("num11", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int x; !(x == ~x)");
     }
 
     [Fact]
     public void Test_exprF4()
     {
-        string expr_str = "!(num11 != ~num11)";
-
-        AddVar("num11", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int x; (x != ~x)");
     }
 
     [Fact]
     public void Test_exprG()
     {
-        string expr_str = "int num12, num3; (((-(num12 + num12) << 1) ^ (10792 * num3 - 8444)) & 2) == 0";
-        Assert.Equal(true, Eval(expr_str));
+        check_expr("int num12, num3; (((-(num12 + num12) << 1) ^ (10792 * num3 - 8444)) & 2) == 0");
     }
 
     [Fact]
     public void Test_exprH()
     {
-        string expr_str = "int num116, num117; ~(num116 + num116) != num117 * 3 + num117 - 708559999 >>> 1";
-        Assert.Equal(true, Eval(expr_str));
+        check_expr("int num116, num117; ~(num116 + num116) != num117 * 3 + num117 - 708559999 >>> 1");
     }
 
     [Fact]
@@ -366,89 +335,65 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprL()
     {
-        string expr_str = "(((uint)(64 * (int)num) % 40u) | 0xABA40BBFu) != 2879654847u";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("(((uint)(64 * (int)num) % 40u) | 0xABA40BBFu) == 2879654847u");
     }
 
     [Fact]
     public void Test_exprM()
     {
-        string expr_str = "(3 & ((uint)e093257623e347d2a45b8e4d5fa2 % 4558u << 15 >> 4)) != (uint)((124656 * (int)e093257623e347d2a45b8e4d5fa2) & 3)";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("(3 & ((uint)e093257623e347d2a45b8e4d5fa2 % 4558u << 15 >> 4)) == (uint)((124656 * (int)e093257623e347d2a45b8e4d5fa2) & 3)");
     }
 
     [Fact]
     public void Test_exprN()
     {
-        string expr_str = "int num,x; (int)((uint)x / 4u) - int.MinValue == (858510224 + (num << 8)) * int.MinValue";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int num,x; (int)((uint)x / 4u) - int.MinValue != (858510224 + (num << 8)) * int.MinValue");
     }
 
     [Fact]
     public void Test_exprO_BitTracker()
     {
-        string expr_str = "int num6; ((num6 ^ ((num6 * -1788084224) | (num6 - 400) | (num6 + num6))) & 1) != 0";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int num6; ((num6 ^ ((num6 * -1788084224) | (num6 - 400) | (num6 + num6))) & 1) == 0");
     }
 
     [Fact]
     public void Test_exprP_BitTracker()
     {
-        string expr_str = "int num6; (0x1DC240 & ((num6 * 1024 >>> 10) ^ num6)) != 0";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int num6; (0x1DC240 & ((num6 * 1024 >>> 10) ^ num6)) == 0");
     }
 
     [Fact]
     public void Test_exprQ_BitTracker()
     {
-        string expr_str = "int x; -101875712 + 16384 * 1541962368 * x == -(x | -6684)";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int x; -101875712 + 16384 * 1541962368 * x != -(x | -6684)");
     }
 
     [Fact]
     public void Test_exprR_BitTracker()
     {
-        string expr_str = "int x; ~(x ^ -1785936142) == x * 6 + x * 2 >>> 3";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int x; ~(x ^ -1785936142) != x * 6 + x * 2 >>> 3");
     }
 
     [Fact]
     public void Test_exprS()
     {
-        string expr_str = "int x; (((uint)(x & 0x23D0) | ((uint)x / 7u)) & 0xC0000000u) != 0";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int x; (((uint)(x & 0x23D0) | ((uint)x / 7u)) & 0xC0000000u) == 0");
     }
 
     [Fact]
     public void Test_exprT()
     {
-        string expr_str = "int num; (0xFFFFEFECu ^ ((uint)num / 6u)) != 0";
-
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int num; (0xFFFFEFECu ^ ((uint)num / 6u)) != 0");
     }
 
     [Fact]
     public void Test_exprU()
     {
-        string expr_str = "int num8; (0x200000 & (num8 * -1243611136)) == ((num8 << 21) & 0x200000)";
+        check_expr("int num8; (0x200000 & (num8 * -1243611136)) == ((num8 << 21) & 0x200000)");
+    }
 
+    void check_expr(string expr_str)
+    {
         var result = Eval(expr_str);
         Assert.Equal(true, result);
     }
@@ -456,10 +401,7 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprV()
     {
-        string expr_str = "int num; (uint)num % 16777216u - 1342177280 == (uint)((0x1000 & num) >>> 2)";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("int num; (uint)num % 16777216u - 1342177280 != (uint)((0x1000 & num) >>> 2)");
     }
 
     [Fact]
@@ -492,37 +434,25 @@ public partial class ExpressionTests
     [Fact]
     public void Test_expr_uint_gte0()
     {
-        string expr_str = "uint x; x >= 0";
-
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("uint x; x >= 0");
     }
 
     [Fact]
     public void Test_expr_uint_lt0()
     {
-        string expr_str = "uint x; x < 0";
-
-        var result = Eval(expr_str);
-        Assert.Equal(false, result);
+        check_expr("uint x; !(x < 0)");
     }
 
     [Fact]
     public void Test_sizeof_ulong()
     {
-        string expr_str = "sizeof(ulong)";
-
-        var result = Eval(expr_str);
-        Assert.Equal(sizeof(ulong), result);
+        check_expr("sizeof(ulong) == 8");
     }
 
     [Fact]
     public void Test_sizeof_Guid()
     {
-        string expr_str = "sizeof(Guid)";
-
-        var result = Eval(expr_str);
-        Assert.Equal(16, result);
+        check_expr("sizeof(Guid) == 16");
     }
 
     // "if either operand is of type uint and the other operand is of type sbyte, short, or int, both operands are converted to type long."
