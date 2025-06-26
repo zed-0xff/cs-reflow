@@ -36,6 +36,9 @@ public partial class UnknownValueBitTracker
                 case (ANY, _, _):      // either or both of adds are nonzero
                     carry = ANY;
                     break;
+                case (ONE, false, ONE):
+                    newBits[i] = ZERO; // clear bit, keep carry
+                    break;
                 case (BitType b1, true, ZERO) when b1.IsPrivateBit():
                 case (BitType b2, false, ONE) when b2.IsPrivateBit():
                     carry = newBits[i];

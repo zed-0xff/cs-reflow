@@ -26,6 +26,7 @@ public partial class VarTracker
         public void Process(SyntaxNode rootNode)
         {
             Visit(rootNode);
+
             // _fields may contain symbols declared in upper scopes
             foreach (var field in _fields)
             {
@@ -34,7 +35,12 @@ public partial class VarTracker
                     var decls = field.DeclaringSyntaxReferences;
                     if (decls.Length == 0)
                     {
-                        Logger.warn($"Field {field.Name} has no declaring syntax references", "VarCollector.Process");
+                        if (VarProcessor.Constants.ContainsKey(field.ToString()))
+                        {
+                            Logger.debug($"Field {field} is a known constant", "VarCollector.Process");
+                            continue;
+                        }
+                        Logger.warn($"Field {field} has no declaring syntax references", "VarCollector.Process");
                         continue;
                     }
                     if (decls.Length > 1)
