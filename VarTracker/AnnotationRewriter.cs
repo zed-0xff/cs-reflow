@@ -20,36 +20,40 @@ public partial class VarTracker
             _sym2ann = sym2ann;
         }
 
-        public override SyntaxNode VisitVariableDeclarator(VariableDeclaratorSyntax node)
+        public override SyntaxNode? VisitVariableDeclarator(VariableDeclaratorSyntax node)
         {
             // capture annotation first bc base.VisitVariableDeclarator may return rewritten node, so semantic model would not match
             SyntaxAnnotation? annotation = null;
             if (node.SyntaxTree == _semanticModel.SyntaxTree)
-                _sym2ann.TryGetValue(_semanticModel.GetDeclaredSymbol(node), out annotation);
+            {
+                var key = _semanticModel.GetDeclaredSymbol(node);
+                if (key != null)
+                    _sym2ann.TryGetValue(key, out annotation);
+            }
 
-            node = base.VisitVariableDeclarator(node) as VariableDeclaratorSyntax;
-            if (node == null)
-                return node;
+            var newNode = base.VisitVariableDeclarator(node) as VariableDeclaratorSyntax;
+            if (newNode == null)
+                return null;
 
             if (annotation != null)
-                node = node.WithIdentifier(
-                        node.Identifier.WithAdditionalAnnotations(annotation)
+                newNode = newNode.WithIdentifier(
+                        newNode.Identifier.WithAdditionalAnnotations(annotation)
                         );
-            return node;
+            return newNode;
         }
 
-        public override SyntaxNode VisitIdentifierName(IdentifierNameSyntax node)
+        public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)
         {
-            node = base.VisitIdentifierName(node) as IdentifierNameSyntax;
-            if (node == null || node.SyntaxTree != _semanticModel.SyntaxTree)
-                return node;
+            var newNode = base.VisitIdentifierName(node) as IdentifierNameSyntax;
+            if (newNode == null || newNode.SyntaxTree != _semanticModel.SyntaxTree)
+                return newNode;
 
-            var symbol = _semanticModel.GetSymbolInfo(node).Symbol;
+            var symbol = _semanticModel.GetSymbolInfo(newNode).Symbol;
             if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
-                node = node.WithIdentifier(
-                        node.Identifier.WithAdditionalAnnotations(annotation)
+                newNode = newNode.WithIdentifier(
+                        newNode.Identifier.WithAdditionalAnnotations(annotation)
                         );
-            return node;
+            return newNode;
         }
 
         public override SyntaxNode Visit(SyntaxNode node)
