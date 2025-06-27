@@ -285,4 +285,21 @@ public class UnknownValueBitTrackerTest
         Assert.Equal("UnknownValueBitTracker<int>[…е000000000000000000000]", a.Mul(0xB5E00000).ToString());
         Assert.Equal("UnknownValueBitTracker<int>[…е000000000000000000000]", a.Mul(-1243611136).ToString());
     }
+
+    [Fact]
+    public void Test_Negate()
+    {
+        var a = new UnknownValueBitTracker(TypeDB.Byte, 0);
+        var b = a.Negate();
+        Assert.Equal("UnknownValueBitTracker<byte>[…h]", b.ToString());
+        var c = b.Negate();
+        Assert.Equal("UnknownValueBitTracker<byte>[…h]", c.ToString());
+
+        a = new UnknownValueBitTracker(TypeDB.Byte, 0, new BitSpan(1, 127));
+        Assert.Equal("UnknownValueBitTracker<byte>[0bcdefg1]", a.ToString());
+        b = a.Negate();
+        Assert.Equal("UnknownValueBitTracker<byte>[1BCDEFG1]", b.ToString());
+        c = b.Negate();
+        Assert.Equal("UnknownValueBitTracker<byte>[0bcdefg1]", c.ToString());
+    }
 }
