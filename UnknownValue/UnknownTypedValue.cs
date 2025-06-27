@@ -565,6 +565,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (l == 0)
                 return this;
 
+            if (l < 0)
+                return Add(-l);
+
             if (CanConvertTo<UnknownValueBitTracker>())
                 return ConvertTo<UnknownValueBitTracker>().Sub(l);
         }
