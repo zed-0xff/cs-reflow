@@ -50,6 +50,44 @@ public static class SyntaxNodeExtensions
                node is GotoStatementSyntax;
     }
 
+    public static bool IsIdempotent(this SyntaxNode node)
+    {
+        if (node == null)
+            return false;
+
+        switch (node)
+        {
+            case BinaryExpressionSyntax binary:
+                return binary.Left.IsIdempotent() && binary.Right.IsIdempotent();
+
+            case CastExpressionSyntax cast:
+                return cast.Expression.IsIdempotent(); // casting is idempotent if the expression is
+
+            case IdentifierNameSyntax:
+                return true; // assume local vars are idempotent (needs semantic model for precision)
+
+            case LiteralExpressionSyntax:
+                return true; // constants are idempotent
+
+            case ParenthesizedExpressionSyntax paren:
+                return paren.Expression.IsIdempotent();
+
+            case PrefixUnaryExpressionSyntax prefix:
+                // ++x, --x are not idempotent
+                return prefix.Kind() switch
+                {
+                    SyntaxKind.LogicalNotExpression or
+                        SyntaxKind.UnaryMinusExpression or
+                        SyntaxKind.UnaryPlusExpression => prefix.Operand.IsIdempotent(),
+                    _ => false
+                };
+
+            default:
+                Logger.debug(() => $"Node {node.GetType()} is not idempotent: {node}", "SyntaxNode.IsIdempotent");
+                return false;
+        }
+    }
+
     public static TTarget? FirstAncestorOrSelfUntil<TTarget, TBoundary>(this SyntaxNode node)
         where TTarget : SyntaxNode
         where TBoundary : SyntaxNode

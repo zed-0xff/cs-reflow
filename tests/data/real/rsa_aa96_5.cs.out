@@ -123,6 +123,300 @@
 	                        if (b4 <= 0)
 	                        {
 	                            num26 = ((BinaryReader)obj).ReadUInt16();
+	                            if (num26 != 33072)
+	                            {
+	                                if (num26 == 33328)
+	                                {
+	                                    ((BinaryReader)obj).ReadInt16();
+	                                    num27 = ((BinaryReader)obj).ReadUInt16();
+	                                    b2 = 0;
+	                                    if (num27 != 33026)
+	                                    {
+	                                        if (num27 == 33282)
+	                                        {
+	                                            b2 = ((BinaryReader)obj).ReadByte();
+	                                            b = ((BinaryReader)obj).ReadByte();
+	                                            obj2 = new byte[4]
+	                                            {
+	                                                b,
+	                                                b2,
+	                                                0,
+	                                                0
+	                                            };
+	                                            num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                            b3 = ((BinaryReader)obj).ReadByte();
+	                                            ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                            if (b3 == 0)
+	                                            {
+	                                                ((BinaryReader)obj).ReadByte();
+	                                                num18--;
+	                                            }
+	
+	                                            modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                            if (((BinaryReader)obj).ReadByte() != 2)
+	                                            {
+	                                                result = null;
+	                                            }
+	                                            else
+	                                            {
+	                                                count = ((BinaryReader)obj).ReadByte();
+	                                                exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                                obj3 = new RSACryptoServiceProvider();
+	                                                rSAParameters = default(RSAParameters);
+	                                                rSAParameters.Modulus = (byte[]? )modulus;
+	                                                rSAParameters.Exponent = (byte[]? )exponent;
+	                                                parameters = rSAParameters;
+	                                                ((RSA)obj3).ImportParameters(parameters);
+	                                                result = obj3;
+	                                            }
+	                                        }
+	                                        else
+	                                        {
+	                                            result = null;
+	                                        }
+	                                    }
+	                                    else
+	                                    {
+	                                        b = ((BinaryReader)obj).ReadByte();
+	                                        obj2 = new byte[4]
+	                                        {
+	                                            b,
+	                                            b2,
+	                                            0,
+	                                            0
+	                                        };
+	                                        num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                        b3 = ((BinaryReader)obj).ReadByte();
+	                                        ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                        if (b3 == 0)
+	                                        {
+	                                            ((BinaryReader)obj).ReadByte();
+	                                            num18--;
+	                                        }
+	
+	                                        modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                        if (((BinaryReader)obj).ReadByte() != 2)
+	                                        {
+	                                            result = null;
+	                                        }
+	                                        else
+	                                        {
+	                                            count = ((BinaryReader)obj).ReadByte();
+	                                            exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                            obj3 = new RSACryptoServiceProvider();
+	                                            rSAParameters = default(RSAParameters);
+	                                            rSAParameters.Modulus = (byte[]? )modulus;
+	                                            rSAParameters.Exponent = (byte[]? )exponent;
+	                                            parameters = rSAParameters;
+	                                            ((RSA)obj3).ImportParameters(parameters);
+	                                            result = obj3;
+	                                        }
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    result = null;
+	                                }
+	                            }
+	                            else
+	                            {
+	                                ((BinaryReader)obj).ReadByte();
+	                                num27 = ((BinaryReader)obj).ReadUInt16();
+	                                b2 = 0;
+	                                if (num27 != 33026)
+	                                {
+	                                    if (num27 == 33282)
+	                                    {
+	                                        b2 = ((BinaryReader)obj).ReadByte();
+	                                        b = ((BinaryReader)obj).ReadByte();
+	                                        obj2 = new byte[4]
+	                                        {
+	                                            b,
+	                                            b2,
+	                                            0,
+	                                            0
+	                                        };
+	                                        num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                        b3 = ((BinaryReader)obj).ReadByte();
+	                                        ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                        if (b3 == 0)
+	                                        {
+	                                            ((BinaryReader)obj).ReadByte();
+	                                            num18--;
+	                                        }
+	
+	                                        modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                        if (((BinaryReader)obj).ReadByte() != 2)
+	                                        {
+	                                            result = null;
+	                                        }
+	                                        else
+	                                        {
+	                                            count = ((BinaryReader)obj).ReadByte();
+	                                            exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                            obj3 = new RSACryptoServiceProvider();
+	                                            rSAParameters = default(RSAParameters);
+	                                            rSAParameters.Modulus = (byte[]? )modulus;
+	                                            rSAParameters.Exponent = (byte[]? )exponent;
+	                                            parameters = rSAParameters;
+	                                            ((RSA)obj3).ImportParameters(parameters);
+	                                            result = obj3;
+	                                        }
+	                                    }
+	                                    else
+	                                    {
+	                                        result = null;
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    b = ((BinaryReader)obj).ReadByte();
+	                                    obj2 = new byte[4]
+	                                    {
+	                                        b,
+	                                        b2,
+	                                        0,
+	                                        0
+	                                    };
+	                                    num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                    b3 = ((BinaryReader)obj).ReadByte();
+	                                    ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                    if (b3 == 0)
+	                                    {
+	                                        ((BinaryReader)obj).ReadByte();
+	                                        num18--;
+	                                    }
+	
+	                                    modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                    if (((BinaryReader)obj).ReadByte() != 2)
+	                                    {
+	                                        result = null;
+	                                    }
+	                                    else
+	                                    {
+	                                        count = ((BinaryReader)obj).ReadByte();
+	                                        exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                        obj3 = new RSACryptoServiceProvider();
+	                                        rSAParameters = default(RSAParameters);
+	                                        rSAParameters.Modulus = (byte[]? )modulus;
+	                                        rSAParameters.Exponent = (byte[]? )exponent;
+	                                        parameters = rSAParameters;
+	                                        ((RSA)obj3).ImportParameters(parameters);
+	                                        result = obj3;
+	                                    }
+	                                }
+	                            }
+	                        }
+	                        else
+	                        {
+	                            result = null;
+	                        }
+	                    }
+	                }
+	                else
+	                {
+	                    ((BinaryReader)obj).ReadByte();
+	                    b4 = ((BinaryReader)obj).ReadByte();
+	                    if (b4 <= 0)
+	                    {
+	                        num26 = ((BinaryReader)obj).ReadUInt16();
+	                        if (num26 != 33072)
+	                        {
+	                            if (num26 == 33328)
+	                            {
+	                                ((BinaryReader)obj).ReadInt16();
+	                                num27 = ((BinaryReader)obj).ReadUInt16();
+	                                b2 = 0;
+	                                if (num27 != 33026)
+	                                {
+	                                    if (num27 == 33282)
+	                                    {
+	                                        b2 = ((BinaryReader)obj).ReadByte();
+	                                        b = ((BinaryReader)obj).ReadByte();
+	                                        obj2 = new byte[4]
+	                                        {
+	                                            b,
+	                                            b2,
+	                                            0,
+	                                            0
+	                                        };
+	                                        num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                        b3 = ((BinaryReader)obj).ReadByte();
+	                                        ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                        if (b3 == 0)
+	                                        {
+	                                            ((BinaryReader)obj).ReadByte();
+	                                            num18--;
+	                                        }
+	
+	                                        modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                        if (((BinaryReader)obj).ReadByte() != 2)
+	                                        {
+	                                            result = null;
+	                                        }
+	                                        else
+	                                        {
+	                                            count = ((BinaryReader)obj).ReadByte();
+	                                            exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                            obj3 = new RSACryptoServiceProvider();
+	                                            rSAParameters = default(RSAParameters);
+	                                            rSAParameters.Modulus = (byte[]? )modulus;
+	                                            rSAParameters.Exponent = (byte[]? )exponent;
+	                                            parameters = rSAParameters;
+	                                            ((RSA)obj3).ImportParameters(parameters);
+	                                            result = obj3;
+	                                        }
+	                                    }
+	                                    else
+	                                    {
+	                                        result = null;
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    b = ((BinaryReader)obj).ReadByte();
+	                                    obj2 = new byte[4]
+	                                    {
+	                                        b,
+	                                        b2,
+	                                        0,
+	                                        0
+	                                    };
+	                                    num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                    b3 = ((BinaryReader)obj).ReadByte();
+	                                    ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                    if (b3 == 0)
+	                                    {
+	                                        ((BinaryReader)obj).ReadByte();
+	                                        num18--;
+	                                    }
+	
+	                                    modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                    if (((BinaryReader)obj).ReadByte() != 2)
+	                                    {
+	                                        result = null;
+	                                    }
+	                                    else
+	                                    {
+	                                        count = ((BinaryReader)obj).ReadByte();
+	                                        exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                        obj3 = new RSACryptoServiceProvider();
+	                                        rSAParameters = default(RSAParameters);
+	                                        rSAParameters.Modulus = (byte[]? )modulus;
+	                                        rSAParameters.Exponent = (byte[]? )exponent;
+	                                        parameters = rSAParameters;
+	                                        ((RSA)obj3).ImportParameters(parameters);
+	                                        result = obj3;
+	                                    }
+	                                }
+	                            }
+	                            else
+	                            {
+	                                result = null;
+	                            }
+	                        }
+	                        else
+	                        {
 	                            ((BinaryReader)obj).ReadByte();
 	                            num27 = ((BinaryReader)obj).ReadUInt16();
 	                            b2 = 0;
@@ -207,104 +501,6 @@
 	                                    ((RSA)obj3).ImportParameters(parameters);
 	                                    result = obj3;
 	                                }
-	                            }
-	                        }
-	                        else
-	                        {
-	                            result = null;
-	                        }
-	                    }
-	                }
-	                else
-	                {
-	                    ((BinaryReader)obj).ReadByte();
-	                    b4 = ((BinaryReader)obj).ReadByte();
-	                    if (b4 <= 0)
-	                    {
-	                        num26 = ((BinaryReader)obj).ReadUInt16();
-	                        ((BinaryReader)obj).ReadByte();
-	                        num27 = ((BinaryReader)obj).ReadUInt16();
-	                        b2 = 0;
-	                        if (num27 != 33026)
-	                        {
-	                            if (num27 == 33282)
-	                            {
-	                                b2 = ((BinaryReader)obj).ReadByte();
-	                                b = ((BinaryReader)obj).ReadByte();
-	                                obj2 = new byte[4]
-	                                {
-	                                    b,
-	                                    b2,
-	                                    0,
-	                                    0
-	                                };
-	                                num18 = BitConverter.ToInt32((byte[])obj2, 0);
-	                                b3 = ((BinaryReader)obj).ReadByte();
-	                                ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
-	                                if (b3 == 0)
-	                                {
-	                                    ((BinaryReader)obj).ReadByte();
-	                                    num18--;
-	                                }
-	
-	                                modulus = ((BinaryReader)obj).ReadBytes(num18);
-	                                if (((BinaryReader)obj).ReadByte() != 2)
-	                                {
-	                                    result = null;
-	                                }
-	                                else
-	                                {
-	                                    count = ((BinaryReader)obj).ReadByte();
-	                                    exponent = ((BinaryReader)obj).ReadBytes(count);
-	                                    obj3 = new RSACryptoServiceProvider();
-	                                    rSAParameters = default(RSAParameters);
-	                                    rSAParameters.Modulus = (byte[]? )modulus;
-	                                    rSAParameters.Exponent = (byte[]? )exponent;
-	                                    parameters = rSAParameters;
-	                                    ((RSA)obj3).ImportParameters(parameters);
-	                                    result = obj3;
-	                                }
-	                            }
-	                            else
-	                            {
-	                                result = null;
-	                            }
-	                        }
-	                        else
-	                        {
-	                            b = ((BinaryReader)obj).ReadByte();
-	                            obj2 = new byte[4]
-	                            {
-	                                b,
-	                                b2,
-	                                0,
-	                                0
-	                            };
-	                            num18 = BitConverter.ToInt32((byte[])obj2, 0);
-	                            b3 = ((BinaryReader)obj).ReadByte();
-	                            ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
-	                            if (b3 == 0)
-	                            {
-	                                ((BinaryReader)obj).ReadByte();
-	                                num18--;
-	                            }
-	
-	                            modulus = ((BinaryReader)obj).ReadBytes(num18);
-	                            if (((BinaryReader)obj).ReadByte() != 2)
-	                            {
-	                                result = null;
-	                            }
-	                            else
-	                            {
-	                                count = ((BinaryReader)obj).ReadByte();
-	                                exponent = ((BinaryReader)obj).ReadBytes(count);
-	                                obj3 = new RSACryptoServiceProvider();
-	                                rSAParameters = default(RSAParameters);
-	                                rSAParameters.Modulus = (byte[]? )modulus;
-	                                rSAParameters.Exponent = (byte[]? )exponent;
-	                                parameters = rSAParameters;
-	                                ((RSA)obj3).ImportParameters(parameters);
-	                                result = obj3;
 	                            }
 	                        }
 	                    }
@@ -339,6 +535,300 @@
 	                        if (b4 <= 0)
 	                        {
 	                            num26 = ((BinaryReader)obj).ReadUInt16();
+	                            if (num26 != 33072)
+	                            {
+	                                if (num26 == 33328)
+	                                {
+	                                    ((BinaryReader)obj).ReadInt16();
+	                                    num27 = ((BinaryReader)obj).ReadUInt16();
+	                                    b2 = 0;
+	                                    if (num27 != 33026)
+	                                    {
+	                                        if (num27 == 33282)
+	                                        {
+	                                            b2 = ((BinaryReader)obj).ReadByte();
+	                                            b = ((BinaryReader)obj).ReadByte();
+	                                            obj2 = new byte[4]
+	                                            {
+	                                                b,
+	                                                b2,
+	                                                0,
+	                                                0
+	                                            };
+	                                            num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                            b3 = ((BinaryReader)obj).ReadByte();
+	                                            ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                            if (b3 == 0)
+	                                            {
+	                                                ((BinaryReader)obj).ReadByte();
+	                                                num18--;
+	                                            }
+	
+	                                            modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                            if (((BinaryReader)obj).ReadByte() != 2)
+	                                            {
+	                                                result = null;
+	                                            }
+	                                            else
+	                                            {
+	                                                count = ((BinaryReader)obj).ReadByte();
+	                                                exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                                obj3 = new RSACryptoServiceProvider();
+	                                                rSAParameters = default(RSAParameters);
+	                                                rSAParameters.Modulus = (byte[]? )modulus;
+	                                                rSAParameters.Exponent = (byte[]? )exponent;
+	                                                parameters = rSAParameters;
+	                                                ((RSA)obj3).ImportParameters(parameters);
+	                                                result = obj3;
+	                                            }
+	                                        }
+	                                        else
+	                                        {
+	                                            result = null;
+	                                        }
+	                                    }
+	                                    else
+	                                    {
+	                                        b = ((BinaryReader)obj).ReadByte();
+	                                        obj2 = new byte[4]
+	                                        {
+	                                            b,
+	                                            b2,
+	                                            0,
+	                                            0
+	                                        };
+	                                        num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                        b3 = ((BinaryReader)obj).ReadByte();
+	                                        ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                        if (b3 == 0)
+	                                        {
+	                                            ((BinaryReader)obj).ReadByte();
+	                                            num18--;
+	                                        }
+	
+	                                        modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                        if (((BinaryReader)obj).ReadByte() != 2)
+	                                        {
+	                                            result = null;
+	                                        }
+	                                        else
+	                                        {
+	                                            count = ((BinaryReader)obj).ReadByte();
+	                                            exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                            obj3 = new RSACryptoServiceProvider();
+	                                            rSAParameters = default(RSAParameters);
+	                                            rSAParameters.Modulus = (byte[]? )modulus;
+	                                            rSAParameters.Exponent = (byte[]? )exponent;
+	                                            parameters = rSAParameters;
+	                                            ((RSA)obj3).ImportParameters(parameters);
+	                                            result = obj3;
+	                                        }
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    result = null;
+	                                }
+	                            }
+	                            else
+	                            {
+	                                ((BinaryReader)obj).ReadByte();
+	                                num27 = ((BinaryReader)obj).ReadUInt16();
+	                                b2 = 0;
+	                                if (num27 != 33026)
+	                                {
+	                                    if (num27 == 33282)
+	                                    {
+	                                        b2 = ((BinaryReader)obj).ReadByte();
+	                                        b = ((BinaryReader)obj).ReadByte();
+	                                        obj2 = new byte[4]
+	                                        {
+	                                            b,
+	                                            b2,
+	                                            0,
+	                                            0
+	                                        };
+	                                        num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                        b3 = ((BinaryReader)obj).ReadByte();
+	                                        ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                        if (b3 == 0)
+	                                        {
+	                                            ((BinaryReader)obj).ReadByte();
+	                                            num18--;
+	                                        }
+	
+	                                        modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                        if (((BinaryReader)obj).ReadByte() != 2)
+	                                        {
+	                                            result = null;
+	                                        }
+	                                        else
+	                                        {
+	                                            count = ((BinaryReader)obj).ReadByte();
+	                                            exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                            obj3 = new RSACryptoServiceProvider();
+	                                            rSAParameters = default(RSAParameters);
+	                                            rSAParameters.Modulus = (byte[]? )modulus;
+	                                            rSAParameters.Exponent = (byte[]? )exponent;
+	                                            parameters = rSAParameters;
+	                                            ((RSA)obj3).ImportParameters(parameters);
+	                                            result = obj3;
+	                                        }
+	                                    }
+	                                    else
+	                                    {
+	                                        result = null;
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    b = ((BinaryReader)obj).ReadByte();
+	                                    obj2 = new byte[4]
+	                                    {
+	                                        b,
+	                                        b2,
+	                                        0,
+	                                        0
+	                                    };
+	                                    num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                    b3 = ((BinaryReader)obj).ReadByte();
+	                                    ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                    if (b3 == 0)
+	                                    {
+	                                        ((BinaryReader)obj).ReadByte();
+	                                        num18--;
+	                                    }
+	
+	                                    modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                    if (((BinaryReader)obj).ReadByte() != 2)
+	                                    {
+	                                        result = null;
+	                                    }
+	                                    else
+	                                    {
+	                                        count = ((BinaryReader)obj).ReadByte();
+	                                        exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                        obj3 = new RSACryptoServiceProvider();
+	                                        rSAParameters = default(RSAParameters);
+	                                        rSAParameters.Modulus = (byte[]? )modulus;
+	                                        rSAParameters.Exponent = (byte[]? )exponent;
+	                                        parameters = rSAParameters;
+	                                        ((RSA)obj3).ImportParameters(parameters);
+	                                        result = obj3;
+	                                    }
+	                                }
+	                            }
+	                        }
+	                        else
+	                        {
+	                            result = null;
+	                        }
+	                    }
+	                }
+	                else
+	                {
+	                    ((BinaryReader)obj).ReadByte();
+	                    b4 = ((BinaryReader)obj).ReadByte();
+	                    if (b4 <= 0)
+	                    {
+	                        num26 = ((BinaryReader)obj).ReadUInt16();
+	                        if (num26 != 33072)
+	                        {
+	                            if (num26 == 33328)
+	                            {
+	                                ((BinaryReader)obj).ReadInt16();
+	                                num27 = ((BinaryReader)obj).ReadUInt16();
+	                                b2 = 0;
+	                                if (num27 != 33026)
+	                                {
+	                                    if (num27 == 33282)
+	                                    {
+	                                        b2 = ((BinaryReader)obj).ReadByte();
+	                                        b = ((BinaryReader)obj).ReadByte();
+	                                        obj2 = new byte[4]
+	                                        {
+	                                            b,
+	                                            b2,
+	                                            0,
+	                                            0
+	                                        };
+	                                        num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                        b3 = ((BinaryReader)obj).ReadByte();
+	                                        ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                        if (b3 == 0)
+	                                        {
+	                                            ((BinaryReader)obj).ReadByte();
+	                                            num18--;
+	                                        }
+	
+	                                        modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                        if (((BinaryReader)obj).ReadByte() != 2)
+	                                        {
+	                                            result = null;
+	                                        }
+	                                        else
+	                                        {
+	                                            count = ((BinaryReader)obj).ReadByte();
+	                                            exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                            obj3 = new RSACryptoServiceProvider();
+	                                            rSAParameters = default(RSAParameters);
+	                                            rSAParameters.Modulus = (byte[]? )modulus;
+	                                            rSAParameters.Exponent = (byte[]? )exponent;
+	                                            parameters = rSAParameters;
+	                                            ((RSA)obj3).ImportParameters(parameters);
+	                                            result = obj3;
+	                                        }
+	                                    }
+	                                    else
+	                                    {
+	                                        result = null;
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    b = ((BinaryReader)obj).ReadByte();
+	                                    obj2 = new byte[4]
+	                                    {
+	                                        b,
+	                                        b2,
+	                                        0,
+	                                        0
+	                                    };
+	                                    num18 = BitConverter.ToInt32((byte[])obj2, 0);
+	                                    b3 = ((BinaryReader)obj).ReadByte();
+	                                    ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
+	                                    if (b3 == 0)
+	                                    {
+	                                        ((BinaryReader)obj).ReadByte();
+	                                        num18--;
+	                                    }
+	
+	                                    modulus = ((BinaryReader)obj).ReadBytes(num18);
+	                                    if (((BinaryReader)obj).ReadByte() != 2)
+	                                    {
+	                                        result = null;
+	                                    }
+	                                    else
+	                                    {
+	                                        count = ((BinaryReader)obj).ReadByte();
+	                                        exponent = ((BinaryReader)obj).ReadBytes(count);
+	                                        obj3 = new RSACryptoServiceProvider();
+	                                        rSAParameters = default(RSAParameters);
+	                                        rSAParameters.Modulus = (byte[]? )modulus;
+	                                        rSAParameters.Exponent = (byte[]? )exponent;
+	                                        parameters = rSAParameters;
+	                                        ((RSA)obj3).ImportParameters(parameters);
+	                                        result = obj3;
+	                                    }
+	                                }
+	                            }
+	                            else
+	                            {
+	                                result = null;
+	                            }
+	                        }
+	                        else
+	                        {
 	                            ((BinaryReader)obj).ReadByte();
 	                            num27 = ((BinaryReader)obj).ReadUInt16();
 	                            b2 = 0;
@@ -423,104 +913,6 @@
 	                                    ((RSA)obj3).ImportParameters(parameters);
 	                                    result = obj3;
 	                                }
-	                            }
-	                        }
-	                        else
-	                        {
-	                            result = null;
-	                        }
-	                    }
-	                }
-	                else
-	                {
-	                    ((BinaryReader)obj).ReadByte();
-	                    b4 = ((BinaryReader)obj).ReadByte();
-	                    if (b4 <= 0)
-	                    {
-	                        num26 = ((BinaryReader)obj).ReadUInt16();
-	                        ((BinaryReader)obj).ReadByte();
-	                        num27 = ((BinaryReader)obj).ReadUInt16();
-	                        b2 = 0;
-	                        if (num27 != 33026)
-	                        {
-	                            if (num27 == 33282)
-	                            {
-	                                b2 = ((BinaryReader)obj).ReadByte();
-	                                b = ((BinaryReader)obj).ReadByte();
-	                                obj2 = new byte[4]
-	                                {
-	                                    b,
-	                                    b2,
-	                                    0,
-	                                    0
-	                                };
-	                                num18 = BitConverter.ToInt32((byte[])obj2, 0);
-	                                b3 = ((BinaryReader)obj).ReadByte();
-	                                ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
-	                                if (b3 == 0)
-	                                {
-	                                    ((BinaryReader)obj).ReadByte();
-	                                    num18--;
-	                                }
-	
-	                                modulus = ((BinaryReader)obj).ReadBytes(num18);
-	                                if (((BinaryReader)obj).ReadByte() != 2)
-	                                {
-	                                    result = null;
-	                                }
-	                                else
-	                                {
-	                                    count = ((BinaryReader)obj).ReadByte();
-	                                    exponent = ((BinaryReader)obj).ReadBytes(count);
-	                                    obj3 = new RSACryptoServiceProvider();
-	                                    rSAParameters = default(RSAParameters);
-	                                    rSAParameters.Modulus = (byte[]? )modulus;
-	                                    rSAParameters.Exponent = (byte[]? )exponent;
-	                                    parameters = rSAParameters;
-	                                    ((RSA)obj3).ImportParameters(parameters);
-	                                    result = obj3;
-	                                }
-	                            }
-	                            else
-	                            {
-	                                result = null;
-	                            }
-	                        }
-	                        else
-	                        {
-	                            b = ((BinaryReader)obj).ReadByte();
-	                            obj2 = new byte[4]
-	                            {
-	                                b,
-	                                b2,
-	                                0,
-	                                0
-	                            };
-	                            num18 = BitConverter.ToInt32((byte[])obj2, 0);
-	                            b3 = ((BinaryReader)obj).ReadByte();
-	                            ((BinaryReader)obj).BaseStream.Seek(-1L, SeekOrigin.Current);
-	                            if (b3 == 0)
-	                            {
-	                                ((BinaryReader)obj).ReadByte();
-	                                num18--;
-	                            }
-	
-	                            modulus = ((BinaryReader)obj).ReadBytes(num18);
-	                            if (((BinaryReader)obj).ReadByte() != 2)
-	                            {
-	                                result = null;
-	                            }
-	                            else
-	                            {
-	                                count = ((BinaryReader)obj).ReadByte();
-	                                exponent = ((BinaryReader)obj).ReadBytes(count);
-	                                obj3 = new RSACryptoServiceProvider();
-	                                rSAParameters = default(RSAParameters);
-	                                rSAParameters.Modulus = (byte[]? )modulus;
-	                                rSAParameters.Exponent = (byte[]? )exponent;
-	                                parameters = rSAParameters;
-	                                ((RSA)obj3).ImportParameters(parameters);
-	                                result = obj3;
 	                            }
 	                        }
 	                    }

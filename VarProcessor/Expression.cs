@@ -10,6 +10,23 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public partial class VarProcessor
 {
+    public static bool TryGetConstValue(ExpressionSyntax expr, out object? value)
+    {
+        string key = expr.ToString();
+        if (Constants.TryGetValue(key, out value))
+            return true;
+
+        if (expr is MemberAccessExpressionSyntax memberAccess)
+        {
+            // (Type.EmptyTypes).LongLength
+            key = $"{memberAccess.Expression.StripParentheses()}.{memberAccess.Name}";
+            if (Constants.TryGetValue(key, out value))
+                return true;
+        }
+
+        return false;
+    }
+
     public class Expression
     {
         CSharpSyntaxNode node;
@@ -451,10 +468,10 @@ public partial class VarProcessor
                     return literal.Token.Value;
 
                 case MemberAccessExpressionSyntax:
-                    if (Constants.TryGetValue(expression.ToString(), out var constantValue))
+                    if (TryGetConstValue(expression, out var constantValue))
                         return constantValue;
                     else
-                        goto default;
+                        throw new NotSupportedException($"MemberAccessExpression is not supported for {expression}");
 
                 case ParenthesizedExpressionSyntax parenExpr:
                     return EvaluateExpression(parenExpr.Expression);

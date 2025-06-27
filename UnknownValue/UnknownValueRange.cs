@@ -135,7 +135,7 @@ public class UnknownValueRange : UnknownValueRangeBase
             throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {type}");
 
         ulong shiftedCardinality = 1UL << (type.nbits - (int)l);
-        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || _var_id != null) // TODO: compare cardinality with set
+        if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || _var_id != null || IsFullRange()) // TODO: compare cardinality with set
             return ToBits().TypedShiftLeft(l);
 
         if (Cardinality() < MAX_DISCRETE_CARDINALITY)

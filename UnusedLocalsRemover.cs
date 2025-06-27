@@ -51,6 +51,9 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         public bool IsSafeToRemove(ExpressionSyntax node)
         {
+            if (node.IsIdempotent())
+                return true;
+
             if (ContainsCalls(node))
                 return false;
 

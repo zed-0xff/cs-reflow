@@ -7,9 +7,9 @@ public class UnknownTypedValueTests
     {
         var a = UnknownTypedValue.Create(TypeDB.Byte);
         Assert.Equal(a, a.Mul(1));
-        Assert.Equal("UnknownValueSet<byte>[128]", a.Mul(2).ToString());
-        Assert.Equal("UnknownValueSet<byte>[64]", a.Mul(4).ToString());
-        Assert.Equal("UnknownValueSet<byte>{0, 128}", a.Mul(128).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…00]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBits<byte>[…0000000]", a.Mul(128).ToString());
         Assert.Equal(UnknownTypedValue.Zero(TypeDB.Byte), a.Mul(256));
 
         Assert.Equal(a, a.Mul(3));

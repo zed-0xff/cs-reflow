@@ -39,6 +39,12 @@ public partial class ExpressionTests
 
     object? Eval(string expr_str) => _processor.EvaluateString(expr_str);
 
+    void check_expr(string expr_str)
+    {
+        var result = Eval(expr_str);
+        Assert.Equal(true, result);
+    }
+
     [Fact]
     public void Test_get_known_var_from_decl()
     {
@@ -392,16 +398,16 @@ public partial class ExpressionTests
         check_expr("int num8; (0x200000 & (num8 * -1243611136)) == ((num8 << 21) & 0x200000)");
     }
 
-    void check_expr(string expr_str)
-    {
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
-    }
-
     [Fact]
     public void Test_exprV()
     {
         check_expr("int num; (uint)num % 16777216u - 1342177280 != (uint)((0x1000 & num) >>> 2)");
+    }
+
+    [Fact]
+    public void Test_exprW()
+    {
+        check_expr("int num9; (num9) = (((nint)((Type.EmptyTypes).LongLength)) + (0)); num9 == 0");
     }
 
     [Fact]

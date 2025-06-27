@@ -12,6 +12,13 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public class PostProcessor
 {
+    readonly VarDB _varDB;
+
+    public PostProcessor(VarDB varDB)
+    {
+        _varDB = varDB;
+    }
+
     public static SyntaxNode RemoveAllComments(SyntaxNode root)
     {
         return root.ReplaceTrivia(
@@ -41,7 +48,7 @@ public class PostProcessor
         block = new EmptiesRemover().Visit(block) as BlockSyntax;
         block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
         block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
-        block = new IfRewriter().Visit(block) as BlockSyntax; // should be after EmptiesRemover
+        block = new IfRewriter(_varDB).Visit(block) as BlockSyntax; // should be after EmptiesRemover
         return block;
     }
 
@@ -108,8 +115,118 @@ public class EmptiesRemover : CSharpSyntaxRewriter
 
 public class IfRewriter : CSharpSyntaxRewriter
 {
-    public override SyntaxNode VisitIfStatement(IfStatementSyntax ifStmt)
+    readonly VarDB _varDB;
+
+    static readonly ExpressionSyntax TRUE_LITERAL = LiteralExpression(SyntaxKind.TrueLiteralExpression);
+    static readonly ExpressionSyntax FALSE_LITERAL = LiteralExpression(SyntaxKind.FalseLiteralExpression);
+
+    public IfRewriter(VarDB varDB)
     {
+        _varDB = varDB;
+    }
+
+    // "if (condition || always_true)" => "if (condition)"
+    public override SyntaxNode VisitBinaryExpression(BinaryExpressionSyntax node0)
+    {
+        var newNode = base.VisitBinaryExpression(node0);
+        if (newNode is not BinaryExpressionSyntax binaryExpr)
+            return newNode;
+
+        return binaryExpr.Kind() switch
+        {
+            SyntaxKind.LogicalOrExpression => maybe_reduce_or(binaryExpr),
+            SyntaxKind.LogicalAndExpression => maybe_reduce_and(binaryExpr),
+            _ => binaryExpr
+        };
+    }
+
+    // use SyntaxFactory.AreEquivalent() to also match literals that were here before the reduction
+    ExpressionSyntax maybe_reduce_or(BinaryExpressionSyntax binaryExpr)
+    {
+        var leftExpr = maybe_reduce(binaryExpr.Left);
+        if (SyntaxFactory.AreEquivalent(leftExpr, TRUE_LITERAL) && binaryExpr.Right.IsIdempotent()) // (true || Ri) => true
+            return TRUE_LITERAL;
+
+        var rightExpr = maybe_reduce(binaryExpr.Right);
+        if (SyntaxFactory.AreEquivalent(leftExpr, FALSE_LITERAL))
+            return rightExpr;  // (false || R) => R
+
+        if (SyntaxFactory.AreEquivalent(rightExpr, FALSE_LITERAL))
+            return leftExpr; // (L || false) => L
+
+        if (SyntaxFactory.AreEquivalent(rightExpr, TRUE_LITERAL) && binaryExpr.Left.IsIdempotent()) // (Li || true) => true
+            return TRUE_LITERAL;
+
+        if (leftExpr != binaryExpr.Left)
+            binaryExpr = binaryExpr.WithLeft(leftExpr);
+
+        if (rightExpr != binaryExpr.Right)
+            binaryExpr = binaryExpr.WithRight(rightExpr);
+
+        return binaryExpr;
+    }
+
+    ExpressionSyntax maybe_reduce_and(BinaryExpressionSyntax binaryExpr)
+    {
+        var leftExpr = maybe_reduce(binaryExpr.Left);
+        if (SyntaxFactory.AreEquivalent(leftExpr, FALSE_LITERAL) && binaryExpr.Right.IsIdempotent()) // (false && Ri) => false
+            return FALSE_LITERAL;
+
+        var rightExpr = maybe_reduce(binaryExpr.Right);
+        if (SyntaxFactory.AreEquivalent(leftExpr, TRUE_LITERAL))
+            return rightExpr;  // (true && R) => R
+
+        if (SyntaxFactory.AreEquivalent(rightExpr, TRUE_LITERAL))
+            return leftExpr; // (L && true) => L
+
+        if (SyntaxFactory.AreEquivalent(rightExpr, FALSE_LITERAL) && binaryExpr.Left.IsIdempotent()) // (Li && false) => false
+            return FALSE_LITERAL;
+
+        if (leftExpr != binaryExpr.Left)
+            binaryExpr = binaryExpr.WithLeft(leftExpr);
+
+        if (rightExpr != binaryExpr.Right)
+            binaryExpr = binaryExpr.WithRight(rightExpr);
+
+        return binaryExpr;
+    }
+
+    ExpressionSyntax maybe_reduce(ExpressionSyntax expr)
+    {
+        if (expr.IsIdempotent())
+        {
+            var result = eval_constexpr(expr);
+            if (result is not null)
+            {
+                Logger.debug(() => $"Reducing {expr} to {result}", "IfRewriter.maybe_reduce");
+                return result.Value ? TRUE_LITERAL : FALSE_LITERAL;
+            }
+        }
+        return expr;
+    }
+
+    bool? eval_constexpr(ExpressionSyntax expr)
+    {
+        VarProcessor processor = new(_varDB);
+        var result = processor.EvaluateExpression(expr);
+        return result switch
+        {
+            bool b => b,
+            UnknownValueBase unk => unk.Cast(TypeDB.Bool) switch
+            {
+                bool b => b,
+                _ => null // can't evaluate
+            },
+            _ => null // can't evaluate
+        };
+    }
+
+    public override SyntaxNode VisitIfStatement(IfStatementSyntax node0)
+    {
+        var newNode = base.VisitIfStatement(node0);
+        if (newNode is not IfStatementSyntax ifStmt)
+            return newNode;
+
         // remove empty else
         if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count == 0)
             ifStmt = ifStmt.WithElse(null);
@@ -130,7 +247,7 @@ public class IfRewriter : CSharpSyntaxRewriter
             ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
         }
 
-        return base.VisitIfStatement(ifStmt);
+        return ifStmt;
     }
 
     bool CanBeFlattened(BlockSyntax parentBlock, BlockSyntax childBlock)
@@ -187,10 +304,14 @@ public class IfRewriter : CSharpSyntaxRewriter
     }
 
     // convert 'if' to 'while'
-    public override SyntaxNode VisitLabeledStatement(LabeledStatementSyntax node)
+    public override SyntaxNode VisitLabeledStatement(LabeledStatementSyntax node0)
     {
+        var newNode = base.VisitLabeledStatement(node0);
+        if (newNode is not LabeledStatementSyntax node)
+            return newNode;
+
         if (node.Statement is not IfStatementSyntax ifStmt)
-            return base.VisitLabeledStatement(node);
+            return newNode;
 
         // lbl_372:
         //   if (num6 < int_0nk)
@@ -251,7 +372,7 @@ public class IfRewriter : CSharpSyntaxRewriter
             return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
         }
 
-        return base.VisitLabeledStatement(node);
+        return node;
     }
 
     // XXX may be incorrect if operators are overridden

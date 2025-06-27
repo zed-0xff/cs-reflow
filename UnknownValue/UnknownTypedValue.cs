@@ -212,7 +212,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 throw new ArgumentException("Shift count cannot be negative.");
             if (l >= type.nbits)
             {
-                Logger.warn($"Shift count {l} exceeds type bit width {type.nbits}.");
+                if (l > type.nbits)
+                    Logger.warn_once($"Shift count {l} exceeds type bit width {type.nbits}.");
+
                 return Zero(type);
             }
         }
