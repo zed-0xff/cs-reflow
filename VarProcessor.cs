@@ -177,8 +177,12 @@ public partial class VarProcessor : ICloneable
     public object? EvaluateString(string expr)
     {
         var tree = CSharpSyntaxTree.ParseText(expr);
+
+        var tracker = new VarTracker(_varDB);
+        var trackedRoot = tracker.Track(tree.GetRoot());
+
         object? result = null;
-        foreach (var stmt in tree.GetRoot().DescendantNodes().OfType<GlobalStatementSyntax>())
+        foreach (var stmt in trackedRoot.DescendantNodes().OfType<GlobalStatementSyntax>())
         {
             result = EvaluateExpression(stmt.Statement);
         }

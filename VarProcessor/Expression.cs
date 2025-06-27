@@ -458,8 +458,7 @@ public partial class VarProcessor
 
                 case IdentifierNameSyntax id:
                     // If the expression is an identifier, fetch its value from the dictionary
-                    // string varName2 = id.Identifier.Text;
-                    // VarsRead.Add(varName2);
+                    // VarsRead.Add(id.Identifier);
                     return _varDict[id.Identifier];
 
                 case LiteralExpressionSyntax literal:
@@ -569,9 +568,8 @@ public partial class VarProcessor
                 switch (expr.Operand)
                 {
                     case IdentifierNameSyntax id:
-                        // string varName = id.Identifier.Text;
-                        // VarsWritten.Add(varName);
-                        // VarsRead.Add(varName);
+                        // VarsWritten.Add(id.Identifier);
+                        // VarsRead.Add(id.Identifier);
                         _varDict.Set(id, retValue);
                         break;
                     case LiteralExpressionSyntax num:
@@ -633,16 +631,23 @@ public partial class VarProcessor
 
         BinaryExpressionSyntax? extract_common_factors(ExpressionSyntax left, ExpressionSyntax right)
         {
+            left = left.StripParentheses();
+            right = right.StripParentheses();
             {
                 if (
                         left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
                         right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.MultiplyExpression)
                    )
                 {
+                    var lbLeft = lb.Left.StripParentheses();
+                    var lbRight = lb.Right.StripParentheses();
+                    var rbLeft = rb.Left.StripParentheses();
+                    var rbRight = rb.Right.StripParentheses();
+
                     // Case A1: (lit1 * id) + (lit2 * id)
-                    if (lb.Left is LiteralExpressionSyntax lc1 && lb.Right is IdentifierNameSyntax lv1 &&
-                            rb.Left is LiteralExpressionSyntax rc1 && rb.Right is IdentifierNameSyntax rv1 &&
-                            lv1.Identifier.Text == rv1.Identifier.Text)
+                    if (lbLeft is LiteralExpressionSyntax lc1 && lbRight is IdentifierNameSyntax lv1 &&
+                            rbLeft is LiteralExpressionSyntax rc1 && rbRight is IdentifierNameSyntax rv1 &&
+                            lv1.IsSameVar(rv1))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -654,9 +659,9 @@ public partial class VarProcessor
                     }
 
                     // Case A2: (id * lit1) + (lit2 * id)
-                    if (lb.Left is IdentifierNameSyntax lv2 && lb.Right is LiteralExpressionSyntax lc2 &&
-                            rb.Left is LiteralExpressionSyntax rc2 && rb.Right is IdentifierNameSyntax rv2 &&
-                            lv2.Identifier.Text == rv2.Identifier.Text)
+                    if (lbLeft is IdentifierNameSyntax lv2 && lbRight is LiteralExpressionSyntax lc2 &&
+                            rbLeft is LiteralExpressionSyntax rc2 && rbRight is IdentifierNameSyntax rv2 &&
+                            lv2.IsSameVar(rv2))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -668,9 +673,9 @@ public partial class VarProcessor
                     }
 
                     // Case A3: (lit1 * id) + (id * lit2)
-                    if (lb.Left is LiteralExpressionSyntax lc3 && lb.Right is IdentifierNameSyntax lv3 &&
-                            rb.Left is IdentifierNameSyntax rv3 && rb.Right is LiteralExpressionSyntax rc3 &&
-                            lv3.Identifier.Text == rv3.Identifier.Text)
+                    if (lbLeft is LiteralExpressionSyntax lc3 && lbRight is IdentifierNameSyntax lv3 &&
+                            rbLeft is IdentifierNameSyntax rv3 && rbRight is LiteralExpressionSyntax rc3 &&
+                            lv3.IsSameVar(rv3))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -682,9 +687,9 @@ public partial class VarProcessor
                     }
 
                     // Case A4: (id * lit1) + (id * lit2)
-                    if (lb.Left is IdentifierNameSyntax lv4 && lb.Right is LiteralExpressionSyntax lc4 &&
-                            rb.Left is IdentifierNameSyntax rv4 && rb.Right is LiteralExpressionSyntax rc4 &&
-                            lv4.Identifier.Text == rv4.Identifier.Text)
+                    if (lbLeft is IdentifierNameSyntax lv4 && lbRight is LiteralExpressionSyntax lc4 &&
+                            rbLeft is IdentifierNameSyntax rv4 && rbRight is LiteralExpressionSyntax rc4 &&
+                            lv4.IsSameVar(rv4))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -703,9 +708,11 @@ public partial class VarProcessor
                         right is IdentifierNameSyntax rid
                    )
                 {
+                    var lbLeft = lb.Left.StripParentheses();
+                    var lbRight = lb.Right.StripParentheses();
+
                     // Case B1: (lit1 * id) + id
-                    if (lb.Left is LiteralExpressionSyntax lc1 && lb.Right is IdentifierNameSyntax lv1 &&
-                            lv1.Identifier.Text == rid.Identifier.Text)
+                    if (lbLeft is LiteralExpressionSyntax lc1 && lbRight is IdentifierNameSyntax lv1 && lv1.IsSameVar(rid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -717,8 +724,7 @@ public partial class VarProcessor
                     }
 
                     // Case A2: (id * lit1) + id
-                    if (lb.Left is IdentifierNameSyntax lv2 && lb.Right is LiteralExpressionSyntax lc2 &&
-                            lv2.Identifier.Text == rid.Identifier.Text)
+                    if (lbLeft is IdentifierNameSyntax lv2 && lbRight is LiteralExpressionSyntax lc2 && lv2.IsSameVar(rid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -737,9 +743,11 @@ public partial class VarProcessor
                         right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.MultiplyExpression)
                    )
                 {
+                    var rbLeft = rb.Left.StripParentheses();
+                    var rbRight = rb.Right.StripParentheses();
+
                     // Case C1: id + (lit1 * id)
-                    if (rb.Left is LiteralExpressionSyntax rc1 && rb.Right is IdentifierNameSyntax rv1 &&
-                            rv1.Identifier.Text == lid.Identifier.Text)
+                    if (rbLeft is LiteralExpressionSyntax rc1 && rbRight is IdentifierNameSyntax rv1 && rv1.IsSameVar(lid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -751,8 +759,7 @@ public partial class VarProcessor
                     }
 
                     // Case C2: id + (id * lit1)
-                    if (rb.Left is IdentifierNameSyntax rv2 && rb.Right is LiteralExpressionSyntax rc2 &&
-                            rv2.Identifier.Text == lid.Identifier.Text)
+                    if (rbLeft is IdentifierNameSyntax rv2 && rbRight is LiteralExpressionSyntax rc2 && rv2.IsSameVar(lid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
@@ -773,14 +780,14 @@ public partial class VarProcessor
             {
                 if (binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax lid && binaryExpr.Right is IdentifierNameSyntax rid &&
-                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "==")
+                        lid.IsSameVar(rid) && binaryExpr.OperatorToken.Text == "==")
                     return true; // ~x == x
             }
 
             {
                 if (binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax rid && binaryExpr.Left is IdentifierNameSyntax lid &&
-                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "==")
+                        lid.IsSameVar(rid) && binaryExpr.OperatorToken.Text == "==")
                     return true; // x == ~x
             }
 
@@ -792,14 +799,14 @@ public partial class VarProcessor
             {
                 if (binaryExpr.Left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax lid && binaryExpr.Right is IdentifierNameSyntax rid &&
-                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "!=")
+                        lid.IsSameVar(rid) && binaryExpr.OperatorToken.Text == "!=")
                     return true; // ~x != x
             }
 
             {
                 if (binaryExpr.Right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.BitwiseNotExpression) &&
                         unaryExpr.Operand is IdentifierNameSyntax rid && binaryExpr.Left is IdentifierNameSyntax lid &&
-                        lid.Identifier.Text == rid.Identifier.Text && binaryExpr.OperatorToken.Text == "!=")
+                        lid.IsSameVar(rid) && binaryExpr.OperatorToken.Text == "!=")
                     return true; // x != ~x
             }
 

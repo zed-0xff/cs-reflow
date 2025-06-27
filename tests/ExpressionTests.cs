@@ -248,11 +248,8 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprE()
     {
-        string expr_str = "(((0x300 & ((num13 * 1939 + 109 * num13) ^ ((0xC86 & num12) >>> 5))) == 0) ? (-5579) : ((num14 << 5) - -48224 != 32 * (16402 * idat2 - (num14 & 0x1A85)))";
+        string expr_str = "int num12, num13, num14=0; (((0x300 & ((num13 * 1939 + 109 * num13) ^ ((0xC86 & num12) >>> 5))) == 0) ? (-5579) : ((num14 << 5) - -48224 != 32 * (16402 * idat2 - (num14 & 0x1A85)))";
 
-        AddVar("num12", UnknownValue.Create("int"));
-        AddVar("num13", UnknownValue.Create("int"));
-        AddVar("num14", 0);
         var result = Eval(expr_str);
         Assert.IsType<int>(result);
         Assert.Equal(-5579, result);
@@ -297,12 +294,7 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprI1()
     {
-        string expr_str = "QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144";
-
-        AddVar("QRR2", UnknownValue.Create("int"));
-        AddVar("QRR3", UnknownValue.Create("int"));
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int QRR2, QRR3; QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144");
     }
 
     [Fact]
@@ -408,6 +400,12 @@ public partial class ExpressionTests
     public void Test_exprW()
     {
         check_expr("int num9; (num9) = (((nint)((Type.EmptyTypes).LongLength)) + (0)); num9 == 0");
+    }
+
+    [Fact]
+    public void Test_expr_parenthesis()
+    {
+        check_expr("int num8; ((((num8) * (99)) + ((num8) * (157))) ^ (0x4CF36D68)) != (0)");
     }
 
     [Fact]
