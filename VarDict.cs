@@ -21,14 +21,15 @@ public class VarDict
 
     public IReadOnlyDictionary<int, object?> ReadOnlyDict => new ReadOnlyDictionary<int, object?>(_values);
 
-    public object? Default(int id)
+    public object? DefaultValue(SyntaxToken token) => _varDB.TryGetValue(token, out var V) ? DefaultValue(V.id) : UnknownValue.Create();
+    public object? DefaultValue(int id)
     {
         var result = UnknownValue.Create(_varDB[id].IntType);
         _logger.debug(() => $"{_varDB[id]} => {result}");
         return result;
     }
 
-    public object? this[int id] => _values.TryGetValue(id, out var value) ? value : Default(id);
+    public object? this[int id] => _values.TryGetValue(id, out var value) ? value : DefaultValue(id);
     public object? this[SyntaxToken token] => _varDB.TryGetValue(token, out var v) ? this[v.id] : UnknownValue.Create();
 
     public IEnumerable<int> Keys => _values.Keys;
@@ -80,7 +81,7 @@ public class VarDict
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug($"Resetting variable {V}");
-            setVar(V.id, Default(V.id));
+            setVar(V.id, DefaultValue(V.id));
         }
     }
 

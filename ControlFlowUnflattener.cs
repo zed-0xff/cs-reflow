@@ -540,7 +540,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
         if (value is UnknownValueBase)
         {
-            Console.Error.WriteLine($"[d] vars: {_varProcessor.VariableValues().VarsFromNode(switchStmt.Expression)}");
+            Logger.error($"vars: {_varProcessor.VariableValues().VarsFromNode(switchStmt.Expression)}");
             throw new NotImplementedException($"Switch statement with {value}: {switchStmt.TitleWithLineNo()}");
         }
 
@@ -1908,7 +1908,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         while (PreProcess)
         {
             // remove unused vars _before_ main processing
-            var body_ = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
+            var body_ = new UnusedLocalsRemover(_varDB, Verbosity, _keepVars).Process(body) as BlockSyntax;
             if (body_.IsEquivalentTo(body))
             {
                 break;
@@ -1950,7 +1950,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     Console.WriteLine(msg);
             }
 
-            var body2 = new UnusedLocalsRemover(Verbosity, _keepVars).Process(body) as BlockSyntax;
+            var body2 = new UnusedLocalsRemover(_varDB, Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new();
             var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
             if (body3.IsEquivalentTo(body))

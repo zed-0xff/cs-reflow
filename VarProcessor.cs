@@ -9,10 +9,10 @@ public partial class VarProcessor : ICloneable
     public static Dictionary<string, object?> Constants { get; private set; } = new();
     public int Verbosity = 0;
 
-    readonly VarDB _varDB;
+    public readonly VarDB _varDB;
     VarDict _varDict;
     Dictionary<string, bool> _traceVars = new(); // value is true if trace only unique
-    Dictionary<string, HashSet<object>> _uniqValues = new(); // shared, r/w
+    Dictionary<int, HashSet<object>> _uniqValues = new(); // shared, r/w
 
     public VarProcessor(VarDB db, int verbosity = 0, VarDict? varDict = null) // vars arg is for tests
     {
@@ -62,7 +62,8 @@ public partial class VarProcessor : ICloneable
         readonly VarProcessor _processor;
         readonly SyntaxNode? _node;
         readonly string _caller;
-        readonly Dictionary<string, object> _original = null;
+        readonly Dictionary<int, object> _original;
+        readonly Dictionary<int, bool> _resolvedTraceVars = new();
 
         public TraceScope(VarProcessor processor, SyntaxNode? node, [CallerMemberName] string caller = "")
         {
@@ -72,9 +73,21 @@ public partial class VarProcessor : ICloneable
             if (processor._traceVars.Count > 0)
             {
                 _node = node;
-                // _original = processor._varDict.ReadOnlyDict
-                //     .Where(kvp => processor._traceVars.ContainsKey(kvp.Key))
-                //     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                _original = new();
+                foreach (var kvp in processor._varDict.ReadOnlyDict)
+                {
+                    string varName = processor._varDB[kvp.Key].Name;
+                    if (processor._traceVars.TryGetValue(varName, out var isUniq))
+                    {
+                        _original[kvp.Key] = kvp.Value;
+                        _resolvedTraceVars[kvp.Key] = isUniq;
+                        Logger.debug($"varName: {varName}, key: {kvp.Key}, value: {kvp.Value}, isUniq: {isUniq}, caller: {_caller}", "TraceScope.ctor");
+                    }
+                }
+            }
+            else
+            {
+                _original = null;
             }
         }
 
@@ -83,38 +96,43 @@ public partial class VarProcessor : ICloneable
             if (_original == null)
                 return;
 
-            // foreach (var (key, isUniq) in _processor._traceVars)
-            // {
-            //     object? oldValue = null;
-            //     if (_original.TryGetValue(key, out var value))
-            //         oldValue = value;
-            //     object? newValue = null;
-            //     if (_processor._varDict.TryGetValue(key, out var newVal))
-            //         newValue = newVal;
-            // 
-            //     if (Equals(oldValue, newValue))
-            //         continue;
-            // 
-            //     bool log = !isUniq;
-            //     if (isUniq)
-            //     {
-            //         if (_processor._uniqValues.TryGetValue(key, out var uniqSet))
-            //         {
-            //             if (uniqSet.Add(oldValue)) // cannot use '||' because both values may be unique
-            //                 log = true;
-            //             if (uniqSet.Add(newValue))
-            //                 log = true;
-            //         }
-            //         else
-            //         {
-            //             _processor._uniqValues[key] = new HashSet<object> { oldValue, newValue };
-            //             log = true;
-            //         }
-            //     }
-            // 
-            //     if (log)
-            //         Logger.log($"[d] {_node?.TitleWithLineNo() ?? _caller,-90} // {key}: {oldValue,-12} => {newValue,-12}");
-            // }
+            foreach (var (key, isUniq) in _resolvedTraceVars)
+            {
+                object? oldValue = null;
+                if (_original.TryGetValue(key, out var value))
+                    oldValue = value;
+                object? newValue = null;
+                if (_processor._varDict.TryGetValue(key, out var newVal))
+                    newValue = newVal;
+
+                Logger.debug(() => $"TraceScope: {key} old: {oldValue}, new: {newValue}, isUniq: {isUniq}, caller: {_caller}", "TraceScope.Dispose");
+
+                if (Equals(oldValue, newValue))
+                    continue;
+
+                bool log = !isUniq;
+                if (isUniq)
+                {
+                    if (_processor._uniqValues.TryGetValue(key, out var uniqSet))
+                    {
+                        if (uniqSet.Add(oldValue)) // cannot use '||' because both values may be unique
+                            log = true;
+                        if (uniqSet.Add(newValue))
+                            log = true;
+                    }
+                    else
+                    {
+                        _processor._uniqValues[key] = new HashSet<object> { oldValue, newValue };
+                        log = true;
+                    }
+                }
+
+                if (log)
+                {
+                    var V = _processor._varDB[key];
+                    Logger.log($"[d] {_node?.TitleWithLineNo() ?? _caller,-90} // {V}: {oldValue,-12} => {newValue,-12}");
+                }
+            }
         }
     }
 

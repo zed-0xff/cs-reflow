@@ -1,0 +1,49 @@
+void case1()
+{
+    always_called();
+}
+
+void case2a()
+{
+    always_called();
+}
+
+void case2b()
+{
+    always_called();
+}
+
+void case2c()
+{
+    always_called();
+}
+
+void case2d()
+{
+    always_called();
+}
+
+void case3()
+{
+    always_called();
+}
+
+void case4()
+{
+    int foo = 1, bar = 2;
+    (foo, bar) = fun();
+    if (foo > 0 && bar > 0)
+    {
+        maybe_called();
+    }
+}
+
+void case5()
+{
+    int foo = 1, bar = 2;
+    (foo, bar) = external_var;
+    if (foo > 0 && bar > 0)
+    {
+        maybe_called();
+    }
+}

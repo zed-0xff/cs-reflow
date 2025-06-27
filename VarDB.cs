@@ -11,7 +11,30 @@ public class VarDB
     Dictionary<string, Variable> _name2vars = new();
 
     public Variable this[int id] => _vars[id];
-    public Variable this[SyntaxAnnotation ann] => _ann2vars.TryGetValue(ann, out var variable) ? variable : throw new KeyNotFoundException($"Variable with annotation {ann} not found.");
+    public Variable this[SyntaxAnnotation ann]
+    {
+        get
+        {
+            if (_ann2vars.TryGetValue(ann, out var variable))
+                return variable;
+
+            var data = ann.Data;
+            if (data == null)
+                throw new InvalidOperationException($"Annotation {ann} has no data.");
+
+            if (int.TryParse(data, out int id))
+            {
+                if (_vars.TryGetValue(id, out Variable V))
+                {
+                    _ann2vars[ann] = V;
+                    return V;
+                }
+                throw new InvalidOperationException($"Annotation {ann} (Data={ann.Data}) refers to non-existing variable ID: {id}");
+            }
+
+            throw new InvalidOperationException($"Annotation {ann} has invalid data: {data}");
+        }
+    }
 
     public Variable? FindByName(string name) => _name2vars.TryGetValue(name, out var variable) ? variable : null;
 

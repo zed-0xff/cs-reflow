@@ -11,28 +11,43 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
     public int Verbosity = 0;
     Context? _mainCtx = null;
-    HashSet<string> _keepVars;
+    readonly HashSet<int> _keepVars;
+    readonly VarDB _varDB;
 
     bool _needRetry;
 
-    public UnusedLocalsRemover(int verbosity = 0, HashSet<string>? keepVars = null)
+    public UnusedLocalsRemover(VarDB varDB, int verbosity = 0, HashSet<string>? keepVars = null)
     {
+        _varDB = varDB;
         Verbosity = verbosity;
-        _keepVars = keepVars ?? new HashSet<string>();
+        _keepVars = new();
+        if (keepVars != null)
+        {
+            foreach (string varName in keepVars)
+            {
+                var V = _varDB.FindByName(varName);
+                if (V != null)
+                    _keepVars.Add(V.id);
+            }
+        }
     }
 
     class Context : SemanticContext
     {
-        HashSet<SyntaxAnnotation> _unusedLocals = new();
+        HashSet<int> _unusedLocals = new();
+        public readonly VarDB _varDB;
 
-        public Context(SyntaxNode rootNode) : base(rootNode)
+        public Context(SyntaxNode rootNode, VarDB varDB) : base(rootNode)
         {
+            _varDB = varDB;
         }
 
-        public void SetUnusedLocals(HashSet<SyntaxAnnotation> unusedLocals)
+        public void SetUnusedLocals(HashSet<int> unusedLocals)
         {
             _unusedLocals = unusedLocals;
         }
+
+        int ann2id(SyntaxAnnotation ann) => _varDB[ann].id;
 
         public bool IsSafeToRemove(ExpressionSyntax node)
         {
@@ -52,13 +67,19 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         public bool IsUnusedLocal(VariableDeclaratorSyntax node)
         {
             var ann = node.VarID();
-            return ann != null && _unusedLocals.Contains(ann);
+            return ann != null && _unusedLocals.Contains(ann2id(ann));
+        }
+
+        public bool IsUnusedLocal(SyntaxToken token)
+        {
+            var ann = token.VarID();
+            return ann != null && _unusedLocals.Contains(ann2id(ann));
         }
 
         public bool IsUnusedLocal(IdentifierNameSyntax node)
         {
             var ann = node.VarID();
-            return ann != null && _unusedLocals.Contains(ann);
+            return ann != null && _unusedLocals.Contains(ann2id(ann));
         }
 
         // TODO
@@ -81,7 +102,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         public readonly List<ExpressionStatementSyntax> StatementsToRemove = new();
         public readonly List<AssignmentExpressionSyntax> AssignmentsToReplace = new();
-        public readonly HashSet<SyntaxAnnotation> keepLocals = new();
+        public readonly HashSet<int> keepLocals = new();
         public int Verbosity = 0;
 
         public Collector(Context ctx, int verbosity = 0)
@@ -95,7 +116,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         //   "a = b = 333"  => "b = 333" (if a is unused)
         public override void VisitAssignmentExpression(AssignmentExpressionSyntax node)
         {
-            if (node.Left is IdentifierNameSyntax idLeft && _ctx.IsUnusedLocal(idLeft))
+            if (AllTokensUnused(node.Left))
             {
                 if (node.Parent is not ExpressionStatementSyntax || node.Right is AssignmentExpressionSyntax)
                     AssignmentsToReplace.Add(node);
@@ -103,29 +124,31 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             base.VisitAssignmentExpression(node);
         }
 
+        bool AllTokensUnused(ExpressionSyntax expr) => AllTokensUnused(expr.CollectTokens());
+        bool AllTokensUnused(List<SyntaxToken> tokens) => tokens.Any() && tokens.All(t => _ctx.IsUnusedLocal(t));
+
         public override void VisitExpressionStatement(ExpressionStatementSyntax node)
         {
             switch (node.Expression)
             {
                 // stand-alone assignment: "b = 333;" => delete
                 case AssignmentExpressionSyntax assignment:
-                    if (assignment.Left is IdentifierNameSyntax idLeft)
+                    var tokens = assignment.Left.CollectTokens();
+                    if (AllTokensUnused(tokens))
                     {
-                        if (_ctx.IsUnusedLocal(idLeft))
+                        if (_ctx.IsSafeToRemove(assignment.Right))
                         {
-                            if (_ctx.IsSafeToRemove(assignment.Right))
-                            {
-                                StatementsToRemove.Add(node);
-                                return; // skip further processing of this node
-                            }
-                            if (assignment.Right is not AssignmentExpressionSyntax)
-                            {
-                                // If the right side is not a literal, we keep the local variable
-                                var ann = idLeft.VarID();
-                                if (ann == null)
-                                    throw new InvalidOperationException($"Identifier {idLeft.Identifier.Text} has no 'VarID' annotation.");
-                                keepLocals.Add(ann);
-                            }
+                            StatementsToRemove.Add(node);
+                            return; // skip further processing of this node
+                        }
+                        if (assignment.Right is not AssignmentExpressionSyntax)
+                        {
+                            // If the right side is not a literal, we keep the local variable
+                            keepLocals.UnionWith(
+                                    tokens
+                                    .Select(t => _ctx._varDB.TryGetValue(t, out var v) ? v.id : -1)
+                                    .Where(id => id != -1)
+                                    );
                         }
                     }
                     break;
@@ -165,7 +188,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                     if (ann == null)
                         throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VarID' annotation.");
                     _logger.debug(() => $"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
-                    keepLocals.Add(ann);
+                    keepLocals.Add(_ctx._varDB[ann].id);
                 }
             }
 
@@ -297,34 +320,36 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     //    }
 
     // same as ReadInside(), but also include ++/--
-    (HashSet<SyntaxAnnotation>, HashSet<SyntaxAnnotation>, HashSet<SyntaxAnnotation>) CollectVars(SyntaxNode rootNode)
+    (HashSet<int>, HashSet<int>, HashSet<int>) CollectVars(SyntaxNode rootNode)
     {
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(s => s.Declaration.Variables)
             .Select(v => v.VarID())
             .Where(v => v != null)
+            .Select(v => _varDB[v].id)
             .ToHashSet();
 
-        var written = new HashSet<SyntaxAnnotation>();
-        var read = new HashSet<SyntaxAnnotation>();
+        var written = new HashSet<int>();
+        var read = new HashSet<int>();
 
-        foreach (var id in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
+        foreach (var idNode in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
-            var ann = id.VarID();
+            var ann = idNode.VarID();
             if (ann == null)
                 continue;
+            int id = _varDB[ann].id;
 
-            var expr = id.Parent;
+            var expr = idNode.Parent;
 
             // ++x, --x, !x, ~x, ...
             if (expr is PrefixUnaryExpressionSyntax unaryPrefix)
             {
                 if (expr.Parent is not ExpressionStatementSyntax) // y = ++x; / while(++x){ ... }
-                    read.Add(ann);
+                    read.Add(id);
                 if (unaryPrefix.IsKind(SyntaxKind.PreIncrementExpression) || unaryPrefix.IsKind(SyntaxKind.PreDecrementExpression))
-                    written.Add(ann);
+                    written.Add(id);
                 else
-                    read.Add(ann);
+                    read.Add(id);
                 continue;
             }
 
@@ -332,11 +357,11 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (expr is PostfixUnaryExpressionSyntax unaryPostfix)
             {
                 if (expr.Parent is not ExpressionStatementSyntax)
-                    read.Add(ann);
+                    read.Add(id);
                 if (unaryPostfix.IsKind(SyntaxKind.PostIncrementExpression) || unaryPostfix.IsKind(SyntaxKind.PostDecrementExpression))
-                    written.Add(ann);
+                    written.Add(id);
                 else
-                    read.Add(ann);
+                    read.Add(id);
                 continue;
             }
 
@@ -344,15 +369,16 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
             if (assExpr != null)
             {
-                if (assExpr.Left is IdentifierNameSyntax idLeft && idLeft.IsSameVar(id))
+                var tokens = assExpr.Left.CollectTokens();
+                if (tokens.Any(t => t.IsSameVar(ann)))
                 {
                     _logger.debug(() => $"WRITE {ann.Data}");
-                    written.Add(ann); // intentionally do not interpret self-read as 'read'
+                    written.Add(id); // intentionally do not interpret self-read as 'read'
                 }
                 else
                 {
                     _logger.debug(() => $"READ  {ann.Data}");
-                    read.Add(ann);
+                    read.Add(id);
                 }
                 continue;
             }
@@ -361,15 +387,15 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (declStmt != null)
             {
                 // local variable declaration: int x = 123 + [...]
-                if (declStmt.IsSameVar(id))
+                if (declStmt.IsSameVar(ann))
                 {
                     _logger.debug(() => $"DECLARE {ann.Data}");
-                    declared.Add(ann);
+                    declared.Add(id);
                 }
                 else
                 {
                     _logger.debug(() => $"READ  {ann.Data}");
-                    read.Add(ann); // variable is read in the other variable's initializer
+                    read.Add(id); // variable is read in the other variable's initializer
                 }
                 continue;
             }
@@ -379,14 +405,14 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             if (argExpr != null)
             {
                 _logger.debug(() => $"READ  {ann.Data}");
-                read.Add(ann);
+                read.Add(id);
                 if (!argExpr.RefOrOutKeyword.IsKind(SyntaxKind.None))
-                    written.Add(ann); // ref/out arguments are both read and written
+                    written.Add(id); // ref/out arguments are both read and written
                 continue;
             }
 
             _logger.debug(() => $"unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}");
-            read.Add(ann); // fallback: treat as read
+            read.Add(id); // fallback: treat as read
         }
 
         return (declared, read, written);
@@ -434,11 +460,11 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         var (declared, read, written) = CollectVars(block);
 
         if (declared.Count > 0)
-            _logger.debug(() => $"[d] declared: {string.Join(", ", declared.Select(s => s.Data))}");
+            _logger.debug(() => $"[d] declared: {string.Join(", ", declared.Select(s => _varDB[s]))}");
         if (read.Count > 0)
-            _logger.debug(() => $"[d] read:     {string.Join(", ", read.Select(s => s.Data))}");
+            _logger.debug(() => $"[d] read:     {string.Join(", ", read.Select(s => _varDB[s]))}");
         if (written.Count > 0)
-            _logger.debug(() => $"[d] written:  {string.Join(", ", written.Select(s => s.Data))}");
+            _logger.debug(() => $"[d] written:  {string.Join(", ", written.Select(s => _varDB[s]))}");
 
         var rwOutside =
             dataFlow.ReadOutside.Select(s => s.Name)
@@ -449,12 +475,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         var unusedLocals = declared
             .Where(s => !read.Contains(s))
-            .Where(s => !_keepVars.Contains(s.Data))
-            .Where(s => !rwOutside.Contains(s.Data))
+            .Where(s => !_keepVars.Contains(s))
+            .Where(s => !rwOutside.Contains(_varDB[s].Name))
             .ToHashSet();
 
         if (unusedLocals.Count > 0)
-            _logger.debug(() => $"[d] unused locals A: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
+            _logger.debug(() => $"[d] unused locals A: {string.Join(", ", unusedLocals.Select(id => _varDB[id]))}");
 
         if (unusedLocals.Count == 0)
             return block;
@@ -466,14 +492,14 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
         if (collector.keepLocals.Count > 0)
         {
-            _logger.debug(() => $"[d] keepLocals: {string.Join(", ", collector.keepLocals.Select(s => s.Data))}");
+            _logger.debug(() => $"[d] keepLocals: {string.Join(", ", collector.keepLocals.Select(id => _varDB[id]))}");
         }
 
         unusedLocals.ExceptWith(collector.keepLocals);
         if (unusedLocals.Count == 0)
             return block;
 
-        _logger.debug(() => $"[d] unused locals B: {string.Join(", ", unusedLocals.Select(s => s.Data))}");
+        _logger.debug(() => $"[d] unused locals B: {string.Join(", ", unusedLocals.Select(id => _varDB[id]))}");
 
         ctx.SetUnusedLocals(unusedLocals);
         collector = new Collector(ctx, Verbosity);
@@ -509,7 +535,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     public BlockSyntax Process(BlockSyntax node)
     {
         int i;
-        _mainCtx = new Context(node);
+        _mainCtx = new Context(node, _varDB);
         for (i = 0; i < 1000; i++)
         {
             _logger.debug($"\niteration #{i}");

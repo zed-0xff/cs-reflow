@@ -97,12 +97,7 @@ public partial class VarProcessor
                 // Extract the right-hand side expression (e.g., "(num4 = (uint)(num2 ^ 0x76ED016F))")
                 var initializerExpression = variable.Initializer?.Value;
 
-                object value = new UnknownValue();
-                if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
-                    value = UnknownValue.Create(localDeclaration.Declaration.Type);
-
-                if (Verbosity > 2)
-                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: B varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                object value = _varDict.DefaultValue(varID);
 
                 if (initializerExpression != null)
                 {
@@ -292,59 +287,108 @@ public partial class VarProcessor
             }
         }
 
+        void reset_tuple_vars(TupleExpressionSyntax tupleExpr)
+        {
+            // Reset all variables in the tuple expression
+            foreach (var item in tupleExpr.Arguments)
+            {
+                var expr = item.Expression.StripParentheses();
+                switch (expr)
+                {
+                    case IdentifierNameSyntax idName:
+                        _varDict.ResetVar(idName.Identifier);
+                        break;
+                    case TupleExpressionSyntax nestedTuple:
+                        reset_tuple_vars(nestedTuple);
+                        break;
+                    default:
+                        // Ignore other types of expressions
+                        _logger.warn_once($"ignoring {expr.Kind()} in {tupleExpr}");
+                        break;
+                }
+            }
+        }
+
+        // Handle assignment expressions (e.g., num3 = (num4 = (uint)(num2 ^ 0x76ED016F)))
+        object? EvaluateAssignment(ExpressionSyntax left, SyntaxKind kind, ExpressionSyntax right)
+        {
+            left = left.StripParentheses();
+            right = right.StripParentheses();
+
+            if (left is TupleExpressionSyntax tupleL)
+            {
+                if (kind != SyntaxKind.SimpleAssignmentExpression)
+                    throw new NotSupportedException($"Tuple assignment with '{kind}' is not supported");
+
+                reset_tuple_vars(tupleL);
+                if (right is TupleExpressionSyntax tupleR)
+                {
+                    if (tupleL.Arguments.Count != tupleR.Arguments.Count)
+                        throw new NotSupportedException($"Tuple assignment mismatch: {tupleL.Arguments.Count} != {tupleR.Arguments.Count}");
+                    for (int i = 0; i < tupleL.Arguments.Count; i++)
+                    {
+                        EvaluateAssignment(
+                            tupleL.Arguments[i].Expression,
+                            SyntaxKind.SimpleAssignmentExpression,
+                            tupleR.Arguments[i].Expression
+                        );
+                    }
+                }
+                return UnknownValue.Create(); // TODO: return tuple?
+            }
+
+            if (!(left is IdentifierNameSyntax idNameLeft))
+                throw new NotSupportedException($"Assignment to '{left.Kind()}' is not supported");
+            SyntaxToken idLeft = idNameLeft.Identifier;
+
+            // string varName = left.ToString(); // XXX arrays?
+            // VarsWritten.Add(varName);
+
+            // Evaluate the right-hand side expression
+            try
+            {
+                var rValue = EvaluateExpression(right);
+                switch (kind)
+                {
+                    case SyntaxKind.SimpleAssignmentExpression:
+                        setVar(idLeft, rValue);
+                        break;
+
+                    default:
+                        // +=, -=, etc
+                        SyntaxKind binaryOperatorKind = kind switch
+                        {
+                            SyntaxKind.AddAssignmentExpression => SyntaxKind.AddExpression,
+                            SyntaxKind.SubtractAssignmentExpression => SyntaxKind.SubtractExpression,
+                            SyntaxKind.MultiplyAssignmentExpression => SyntaxKind.MultiplyExpression,
+                            SyntaxKind.DivideAssignmentExpression => SyntaxKind.DivideExpression,
+                            SyntaxKind.ModuloAssignmentExpression => SyntaxKind.ModuloExpression,
+                            SyntaxKind.AndAssignmentExpression => SyntaxKind.BitwiseAndExpression,
+                            SyntaxKind.OrAssignmentExpression => SyntaxKind.BitwiseOrExpression,
+                            SyntaxKind.ExclusiveOrAssignmentExpression => SyntaxKind.ExclusiveOrExpression,
+                            SyntaxKind.LeftShiftAssignmentExpression => SyntaxKind.LeftShiftExpression,
+                            SyntaxKind.RightShiftAssignmentExpression => SyntaxKind.RightShiftExpression,
+                            _ => throw new InvalidOperationException("Unsupported compound assignment operator")
+                        };
+                        setVar(idLeft, EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right)));
+                        break;
+                }
+                return _varDict[idLeft];
+            }
+            catch (Exception ex)
+            {
+                _logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
+                _varDict.ResetVar(idLeft);
+                throw;
+            }
+        }
+
         object? EvaluateExpression_(ExpressionSyntax expression)
         {
             switch (expression)
             {
                 case AssignmentExpressionSyntax assignmentExpr:
-                    // Handle assignment expressions (e.g., num3 = (num4 = (uint)(num2 ^ 0x76ED016F)))
-                    var left = assignmentExpr.Left;
-                    var right = assignmentExpr.Right;
-
-                    if (!(left is IdentifierNameSyntax idNameLeft))
-                        throw new NotSupportedException($"Assignment to '{left.Kind()}' is not supported");
-                    SyntaxToken idLeft = idNameLeft.Identifier;
-
-                    // string varName = left.ToString(); // XXX arrays?
-                    // VarsWritten.Add(varName);
-
-                    // Evaluate the right-hand side expression
-                    try
-                    {
-                        var rValue = EvaluateExpression(right);
-                        switch (assignmentExpr.Kind())
-                        {
-                            case SyntaxKind.SimpleAssignmentExpression:
-                                setVar(idLeft, rValue);
-                                break;
-
-                            default:
-                                // +=, -=, etc
-                                SyntaxKind binaryOperatorKind = assignmentExpr.Kind() switch
-                                {
-                                    SyntaxKind.AddAssignmentExpression => SyntaxKind.AddExpression,
-                                    SyntaxKind.SubtractAssignmentExpression => SyntaxKind.SubtractExpression,
-                                    SyntaxKind.MultiplyAssignmentExpression => SyntaxKind.MultiplyExpression,
-                                    SyntaxKind.DivideAssignmentExpression => SyntaxKind.DivideExpression,
-                                    SyntaxKind.ModuloAssignmentExpression => SyntaxKind.ModuloExpression,
-                                    SyntaxKind.AndAssignmentExpression => SyntaxKind.BitwiseAndExpression,
-                                    SyntaxKind.OrAssignmentExpression => SyntaxKind.BitwiseOrExpression,
-                                    SyntaxKind.ExclusiveOrAssignmentExpression => SyntaxKind.ExclusiveOrExpression,
-                                    SyntaxKind.LeftShiftAssignmentExpression => SyntaxKind.LeftShiftExpression,
-                                    SyntaxKind.RightShiftAssignmentExpression => SyntaxKind.RightShiftExpression,
-                                    _ => throw new InvalidOperationException("Unsupported compound assignment operator")
-                                };
-                                setVar(idLeft, EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right)));
-                                break;
-                        }
-                        return _varDict[idLeft];
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
-                        _varDict.ResetVar(idLeft);
-                        throw;
-                    }
+                    return EvaluateAssignment(assignmentExpr.Left, assignmentExpr.Kind(), assignmentExpr.Right);
 
                 case BinaryExpressionSyntax binaryExpr:
                     return EvaluateBinaryExpression(binaryExpr);
@@ -792,6 +836,50 @@ public partial class VarProcessor
             };
         }
 
+        object? eval_binary_and(BinaryExpressionSyntax binaryExpr, object? lValue)
+        {
+            if (lValue is UnknownValueBase luvb)
+                lValue = luvb.Cast(TypeDB.Bool);
+
+            switch (lValue)
+            {
+                case bool b:
+                    return b ? EvaluateExpression(binaryExpr.Right) : false;
+                case UnknownValueBase: // nor true nor false
+                    var rValue = EvaluateExpression(binaryExpr.Right);
+                    if (rValue is UnknownValueBase ruvb)
+                        rValue = ruvb.Cast(TypeDB.Bool);
+                    if (rValue is bool rb && rb == false)
+                        return false; // a whole expression is always false because 2nd operand is always false
+                    break;
+                default:
+                    throw new NotSupportedException($"Left operand '{lValue?.GetType()}' is not supported for '&&' operator.");
+            }
+            return UnknownValue.Create(TypeDB.Bool);
+        }
+
+        object? eval_binary_or(BinaryExpressionSyntax binaryExpr, object? lValue)
+        {
+            if (lValue is UnknownValueBase luvb)
+                lValue = luvb.Cast(TypeDB.Bool);
+
+            switch (lValue)
+            {
+                case bool b:
+                    return b ? true : EvaluateExpression(binaryExpr.Right);
+                case UnknownValueBase: // nor true nor false
+                    var rValue = EvaluateExpression(binaryExpr.Right);
+                    if (rValue is UnknownValueBase ruvb)
+                        rValue = ruvb.Cast(TypeDB.Bool);
+                    if (rValue is bool rb && rb == true)
+                        return true; // a whole expression is always true because 2nd operand is always true
+                    break;
+                default:
+                    throw new NotSupportedException($"Left operand '{lValue?.GetType()}' is not supported for '&&' operator.");
+            }
+            return UnknownValue.Create(TypeDB.Bool);
+        }
+
         object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
         {
             // handle falsely misinterpreted "(nint)-17648"
@@ -832,32 +920,14 @@ public partial class VarProcessor
                 }
             }
 
-            var lValue = EvaluateExpression(binaryExpr.Left); // always evaluated
-
-            // handle logic expressions bc rValue might not need to be evaluated
-            if (op == "&&" || op == "||")
-            {
-                if (lValue is UnknownValueBase luv0)
-                {
-                    var lb = luv0.Cast(TypeDB.Bool);
-                    if (lb is bool)
-                    {
-                        lValue = lb;
-                    }
-                    else
-                    {
-                        lValue = ("op" == "&&"); // tri-state logic
-                    }
-                }
-            }
+            object? lValue = EvaluateExpression(binaryExpr.Left); // always evaluated
 
             switch (op)
             {
                 case "&&":
-                    return Convert.ToBoolean(lValue) ? EvaluateExpression(binaryExpr.Right) : false;
-
+                    return eval_binary_and(binaryExpr, lValue);
                 case "||":
-                    return Convert.ToBoolean(lValue) ? true : EvaluateExpression(binaryExpr.Right);
+                    return eval_binary_or(binaryExpr, lValue);
             }
 
             // evaluate rValue, handle everything else
