@@ -204,6 +204,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right is UnknownValue)
             return UnknownValue.Create();
 
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero()) // should be before TryConvertToLong (DRY)
+            return this;
+
         if (TryConvertToLong(right, out long l))
         {
             if (l == 0)
@@ -217,10 +220,10 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
                 return Zero(type);
             }
-        }
 
-        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
-            return this;
+            if (CanConvertTo<UnknownValueBitTracker>())
+                return ConvertTo<UnknownValueBitTracker>().TypedShiftLeft(l);
+        }
 
         return TypedShiftLeft(right);
     }
@@ -230,6 +233,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right is UnknownValue)
             return UnknownValue.Create();
 
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero()) // should be before TryConvertToLong (DRY)
+            return this;
+
         if (TryConvertToLong(right, out long l))
         {
             if (l == 0)
@@ -238,10 +244,10 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 throw new ArgumentException("Shift count cannot be negative.");
             // if (l >= type.nbits && type.unsigned) // TODO: check // TODO: return MinusOne for signed?
             //     return Zero(type);
-        }
 
-        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
-            return this;
+            if (CanConvertTo<UnknownValueBitTracker>())
+                return ConvertTo<UnknownValueBitTracker>().SignedShiftRight(l);
+        }
 
         return TypedSignedShiftRight(right);
     }
@@ -251,6 +257,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
         if (right is UnknownValue)
             return UnknownValue.Create();
 
+        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero()) // should be before TryConvertToLong (DRY)
+            return this;
+
         if (TryConvertToLong(right, out long l))
         {
             if (l == 0)
@@ -259,13 +268,15 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 throw new ArgumentException("Shift count cannot be negative.");
             if (l >= type.nbits)
                 return Zero(type);
-        }
 
-        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
-            return this;
+            if (CanConvertTo<UnknownValueBitTracker>())
+                return ConvertTo<UnknownValueBitTracker>().UnsignedShiftRight(l);
+        }
 
         return TypedUnsignedShiftRight(right);
     }
+
+    static bool IsPowerOfTwo(long l) => l > 0 && (l & (l - 1)) == 0;
 
     public sealed override UnknownValueBase Mod(object right)
     {
@@ -282,8 +293,7 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (l == 1)
                 return Zero(type);
 
-            int pow = MaxPow2Divider(l);
-            if (Math.Pow(2, pow) == l) // mod by a power of 2
+            if (IsPowerOfTwo(l))
             {
                 if (!type.signed)
                 {
@@ -316,6 +326,9 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return this;
             if (l == -1)
                 return Negate();
+
+            if (IsPowerOfTwo(l))
+                return SignedShiftRight((int)Math.Log2(l)); // cast is necessary, or float will be sent to ShiftRight()
         }
 
         if (right is UnknownTypedValue otherTyped)
@@ -329,17 +342,6 @@ public abstract class UnknownTypedValue : UnknownValueBase
         }
 
         return TypedDiv(right);
-    }
-
-    public static int MaxPow2Divider(long x)
-    {
-        int result = 0;
-        while (x != 0 && (x & 1) == 0)
-        {
-            x >>= 1;
-            result++;
-        }
-        return result;
     }
 
     public sealed override UnknownValueBase Mul(object right)
@@ -357,7 +359,6 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 return bitsRight.TypedMul(this);
         }
 
-        int pow = 0;
         bool isNumeric = TryConvertToLong(right, out long l);
 
         if (isNumeric)
@@ -366,9 +367,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
             if (l == 1) return this;
             if (l == -1) return Negate();
 
-            pow = MaxPow2Divider(l);
-            if (Math.Pow(2, pow) == l) // multiplication by a power of 2
-                return ShiftLeft(pow);
+            if (IsPowerOfTwo(l))
+                return ShiftLeft((int)Math.Log2(l)); // cast is necessary, or float will be sent to ShiftLeft()
         }
 
         if (this is UnknownValueBitsBase bits)

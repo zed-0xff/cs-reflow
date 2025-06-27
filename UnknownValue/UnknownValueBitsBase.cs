@@ -12,6 +12,14 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
     public override bool Contains(long value) => _bitspan.Contains(value);
     public override IEnumerable<long> Values() => type.signed ? _bitspan.Values().Select(SignExtend) : _bitspan.Values();
 
+    public bool IsOneBit(int idx) => (_bitspan.Min & (1UL << idx)) != 0;
+    public bool IsZeroBit(int idx) => (_bitspan.Max & (1UL << idx)) == 0;
+    public bool IsAnyBit(int idx) => (_bitspan.Min & (1UL << idx)) == 0 && (_bitspan.Max & (1UL << idx)) != 0;
+    public override bool IsFullRange() => _bitspan.Equals(type.BitSpan);
+
+    public abstract UnknownValueBase TypedBitwiseAnd(object right);
+    public abstract UnknownValueBase TypedBitwiseOr(object right);
+
     protected List<T> span2bits<T>(List<T> bits, BitSpan bitspan, T zero, T one)
     {
         ulong v = 1;
@@ -46,20 +54,36 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
         return max;
     }
 
-    public abstract UnknownValueBase TypedBitwiseAnd(object right);
-    public abstract UnknownValueBase TypedBitwiseOr(object right);
+    public int CountHead(Func<int, bool> isBit)
+    {
+        for (int i = type.nbits - 1; i >= 0; i--)
+        {
+            if (!isBit(i))
+                return type.nbits - 1 - i;
+        }
+        return type.nbits; // isBit() is true for all bits
+    }
 
-    public abstract bool IsOneBit(int idx);
-    public abstract bool IsZeroBit(int idx);
-
-    public int CountTailZeroes()
+    public int CountTail(Func<int, bool> isBit)
     {
         for (int i = 0; i < type.nbits; i++)
         {
-            if (!IsZeroBit(i))
+            if (!isBit(i))
                 return i;
         }
-        return type.nbits; // all bits are zero
+        return type.nbits; // isBit() is true for all bits
+    }
+
+    public override bool CanConvertTo<T>()
+    {
+        if (typeof(T) == typeof(UnknownValueRange))
+        {
+            int tailAny = CountTail(IsAnyBit);
+            int headFixed = CountHead(i => !IsAnyBit(i));
+            return headFixed + tailAny == type.nbits;
+        }
+
+        return base.CanConvertTo<T>();
     }
 
     public UnknownTypedValue TypedMul(object right)
@@ -89,8 +113,8 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
             var spanB = otherBits.BitSpan();
             long newMin = 0;
             long newMax = type.Mask;
-            int tailZeroesA = CountTailZeroes();
-            int tailZeroesB = otherBits.CountTailZeroes();
+            int tailZeroesA = CountTail(IsZeroBit);
+            int tailZeroesB = otherBits.CountTail(IsZeroBit);
             long v = 1;
             for (int i = 0; i < type.nbits && i < tailZeroesA + tailZeroesB; i++, v <<= 1)
             {

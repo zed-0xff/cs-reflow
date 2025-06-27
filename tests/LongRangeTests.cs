@@ -108,5 +108,8 @@ public class LongRangeTests
 
         a = new LongRange(0x100, 0x1ff);
         Assert.Equal((0x100, 0x1ff), a.BitSpan());
+
+        a = new LongRange(2, 10);
+        Assert.Equal((0, 0b1111), a.BitSpan());
     }
 }

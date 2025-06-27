@@ -88,11 +88,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBitTracker(this, _bits) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBitTracker(type, id, _bits);
 
-    public override bool IsOneBit(int idx) => _bits[idx] == ONE;
-    public override bool IsZeroBit(int idx) => _bits[idx] == ZERO;
     public bool HasPrivateBits() => _bits.Any(b => b.IsPrivateBit());
-
-    public override bool IsFullRange() => _bits.All(b => !b.IsOneOrZero());
 
     // expects that _var_id is already set
     List<BitType> init(IEnumerable<BitType>? bits)
@@ -115,32 +111,6 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             throw new ArgumentOutOfRangeException($"Index {idx} out of range for {type.nbits} _bits.");
 
         return new UnknownValueBitTracker(this, _bits.Select((b, i) => i == idx ? value : b));
-    }
-
-    public override BitSpan BitSpan()
-    {
-        long min = 0;
-        long max = 0;
-        long v = 1;
-        for (int i = 0; i < type.nbits; i++, v <<= 1)
-        {
-            switch (_bits[i])
-            {
-                case ZERO:
-                    // nothing to do
-                    break;
-                case ONE:
-                    // this bit is definitely 1
-                    min |= v;
-                    max |= v;
-                    break;
-                default:
-                    // this bit can be either 0 or 1
-                    max |= v;
-                    break;
-            }
-        }
-        return (min, max);
     }
 
     public override object Cast(TypeDB.IntInfo toType)
@@ -184,7 +154,13 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return true;
         }
 
-        throw new NotImplementedException($"Cannot check intersection with {other.GetType()}");
+        if (other.Cardinality() > 10_000 && this.Cardinality() > 10_000)
+            Logger.warn($"Large intersection check: {this} with {other}.");
+
+        if (other.Cardinality() < this.Cardinality())
+            return other.Values().Any(v => Contains(v));
+        else
+            return Values().Any(v => other.Contains(v));
     }
 
     public override UnknownTypedValue TypedShiftLeft(object right)

@@ -349,30 +349,6 @@ public partial class ExpressionTests
     }
 
     [Fact]
-    public void Test_exprO_BitTracker()
-    {
-        check_expr("int num6; ((num6 ^ ((num6 * -1788084224) | (num6 - 400) | (num6 + num6))) & 1) == 0");
-    }
-
-    [Fact]
-    public void Test_exprP_BitTracker()
-    {
-        check_expr("int num6; (0x1DC240 & ((num6 * 1024 >>> 10) ^ num6)) == 0");
-    }
-
-    [Fact]
-    public void Test_exprQ_BitTracker()
-    {
-        check_expr("int x; -101875712 + 16384 * 1541962368 * x != -(x | -6684)");
-    }
-
-    [Fact]
-    public void Test_exprR_BitTracker()
-    {
-        check_expr("int x; ~(x ^ -1785936142) != x * 6 + x * 2 >>> 3");
-    }
-
-    [Fact]
     public void Test_exprS()
     {
         check_expr("int x; (((uint)(x & 0x23D0) | ((uint)x / 7u)) & 0xC0000000u) == 0");
@@ -400,6 +376,36 @@ public partial class ExpressionTests
     public void Test_exprW()
     {
         check_expr("int num9; (num9) = (((nint)((Type.EmptyTypes).LongLength)) + (0)); num9 == 0");
+    }
+
+    [Fact]
+    public void Test_expr_BitTracker_A()
+    {
+        check_expr("int num6; ((num6 ^ ((num6 * -1788084224) | (num6 - 400) | (num6 + num6))) & 1) == 0");
+    }
+
+    [Fact]
+    public void Test_expr_BitTracker_B()
+    {
+        check_expr("int num6; (0x1DC240 & ((num6 * 1024 >>> 10) ^ num6)) == 0");
+    }
+
+    [Fact]
+    public void Test_expr_BitTracker_C()
+    {
+        check_expr("int x; -101875712 + 16384 * 1541962368 * x != -(x | -6684)");
+    }
+
+    [Fact]
+    public void Test_expr_BitTracker_D()
+    {
+        check_expr("int x; ~(x ^ -1785936142) != x * 6 + x * 2 >>> 3");
+    }
+
+    [Fact]
+    public void Test_expr_BitTracker_E()
+    {
+        check_expr("int x; (uint)x / 512u - 3756 - 9026 != (uint)(x * 3 + 5 * x >>> 12)");
     }
 
     [Fact]

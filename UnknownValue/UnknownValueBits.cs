@@ -61,11 +61,6 @@ public class UnknownValueBits : UnknownValueBitsBase
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bitspan) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bitspan) { _var_id = id };
 
-    public override bool IsOneBit(int idx) => (_bitspan.Min & (1UL << idx)) != 0;
-    public override bool IsZeroBit(int idx) => (_bitspan.Max & (1UL << idx)) == 0;
-
-    public override bool IsFullRange() => _bitspan.Equals(type.BitSpan);
-
     public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
         return new UnknownValueBits(type, type.BitSpan & mask);

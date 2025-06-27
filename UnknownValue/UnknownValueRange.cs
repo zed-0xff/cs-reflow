@@ -20,19 +20,28 @@ public class UnknownValueRange : UnknownValueRangeBase
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
 
-    public override bool Equals(object obj)
-    {
-        if (obj is UnknownValueRange r)
-        {
-            return type == r.type && Range.Equals(r.Range);
-        }
-        return false;
-    }
+    public override bool Equals(object obj) => (obj is UnknownValueRange r) && type == r.type && Range.Equals(r.Range);
 
     public override long Min() => Range.Min;
     public override long Max() => Range.Max;
     public override bool IsFullRange() => Range.Equals(type.Range);
     public override BitSpan BitSpan() => Range.BitSpan();
+
+    public override bool CanConvertTo<T>()
+    {
+        if (typeof(UnknownValueBitsBase).IsAssignableFrom(typeof(T)))
+        {
+            BitSpan bs = BitSpan();
+            if (IsFullRange() || (bs.Min == (ulong)Min() && bs.Max == (ulong)Max()))
+            {
+                if (typeof(T) == typeof(UnknownValueBitTracker))
+                    return _var_id != null; // UnknownValueBitTracker requires a variable ID
+                return true; // UnknownValueBits can be created
+            }
+        }
+
+        return base.CanConvertTo<T>();
+    }
 
     public override object Cast(TypeDB.IntInfo toType)
     {
