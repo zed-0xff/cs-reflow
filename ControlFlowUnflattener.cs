@@ -512,7 +512,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     StatementSyntax convert_for(ForStatementSyntax forStmt)
     {
-        throw new NotImplementedException($"For statement at line {forStmt.LineNo()} is not supported yet.");
+        Logger.warn_once($"For statement is not supported yet");
+        return forStmt;
     }
 
     StatementSyntax convert_foreach(ForEachStatementSyntax forEachStmt, ReturnsDictionary retLabels)
