@@ -22,6 +22,9 @@ public partial class VarProcessor
 
         public object? Result { get; private set; } = UnknownValue.Create();
 
+        static readonly string TAG = "Expression";
+        private static readonly TaggedLogger _logger = new(TAG);
+
         public Expression(CSharpSyntaxNode node, VarDict varDict)
         {
             this.node = node;
@@ -57,7 +60,7 @@ public partial class VarProcessor
                 result = ice.Value;
             }
             Result = result;
-            Logger.debug(() => $"{node.Title()} => {result}", "Expression.Evaluate");
+            _logger.debug(() => $"{node.Title()} => {result}", "Expression.Evaluate");
             return result;
         }
 
@@ -65,19 +68,19 @@ public partial class VarProcessor
         {
             if (Verbosity > 2)
             {
-                Logger.debug($"{localDeclaration}", "Expression.ProcessLocalDeclaration");
+                _logger.debug($"{localDeclaration}", "Expression.ProcessLocalDeclaration");
                 if (Verbosity > 3)
                 {
-                    Logger.debug($"Expression.ProcessLocalDeclaration: .Declaration = {localDeclaration.Declaration}", "Expression.ProcessLocalDeclaration");
-                    Logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Type = {localDeclaration.Declaration.Type}", "Expression.ProcessLocalDeclaration");
-                    Logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Variables = {localDeclaration.Declaration.Variables}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"Expression.ProcessLocalDeclaration: .Declaration = {localDeclaration.Declaration}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Type = {localDeclaration.Declaration.Type}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Variables = {localDeclaration.Declaration.Variables}", "Expression.ProcessLocalDeclaration");
                 }
             }
 
             foreach (var variable in localDeclaration.Declaration.Variables)
             {
                 if (Verbosity > 2)
-                    Logger.debug($"Expression.ProcessLocalDeclaration: A Variable = {variable}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"Expression.ProcessLocalDeclaration: A Variable = {variable}", "Expression.ProcessLocalDeclaration");
 
                 // Get the variable name (e.g., "num3")
                 var varID = variable.Identifier;
@@ -99,7 +102,7 @@ public partial class VarProcessor
                     value = UnknownValue.Create(localDeclaration.Declaration.Type);
 
                 if (Verbosity > 2)
-                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: B varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: B varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
 
                 if (initializerExpression != null)
                 {
@@ -108,7 +111,7 @@ public partial class VarProcessor
                 }
 
                 if (Verbosity > 2)
-                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: C varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: C varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
 
                 // narrow returned value type, when possible
                 if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
@@ -125,13 +128,13 @@ public partial class VarProcessor
                 }
 
                 if (Verbosity > 3)
-                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: D varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: D varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
 
                 // if (value is UnknownValueBase unk)
                 //     value = unk.WithTag(varID);
 
                 if (Verbosity > 3)
-                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: E varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: E varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
 
                 // do not overwrite existing variable values if initializerExpression is null
                 if (initializerExpression != null || !_varDict.ContainsKey(varID))
@@ -140,7 +143,7 @@ public partial class VarProcessor
                 }
 
                 if (Verbosity > 3)
-                    Logger.debug($"[d] Expression.ProcessLocalDeclaration: F varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: F varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
 
                 // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
                 //return _varDict[varID];
@@ -273,7 +276,7 @@ public partial class VarProcessor
                     if (vars.Count > 0)
                         msg += $" ({vars})";
 
-                    Logger.error(msg);
+                    _logger.error(msg);
                     _excLogged = true;
                 }
                 throw;
@@ -338,7 +341,7 @@ public partial class VarProcessor
                     }
                     catch (Exception ex)
                     {
-                        Logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
+                        _logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
                         _varDict.ResetVar(idLeft);
                         throw;
                     }
@@ -361,11 +364,11 @@ public partial class VarProcessor
                     }
                     catch (InvalidCastException)
                     {
-                        Logger.warn_once($"ConditionalExpression: cannot cast '{condition}' to bool in: {conditionalExpr}");
+                        _logger.warn_once($"ConditionalExpression: cannot cast '{condition}' to bool in: {conditionalExpr}");
                         object whenTrue = EvaluateExpression(conditionalExpr.WhenTrue);
                         object whenFalse = EvaluateExpression(conditionalExpr.WhenFalse);
                         object result = (Equals(whenTrue, whenFalse)) ? whenTrue : VarProcessor.MergeVar("?", whenTrue, whenFalse);
-                        Logger.warn_once($"ConditionalExpression: merged {whenTrue} and {whenFalse} => {result}");
+                        _logger.warn_once($"ConditionalExpression: merged {whenTrue} and {whenFalse} => {result}");
                         return result;
                     }
 
@@ -511,7 +514,8 @@ public partial class VarProcessor
                         _varDict.Set(id, retValue);
                         break;
                     case LiteralExpressionSyntax num:
-                        Logger.warn_once($"Prefix operator '{expr.TitleWithLineNo()}' on literal '{num}'. Returning {retValue}");
+                        retValue = value;
+                        _logger.warn_once($"Prefix operator '{expr.TitleWithLineNo()}' on literal '{num}'. Returning {retValue}");
                         break;
                     default:
                         throw new NotSupportedException($"Prefix operator '{expr.Kind()}' is not supported for {expr.Operand.Kind()}.");

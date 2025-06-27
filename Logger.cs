@@ -127,4 +127,5 @@ public class TaggedLogger
     public void debug(Func<string> msgFunc, [CallerMemberName] string caller = "") => Logger.debug(() => msgFunc(), $"{_tag}.{caller}");
     public void warn(string message, [CallerMemberName] string caller = "") => Logger.warn(message, $"{_tag}.{caller}");
     public void warn_once(string message, [CallerMemberName] string caller = "") => Logger.warn_once(message, $"{_tag}.{caller}");
+    public void error(string message, [CallerMemberName] string caller = "") => Logger.error(message, $"{_tag}.{caller}");
 }
