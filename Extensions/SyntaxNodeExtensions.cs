@@ -197,6 +197,9 @@ public static class SyntaxNodeExtensions
 
     public static SyntaxNode WithUniqueAnnotation(this SyntaxNode node, SyntaxAnnotation newAnnotation)
     {
+        if (newAnnotation.Kind == null)
+            throw new ArgumentException("Annotation kind must not be null", nameof(newAnnotation));
+
         // Remove all annotations of the same kind
         var existing = node.GetAnnotations(newAnnotation.Kind);
         if (existing.Any())
@@ -215,5 +218,5 @@ public static class SyntaxNodeExtensions
                     );
     }
 
-    public static SyntaxAnnotation VarID(this VariableDeclaratorSyntax node) => node.Identifier.VarID();
+    public static SyntaxAnnotation? VarID(this VariableDeclaratorSyntax node) => node.Identifier.VarID();
 }

@@ -82,7 +82,7 @@ public partial class VarTracker
 
                 foreach (var usageBlk in usageBlocks)
                 {
-                    BlockSyntax closestDecl = null;
+                    BlockSyntax? closestDecl = null;
 
                     foreach (var ancestor in usageBlk.AncestorsAndSelf())
                     {
@@ -143,20 +143,25 @@ public partial class VarTracker
             if (_targetBlocks.TryGetValue(V.id, out var existingTarget))
             {
                 if (existingTarget != targetBlk)
-                    _targetBlocks[V.id] = FindCommonAncestor(new[] { existingTarget, targetBlk });
+                {
+                    var commonAncestor = FindCommonAncestor(new[] { existingTarget, targetBlk });
+                    if (commonAncestor == null)
+                        throw new TaggedException(LOG_TAG, $"{V}: No common ancestor found for {existingTarget.TitleWithLineNo()} and {targetBlk.TitleWithLineNo()}");
+                    _targetBlocks[V.id] = commonAncestor;
+                }
             }
             else
                 _targetBlocks[V.id] = targetBlk;
         }
 
         // Helper to find common ancestor block of many blocks
-        static BlockSyntax FindCommonAncestor(IEnumerable<BlockSyntax> blocks)
+        static BlockSyntax? FindCommonAncestor(IEnumerable<BlockSyntax> blocks)
         {
             // naive approach: pick first block and climb its parents until all blocks contain that parent
             var first = blocks.FirstOrDefault();
             if (first == null) return null;
 
-            SyntaxNode current = first;
+            SyntaxNode? current = first;
             while (current != null)
             {
                 if (current is BlockSyntax blk && blocks.All(b => b.AncestorsAndSelf().Contains(current)))
@@ -168,9 +173,9 @@ public partial class VarTracker
             return null;
         }
 
-        public override SyntaxNode VisitBlock(BlockSyntax node)
+        public override SyntaxNode? VisitBlock(BlockSyntax node)
         {
-            var newNode = (BlockSyntax)base.VisitBlock(node);
+            var newNode = base.VisitBlock(node) as BlockSyntax;
 
             // Insert moved declarations (without initializers) at start of block
             var declsToInsert = new List<LocalDeclarationStatementSyntax>();

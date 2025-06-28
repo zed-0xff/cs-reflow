@@ -21,7 +21,7 @@ public class VarDict
 
     public IReadOnlyDictionary<int, object?> ReadOnlyDict => new ReadOnlyDictionary<int, object?>(_values);
 
-    public object? DefaultValue(SyntaxToken token) => _varDB.TryGetValue(token, out var V) ? DefaultValue(V.id) : UnknownValue.Create();
+    public object? DefaultValue(SyntaxToken token) => _varDB.TryGetValue(token, out var V) ? DefaultValue(V!.id) : UnknownValue.Create();
     public object? DefaultValue(int id)
     {
         var result = UnknownValue.Create(_varDB[id].IntType);
@@ -30,13 +30,13 @@ public class VarDict
     }
 
     public object? this[int id] => _values.TryGetValue(id, out var value) ? value : DefaultValue(id);
-    public object? this[SyntaxToken token] => _varDB.TryGetValue(token, out var v) ? this[v.id] : UnknownValue.Create();
+    public object? this[SyntaxToken token] => _varDB.TryGetValue(token, out var v) ? this[v!.id] : UnknownValue.Create();
 
     public IEnumerable<int> Keys => _values.Keys;
     public int Count => _values.Count;
 
     public bool ContainsKey(int key) => _values.ContainsKey(key);
-    public bool ContainsKey(SyntaxToken token) => _varDB.TryGetValue(token, out var V) && _values.ContainsKey(V.id);
+    public bool ContainsKey(SyntaxToken token) => _varDB.TryGetValue(token, out var V) && _values.ContainsKey(V!.id);
 
     public bool TryGetValue(int key, out object? value) => _values.TryGetValue(key, out value);
     public bool TryGetValue(IdentifierNameSyntax id, out object? value) => TryGetValue(id.Identifier, out value); // id.Identifier is SyntaxToken
@@ -45,7 +45,7 @@ public class VarDict
         bool result;
         if (_varDB.TryGetValue(token, out var V))
         {
-            result = _values.TryGetValue(V.id, out value);
+            result = _values.TryGetValue(V!.id, out value);
         }
         else
         {
@@ -81,7 +81,7 @@ public class VarDict
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug($"Resetting variable {V}");
-            setVar(V.id, DefaultValue(V.id));
+            setVar(V!.id, DefaultValue(V!.id));
         }
     }
 
@@ -98,7 +98,7 @@ public class VarDict
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug($"{V} = {value}");
-            setVar(V.id, value);
+            setVar(V!.id, value);
         }
         else
         {
@@ -154,7 +154,7 @@ public class VarDict
         }
     }
 
-    void UpdateVar(int key, object newValue)
+    void UpdateVar(int key, object? newValue)
     {
         // if (_logger.HasTag("UpdateVar"))
         //     _logger.info($"{key,-10} {this[key],-20} => {newValue}");
@@ -169,10 +169,13 @@ public class VarDict
             if (!this.TryGetValue(other_kvp.Key, out var thisValue))
                 continue;
 
-            if (object.Equals(thisValue, other_kvp.Value))
+            if (Equals(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
-            Set(other_kvp.Key, VarProcessor.MergeVar("_", thisValue, other_kvp.Value)); // TODO: return back var name (display only)
+            if (thisValue != null && other_kvp.Value != null)
+                Set(other_kvp.Key, VarProcessor.MergeVar("_", thisValue, other_kvp.Value)); // TODO: return back var name (display only)
+            else if (thisValue == null && other_kvp.Value != null)
+                Set(other_kvp.Key, other_kvp.Value);
         }
     }
 
@@ -198,7 +201,7 @@ public class VarDict
         return vars;
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is not VarDict other || Count != other.Count)
             return false;

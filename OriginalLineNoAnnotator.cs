@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 public class OriginalLineNoAnnotator : CSharpSyntaxRewriter
 {
-    public override SyntaxNode Visit(SyntaxNode node)
+    public override SyntaxNode? Visit(SyntaxNode? node)
     {
         if (node == null)
             return null;

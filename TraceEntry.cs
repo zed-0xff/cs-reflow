@@ -42,7 +42,7 @@ public class TraceEntry
         return $"{stmt.LineNo()}: {PostProcessor.RemoveAllComments(stmt).NormalizeWhitespace()}";
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is not TraceEntry other) return false;
 

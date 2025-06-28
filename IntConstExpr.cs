@@ -181,7 +181,7 @@ public class IntConstExpr :
         throw new FormatException($"Invalid format for IntConstExpr: '{s.ToString()}'");
     }
 
-    public static bool TryParse(string s, NumberStyles style, IFormatProvider? provider, out IntConstExpr result)
+    public static bool TryParse(string? s, NumberStyles style, IFormatProvider? provider, out IntConstExpr result)
     {
         if (int.TryParse(s, style, provider ?? CultureInfo.InvariantCulture, out int intValue))
         {

@@ -34,14 +34,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         root = tree.GetRoot();
     }
 
-    public void EnumerateStatements<T>(IEnumerable<T> statements, int indent)
-    {
-        foreach (var statement in statements)
-        {
-            Print(statement as SyntaxNode, indent);
-        }
-    }
-
     public void Print(SyntaxNode node, int indent = 0)
     {
         // Add indentation based on the level
@@ -177,8 +169,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
                     current = GetNextStatement(current, block);
                     continue;
             }
-
-            break;
         }
 
         return traced;

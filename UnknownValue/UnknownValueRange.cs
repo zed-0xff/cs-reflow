@@ -20,7 +20,7 @@ public class UnknownValueRange : UnknownValueRangeBase
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
 
-    public override bool Equals(object obj) => (obj is UnknownValueRange r) && type == r.type && Range.Equals(r.Range);
+    public override bool Equals(object? obj) => (obj is UnknownValueRange r) && type == r.type && Range.Equals(r.Range);
 
     public override long Min() => Range.Min;
     public override long Max() => Range.Max;
@@ -131,8 +131,6 @@ public class UnknownValueRange : UnknownValueRangeBase
                     }
                 );
         }
-
-        return new UnknownValueRange(type, MaskWithSign(Range.Min - l), MaskWithSign(Range.Max - l));
     }
 
     public override UnknownTypedValue TypedShiftLeft(object right)

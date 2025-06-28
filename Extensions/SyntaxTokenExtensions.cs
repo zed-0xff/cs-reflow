@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 public static class SyntaxTokenExtensions
 {
-    public static SyntaxAnnotation VarID(this SyntaxToken token) => token.GetAnnotations("VarID").FirstOrDefault();
+    public static SyntaxAnnotation? VarID(this SyntaxToken token) => token.GetAnnotations("VarID").FirstOrDefault();
 
     public static bool IsSameVar(this SyntaxToken token, SyntaxToken other)
     {

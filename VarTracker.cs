@@ -18,13 +18,13 @@ public partial class VarTracker
 
     public string NextStmtID() => (++_stmt_id).ToString("X4");
 
-    public SyntaxNode Track(SyntaxNode rootNode)
+    public SyntaxNode? Track(SyntaxNode rootNode)
     {
         var ctx = new SemanticContext(rootNode);
         return IndexSymbols(rootNode, ctx.Model);
     }
 
-    public SyntaxNode IndexSymbols(SyntaxNode rootNode, SemanticModel semanticModel)
+    public SyntaxNode? IndexSymbols(SyntaxNode rootNode, SemanticModel semanticModel)
     {
         // Maps variable symbol -> unique annotation
         // Symbols are invalidated when the syntax tree is modified (i.e. just after this method is finished), Annotations are not.

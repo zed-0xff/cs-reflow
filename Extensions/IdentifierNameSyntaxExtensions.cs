@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 public static class IdentifierNameSyntaxExtensions
 {
-    public static SyntaxAnnotation VarID(this IdentifierNameSyntax node) => node.Identifier.VarID();
+    public static SyntaxAnnotation? VarID(this IdentifierNameSyntax node) => node.Identifier.VarID();
 
     public static bool IsSameVar(this IdentifierNameSyntax node, IdentifierNameSyntax otherNode)
     {

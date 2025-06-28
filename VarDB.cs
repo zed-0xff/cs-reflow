@@ -24,7 +24,7 @@ public class VarDB
 
             if (int.TryParse(data, out int id))
             {
-                if (_vars.TryGetValue(id, out Variable V))
+                if (_vars.TryGetValue(id, out Variable? V))
                 {
                     _ann2vars[ann] = V;
                     return V;

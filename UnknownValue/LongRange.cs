@@ -66,7 +66,7 @@ public class LongRange
         return value >= Min && value <= Max;
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is LongRange other)
             return Min == other.Min && Max == other.Max;

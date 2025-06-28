@@ -2,6 +2,7 @@ using System.Collections.Generic;
 
 public class DefaultDict<TKey, TValue> : Dictionary<TKey, TValue>
     where TValue : new()
+    where TKey : notnull
 {
     public new TValue this[TKey key]
     {

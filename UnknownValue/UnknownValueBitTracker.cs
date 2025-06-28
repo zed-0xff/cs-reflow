@@ -95,6 +95,8 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     {
         if (bits == null)
         {
+            if (_var_id is null)
+                throw new ArgumentException("Cannot initialize bits without var_id set.", nameof(bits));
             return Enumerable.Range(2 + _var_id.Value * type.nbits, type.nbits).Reverse().ToList();
         }
 
@@ -116,7 +118,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     public override object Cast(TypeDB.IntInfo toType)
     {
         if (toType.nbits == type.nbits)
-            return new UnknownValueBitTracker(toType, _var_id.Value, _bits);
+            return new UnknownValueBitTracker(toType!, _var_id!.Value, _bits);
 
         return base.Cast(toType);
     }
@@ -478,7 +480,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         return inconclusive ? UnknownValue.Create(TypeDB.Bool) : true;
     }
 
-    public override bool Equals(object obj) => (obj is UnknownValueBitTracker other) && type.Equals(other.type) && _var_id == other._var_id && _bits.SequenceEqual(other._bits);
+    public override bool Equals(object? obj) => (obj is UnknownValueBitTracker other) && type.Equals(other.type) && _var_id == other._var_id && _bits.SequenceEqual(other._bits);
 
     public override int GetHashCode()
     {

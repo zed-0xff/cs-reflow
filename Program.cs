@@ -32,7 +32,7 @@ class Program
         bool showAnnotations,
         bool showProgress,
         int verbosity,
-        string dumpIntermediateLogs,
+        string? dumpIntermediateLogs,
         string? expr,
         string? filename
     );
@@ -255,14 +255,14 @@ class Program
             var opts = new Options(
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
                 colorize: context.ParseResult.GetValueForOption(colorizeOpt),
-                debugTags: context.ParseResult.GetValueForOption(debugTagsOpt),
-                dropVars: context.ParseResult.GetValueForOption(dropVarsOpt),
+                debugTags: context.ParseResult.GetValueForOption(debugTagsOpt) ?? new(),
+                dropVars: context.ParseResult.GetValueForOption(dropVarsOpt) ?? new(),
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
                 dumpIntermediateLogs: context.ParseResult.GetValueForOption(dumpIntermediateLogsOpt),
                 expr: context.ParseResult.GetValueForOption(exprArg),
                 filename: context.ParseResult.GetValueForArgument(filenameArg),
-                hintList: context.ParseResult.GetValueForOption(hintOpt),
-                keepVars: context.ParseResult.GetValueForOption(keepVarsOpt),
+                hintList: context.ParseResult.GetValueForOption(hintOpt) ?? new(),
+                keepVars: context.ParseResult.GetValueForOption(keepVarsOpt) ?? new(),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
                 methods: context.ParseResult.GetValueForArgument(methodsArg),
                 moveDeclarations: context.ParseResult.GetValueForOption(moveDeclarationsOpt),
@@ -273,8 +273,8 @@ class Program
                 reflow: context.ParseResult.GetValueForOption(reflowOpt),
                 showAnnotations: context.ParseResult.GetValueForOption(showAnnotationsOpt),
                 showProgress: context.ParseResult.GetValueForOption(showProgressOpt),
-                traceUniqVars: context.ParseResult.GetValueForOption(traceUniqVarsOpt),
-                traceVars: context.ParseResult.GetValueForOption(traceVarsOpt),
+                traceUniqVars: context.ParseResult.GetValueForOption(traceUniqVarsOpt) ?? new(),
+                traceVars: context.ParseResult.GetValueForOption(traceVarsOpt) ?? new(),
                 verbosity: calc_verbosity(context, quietOpt)
             );
 
@@ -363,7 +363,7 @@ class Program
 
                 if (printAll)
                     printer.Print();
-                else
+                else if (opts.methods != null)
                     foreach (var methodName in opts.methods)
                         printer.PrintMethod(methodName);
             }
@@ -436,7 +436,7 @@ class Program
     {
         if (opts.printTree)
         {
-            var tree = CSharpSyntaxTree.ParseText(opts.expr);
+            var tree = CSharpSyntaxTree.ParseText(opts.expr!);
             var printer = new SyntaxTreePrinter(tree);
             printer.Verbosity = opts.verbosity;
             printer.Print();
@@ -446,7 +446,7 @@ class Program
             VarDB varDB = new VarDB();
             VarProcessor processor = new(varDB);
             processor.Verbosity = opts.verbosity;
-            object? result = processor.EvaluateString(opts.expr);
+            object? result = processor.EvaluateString(opts.expr!);
             Console.WriteLine($"{result}");
         }
     }

@@ -114,7 +114,7 @@ public static class TypeDB
         }
 
         public override string ToString() => Name;
-        public override bool Equals(object obj) => (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
+        public override bool Equals(object? obj) => (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
         public override int GetHashCode() => HashCode.Combine(nbits, signed);
 
         public bool CanFit(long value)

@@ -4,7 +4,7 @@ public class UnknownValueSet : UnknownTypedValue
 {
     readonly ImmutableHashSet<long> _values = ImmutableHashSet<long>.Empty;
 
-    public UnknownValueSet(TypeDB.IntInfo type, List<long> values = null) : base(type)
+    public UnknownValueSet(TypeDB.IntInfo type, List<long>? values = null) : base(type)
     {
         if (values != null)
             _values = ImmutableHashSet.CreateRange(values);
@@ -114,7 +114,7 @@ public class UnknownValueSet : UnknownTypedValue
         return _values.Any(v => other.Contains(v));
     }
 
-    public override bool Equals(object obj) => obj is UnknownValueSet other && type == other.type && _values.SequenceEqual(other._values);
+    public override bool Equals(object? obj) => obj is UnknownValueSet other && type == other.type && _values.SequenceEqual(other._values);
 
     public override int GetHashCode()
     {

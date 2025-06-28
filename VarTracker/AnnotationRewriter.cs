@@ -56,7 +56,7 @@ public partial class VarTracker
             return newNode;
         }
 
-        public override SyntaxNode Visit(SyntaxNode node)
+        public override SyntaxNode? Visit(SyntaxNode? node)
         {
             node = base.Visit(node);
             if (node is StatementSyntax)

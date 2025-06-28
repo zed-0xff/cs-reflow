@@ -126,7 +126,7 @@ public class IfRewriter : CSharpSyntaxRewriter
     }
 
     // "if (condition || always_true)" => "if (condition)"
-    public override SyntaxNode VisitBinaryExpression(BinaryExpressionSyntax node0)
+    public override SyntaxNode? VisitBinaryExpression(BinaryExpressionSyntax node0)
     {
         var newNode = base.VisitBinaryExpression(node0);
         if (newNode is not BinaryExpressionSyntax binaryExpr)
@@ -281,9 +281,12 @@ public class IfRewriter : CSharpSyntaxRewriter
     }
 
     // remove unnecessary nested blocks
-    public override SyntaxNode VisitBlock(BlockSyntax node)
+    public override SyntaxNode? VisitBlock(BlockSyntax node0)
     {
-        node = (BlockSyntax)base.VisitBlock(node);
+        var newNode = base.VisitBlock(node0);
+        if (newNode is not BlockSyntax node)
+            return newNode;
+
         if (node.Statements.Any(stmt => stmt is BlockSyntax blk2 && CanBeFlattened(node, blk2)))
         {
             var statements = new List<StatementSyntax>();
@@ -431,7 +434,7 @@ public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
         {
             // Keep the first declaration, remove the rest
             var toRemove = group.Skip(1).ToList();
-            newNode = newNode.RemoveNodes(toRemove, SyntaxRemoveOptions.KeepNoTrivia);
+            newNode = newNode!.RemoveNodes(toRemove, SyntaxRemoveOptions.KeepNoTrivia);
         }
 
         // "int a; int a=2;"   => "int a=2;"
@@ -440,7 +443,7 @@ public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
         // "int a=1; int a=2;" => "int a=1; int a=2;"
         bool was = false;
         var newStatements = new List<StatementSyntax>();
-        var stmts = newNode.Statements;
+        var stmts = newNode!.Statements;
         for (int i = 0; i < stmts.Count; i++)
         {
             if (

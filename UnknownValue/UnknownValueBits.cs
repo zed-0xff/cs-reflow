@@ -346,7 +346,7 @@ public class UnknownValueBits : UnknownValueBitsBase
             return add(otherBits);
 
         if (right is UnknownValueBitTracker otherTracker)
-            return otherTracker.Add(this) as UnknownTypedValue;
+            return otherTracker.TypedAdd(this);
 
         return UnknownTypedValue.Create(type);
     }
@@ -374,7 +374,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return UnknownTypedValue.Create(type);
     }
 
-    public override bool Equals(object obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bitspan.Equals(other._bitspan);
+    public override bool Equals(object? obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bitspan.Equals(other._bitspan);
 
     public override UnknownValueBase Merge(object other)
     {

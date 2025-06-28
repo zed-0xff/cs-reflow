@@ -63,11 +63,11 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 {
     // used only by root Processor, i.e. in ReflowMethod() only
     HashSet<string> _keepVars = new();
-    CodeFmtInfo _fmt;
+    CodeFmtInfo? _fmt;
 
     // shared
     SyntaxTree _tree;
-    ControlFlowNode _flowRoot;
+    ControlFlowNode? _flowRoot;
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
@@ -97,7 +97,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool isClone = false;
     public int Verbosity = 0;
     public int commentPadding = 100;
-    public string dumpIntermediateLogs;
+    public string? dumpIntermediateLogs;
 
     public void Reset()
     {
@@ -123,7 +123,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             this.vars = (VarDict)vars.Clone();
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is not State other) return false;
             return lineno == other.lineno && vars.Equals(other.vars);
@@ -245,7 +245,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             case 0:
                 throw new ArgumentException($"Method '{methodName}' not found.");
             case 1:
-                return methods.First() as CSharpSyntaxNode;
+                return (CSharpSyntaxNode)methods.First();
             default:
                 throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
         }
@@ -285,7 +285,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _traceLog;
     }
 
-    public ControlFlowUnflattener(string code, HintsDictionary flowHints = null, bool dummyClassWrap = false)
+    public ControlFlowUnflattener(string code, HintsDictionary? flowHints = null, bool dummyClassWrap = false)
     {
         _fmt = new(code); // needs to be initialized before dummy class wrap
         if (dummyClassWrap)
@@ -947,7 +947,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         trace_statements_inline(block.Statements, start_idx);
     }
 
-    void log_stmt(SyntaxNode stmt, string comment = "", bool skip = false, string prefix = "", string suffix = "")
+    void log_stmt(SyntaxNode stmt, string? comment = null, bool skip = false, string prefix = "", string suffix = "")
     {
         if (Verbosity <= 0)
             return;

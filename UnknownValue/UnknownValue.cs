@@ -31,7 +31,7 @@ public class UnknownValue : UnknownValueBase
         return UnknownTypedValue.Create(TypeDB.Find(type));
     }
 
-    public static UnknownValueBase Create(Type? type) => Create(type?.ToString());
+    public static UnknownValueBase Create(Type? type) => (type == null) ? Create() : Create(type.ToString());
     public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
     public static UnknownValueBase Create(TypeDB.IntInfo? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
 

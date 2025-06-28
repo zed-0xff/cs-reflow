@@ -12,7 +12,7 @@ public partial class VarProcessor : ICloneable
     public readonly VarDB _varDB;
     VarDict _varDict;
     Dictionary<string, bool> _traceVars = new(); // value is true if trace only unique
-    Dictionary<int, HashSet<object>> _uniqValues = new(); // shared, r/w
+    Dictionary<int, HashSet<object?>> _uniqValues = new(); // shared, r/w
 
     public VarProcessor(VarDB db, int verbosity = 0, VarDict? varDict = null) // vars arg is for tests
     {
@@ -62,7 +62,7 @@ public partial class VarProcessor : ICloneable
         readonly VarProcessor _processor;
         readonly SyntaxNode? _node;
         readonly string _caller;
-        readonly Dictionary<int, object> _original;
+        readonly Dictionary<int, object?>? _original;
         readonly Dictionary<int, bool> _resolvedTraceVars = new();
 
         public TraceScope(VarProcessor processor, SyntaxNode? node, [CallerMemberName] string caller = "")
@@ -122,7 +122,7 @@ public partial class VarProcessor : ICloneable
                     }
                     else
                     {
-                        _processor._uniqValues[key] = new HashSet<object> { oldValue, newValue };
+                        _processor._uniqValues[key] = new() { oldValue, newValue };
                         log = true;
                     }
                 }
@@ -182,7 +182,7 @@ public partial class VarProcessor : ICloneable
         var trackedRoot = tracker.Track(tree.GetRoot());
 
         object? result = null;
-        foreach (var stmt in trackedRoot.DescendantNodes().OfType<GlobalStatementSyntax>())
+        foreach (var stmt in trackedRoot!.DescendantNodes().OfType<GlobalStatementSyntax>())
         {
             result = EvaluateExpression(stmt.Statement);
         }

@@ -230,7 +230,7 @@ public class TraceLog
             if (ifStmt.LineNo() != hint_key)
             {
                 Console.WriteLine($"[d] if statement: {ifStmt.LineNo()}: {ifStmt}");
-                throw new TaggedException("TraceLog.Merge", $"Wrong if statement: expected {hint_key}, got {ifEntry.TitleWithLineNo()}");
+                throw new TaggedException("TraceLog.Merge", $"Wrong if statement: expected {hint_key}, got {ifEntry?.TitleWithLineNo()}");
             }
 
             BlockSyntax thenBlock = ToBlock(commonStart + 1, Math.Max(0, this.entries.Count - commonEnd - commonStart - 1));
@@ -256,7 +256,7 @@ public class TraceLog
                     .WithStatement(newIfStmt);
             }
 
-            result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry.vars));
+            result.entries.Add(new TraceEntry(newIfStmt, null, ifEntry!.vars));
 
             // add common tail
             if (commonEnd > 0)
@@ -292,7 +292,7 @@ public class TraceLog
             bool full = false,
             bool id = true,
             bool addEmptyLine = true,
-            TextWriter writer = null)
+            TextWriter? writer = null)
     {
         writer ??= Console.Out; // Default to Console.Out if no writer provided
 

@@ -149,7 +149,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                             // If the right side is not a literal, we keep the local variable
                             keepLocals.UnionWith(
                                     tokens
-                                    .Select(t => _ctx._varDB.TryGetValue(t, out var v) ? v.id : -1)
+                                    .Select(t => _ctx._varDB.TryGetValue(t, out var v) ? v!.id : -1)
                                     .Where(id => id != -1)
                                     );
                         }
@@ -343,6 +343,8 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             int id = _varDB[ann].id;
 
             var expr = idNode.Parent;
+            if (expr is null)
+                throw new InvalidOperationException($"Identifier {idNode.Identifier.Text} has no parent expression.");
 
             // ++x, --x, !x, ~x, ...
             if (expr is PrefixUnaryExpressionSyntax unaryPrefix)
@@ -421,7 +423,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         return (declared, read, written);
     }
 
-    BlockSyntax? RewriteBlock(BlockSyntax block)
+    SyntaxNode? RewriteBlock(SyntaxNode block)
     {
         if (_mainCtx == null)
             throw new TaggedException(TAG, "Main context is not set. Call Process().");
@@ -446,7 +448,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             return block; // return original block
         }
 
-        if (!dataFlow.Succeeded)
+        if (dataFlow == null || !dataFlow.Succeeded)
             return block;
 
         if (dataFlow.VariablesDeclared.Count() > 0)
@@ -526,7 +528,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
     public override SyntaxNode? VisitBlock(BlockSyntax node)
     {
-        var updated = (BlockSyntax)base.VisitBlock(node); // visit children first (x2.2 faster than visiting them afterwards)
+        var updated = base.VisitBlock(node); // visit children first (x2.2 faster than visiting them afterwards)
         if (updated == null)
             return null;
 
