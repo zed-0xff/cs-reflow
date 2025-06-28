@@ -11,6 +11,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
         this.type = type;
     }
 
+    public abstract UnknownTypedValue WithType(TypeDB.IntInfo type);
+
     public abstract UnknownTypedValue TypedAdd(object right);
     public abstract UnknownValueBase TypedDiv(object right);
     public abstract UnknownValueBase TypedMod(object right);
@@ -476,7 +478,14 @@ public abstract class UnknownTypedValue : UnknownValueBase
                     return Contains(0) ? UnknownValue.Create(TypeDB.Bool) : true;
             }
         }
-        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented.");
+
+        if (toType == type)
+            return this;
+
+        if (toType.nbits == type.nbits || (toType.nbits > type.nbits && !toType.signed))
+            return WithType(toType);
+
+        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented. (toType.nbits = {toType.nbits}, type.nbits = {type.nbits})");
     }
 
     public sealed override UnknownValueBase BitwiseAnd(object right)

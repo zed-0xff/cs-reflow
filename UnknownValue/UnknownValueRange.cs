@@ -11,7 +11,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         this(type, new LongRange(min, max))
     { }
 
-    public UnknownValueRange(UnknownValueRange parent, TypeDB.IntInfo type, LongRange range) :
+    public UnknownValueRange(UnknownTypedValue parent, TypeDB.IntInfo type, LongRange range) :
         this(type, range)
     {
         _var_id = parent._var_id;
@@ -19,6 +19,7 @@ public class UnknownValueRange : UnknownValueRangeBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
+    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueRange(type, Range); // TODO: type conversion
 
     public override bool Equals(object? obj) => (obj is UnknownValueRange r) && type == r.type && Range.Equals(r.Range);
 
@@ -45,6 +46,9 @@ public class UnknownValueRange : UnknownValueRangeBase
 
     public override object Cast(TypeDB.IntInfo toType)
     {
+        if (toType == TypeDB.ULong)
+            throw new NotImplementedException("Cast to ULong is not implemented for UnknownValueRange.");
+
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
             if (IsFullRange())
@@ -193,8 +197,8 @@ public class UnknownValueRange : UnknownValueRangeBase
 
         int shift = (int)l;
 
-        if (Range.Min < 0 && Range.Max >= 0)
-            return new UnknownValueRange(type, 0, Range.Max >>> shift);
+        if (Range.Min >= 0)
+            return new UnknownValueRange(type, Range >> shift);
 
         long min, max;
         (min, max) = type.Name switch

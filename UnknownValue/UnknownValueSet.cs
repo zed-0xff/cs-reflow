@@ -18,6 +18,7 @@ public class UnknownValueSet : UnknownTypedValue
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _values) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
+    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueSet(type, _values); // TODO: type conversion
 
     public override bool IsFullRange() => Cardinality() == type.Range.Count && Min() == type.Range.Min && Max() == type.Range.Max;
 

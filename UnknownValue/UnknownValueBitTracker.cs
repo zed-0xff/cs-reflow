@@ -87,6 +87,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBitTracker(this, _bits) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBitTracker(type, id, _bits);
+    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueBitTracker(type, _var_id!.Value, _bits); // TODO: type conversion
 
     public bool HasPrivateBits() => _bits.Any(b => b.IsPrivateBit());
 

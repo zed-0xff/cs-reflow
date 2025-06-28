@@ -105,10 +105,8 @@ public class LongRange
         return new LongRange(left.Min >> right, left.Max >> right);
     }
 
-    // XXX >>> misbehaves on negative numbers:
+    // XXX >>> moves the sign bit
     //  -2147483648 >>> 1 = 9223372035781033984
-    //                    = 111111111111111111111111111111111000000000000000000000000000000
-    //                                                      1000000000000000000000000000000 - should be
     //    static public LongRange operator >>>(LongRange left, int right)
     //    {
     //        if (right < 0)

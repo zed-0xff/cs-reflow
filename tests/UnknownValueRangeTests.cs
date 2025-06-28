@@ -383,4 +383,38 @@ public class UnknownValueRangeTests
         var c = b.BitwiseNot();
         Assert.Equal(a, c);
     }
+
+    [Fact]
+    public void Test_SignedShiftRight_byte()
+    {
+        UnknownValueRange range = new(TypeDB.Byte);
+        byte b0 = Byte.MinValue;
+        byte b1 = Byte.MaxValue;
+
+        for (int i = 0; i < 8; i++)
+        {
+            var shifted = range.SignedShiftRight(i) as UnknownTypedValue;
+            Assert.NotNull(shifted);
+
+            var b0_ = b0 >>> i;
+            Assert.Equal(b0_.GetType(), shifted.type.Type);
+            Assert.Equal(b0 >>> i, shifted.Min());
+            Assert.Equal(b1 >>> i, shifted.Max());
+        }
+    }
+
+    [Fact]
+    public void Test_SignedShiftRight_sbyte()
+    {
+        UnknownValueRange range = new(TypeDB.SByte);
+        sbyte b0 = SByte.MinValue;
+        sbyte b1 = SByte.MaxValue;
+
+        for (int i = 0; i < 8; i++)
+        {
+            var shifted = range.SignedShiftRight(i);
+            Assert.Equal(b0 >>> i, shifted.Min());
+            Assert.Equal(b1 >>> i, shifted.Max());
+        }
+    }
 }

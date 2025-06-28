@@ -19,6 +19,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _rangeSet) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _rangeSet) { _var_id = id };
+    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueRanges(type, _rangeSet); // TODO: type conversion
 
     public override bool Equals(object? obj)
     {
@@ -39,6 +40,8 @@ public class UnknownValueRanges : UnknownValueRangeBase
     {
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
+            if (IsFullRange())
+                return new UnknownValueRange(this, toType, toType.Range);
             if (_rangeSet.Min >= 0 && _rangeSet.Max <= int.MaxValue)
                 return new UnknownValueRanges(TypeDB.Int, _rangeSet);
             if (_rangeSet.Min > int.MaxValue)
@@ -48,6 +51,8 @@ public class UnknownValueRanges : UnknownValueRangeBase
 
         if (type == TypeDB.Int && toType == TypeDB.UInt) // int -> uint
         {
+            if (IsFullRange())
+                return new UnknownValueRange(this, toType, toType.Range);
             if (_rangeSet.Min >= 0 && _rangeSet.Max >= 0)
                 return new UnknownValueRanges(TypeDB.UInt, _rangeSet);
             if (_rangeSet.Max < 0)

@@ -105,8 +105,17 @@ public static class TypeDB
         };
     }
 
-    public class IntInfo
+    public interface IIntInfo
     {
+        IntInfo IntType { get; }
+        bool CanBeNegative { get; }
+    }
+
+    public class IntInfo : IIntInfo
+    {
+        public bool CanBeNegative => signed;
+        public IntInfo IntType => this;
+
         public readonly string Name;
         public readonly System.Type Type;
         public readonly int nbits;
@@ -154,6 +163,65 @@ public static class TypeDB
         {
             return value <= MaxUnsignedValue;
         }
+    }
+
+    public static (IntInfo?, IntInfo?) PromoteTypes(IIntInfo l, IIntInfo r)
+    {
+        var ltype = l.IntType;
+        var rtype = r.IntType;
+        // [floats skipped]
+        // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
+        // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
+        if (ltype == ULong || rtype == ULong)
+        {
+            if (ltype != ULong) return (ULong, null);
+            if (rtype != ULong) return (null, ULong);
+        }
+
+        // Otherwise, if either operand is of type long, the OTHER OPERAND is converted to type long.
+        else if (ltype == Long || rtype == Long)
+        {
+            if (ltype != Long) return (Long, null);
+            if (rtype != Long) return (null, Long);
+        }
+
+        // Otherwise, if either operand is of type uint and the other operand is of type sbyte, short, or int, BOTH OPERANDS are converted to type long.
+        // XXX not always true XXX
+        else if (
+                (ltype == UInt && (rtype == SByte || rtype == Short || rtype == Int)) ||
+                (rtype == UInt && (ltype == SByte || ltype == Short || ltype == Int))
+                )
+        {
+            // if left is uint and right is int, but can fit in uint => right is converted to uint
+            if (ltype == UInt && rtype == Int && !r.CanBeNegative)
+            {
+                return (null, UInt);
+            }
+            else if (rtype == UInt && ltype == Int && !l.CanBeNegative)
+            {
+                return (UInt, null);
+            }
+            else
+            {
+                return (Long, Long);
+            }
+        }
+
+        // Otherwise, if either operand is of type uint, the OTHER OPERAND is converted to type uint.
+        else if (ltype == UInt || rtype == UInt)
+        {
+            if (ltype != UInt)
+                return (UInt, null);
+            if (rtype != UInt)
+                return (null, UInt);
+        }
+        else
+        {
+            // Otherwise, BOTH OPERANDS are converted to type int.
+            return (Int, Int);
+        }
+
+        return (null, null); // no promotion necessary
     }
 }
 

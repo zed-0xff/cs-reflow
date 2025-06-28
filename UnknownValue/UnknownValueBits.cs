@@ -60,6 +60,7 @@ public class UnknownValueBits : UnknownValueBitsBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bitspan) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bitspan) { _var_id = id };
+    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueBits(type, _bitspan); // TODO: check
 
     public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
     {
