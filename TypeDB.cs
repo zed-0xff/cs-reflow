@@ -4,6 +4,8 @@ using System.Numerics;
 
 public static class TypeDB
 {
+    public static int Bitness = 0;
+
     public static readonly IntInfo Int8 = new IntInfo("sbyte", typeof(sbyte), 8, true, SyntaxKind.SByteKeyword);
     public static readonly IntInfo UInt8 = new IntInfo("byte", typeof(byte), 8, false, SyntaxKind.ByteKeyword);
     public static readonly IntInfo Int16 = new IntInfo("short", typeof(short), 16, true, SyntaxKind.ShortKeyword);
@@ -14,6 +16,11 @@ public static class TypeDB
     public static readonly IntInfo UInt64 = new IntInfo("ulong", typeof(ulong), 64, false, SyntaxKind.ULongKeyword);
     public static readonly IntInfo Bool = new IntInfo("bool", typeof(bool), 1, false, SyntaxKind.BoolKeyword);
 
+    public static readonly IntInfo IntPtr32 = new IntInfo("nint", typeof(nint), 32, true, SyntaxKind.IntKeyword);
+    public static readonly IntInfo UIntPtr32 = new IntInfo("nuint", typeof(nuint), 32, false, SyntaxKind.UIntKeyword);
+    public static readonly IntInfo IntPtr64 = new IntInfo("nint", typeof(nint), 64, true, SyntaxKind.LongKeyword);
+    public static readonly IntInfo UIntPtr64 = new IntInfo("nuint", typeof(nuint), 64, false, SyntaxKind.ULongKeyword);
+
     // aliases
     public static readonly IntInfo Byte = UInt8;
     public static readonly IntInfo SByte = Int8;
@@ -23,6 +30,9 @@ public static class TypeDB
     public static readonly IntInfo UInt = UInt32;
     public static readonly IntInfo Long = Int64;
     public static readonly IntInfo ULong = UInt64;
+
+    public static IntInfo NInt => bitness_aware(IntPtr32, IntPtr64);
+    public static IntInfo NUInt => bitness_aware(UIntPtr32, UIntPtr64);
 
     public static IntInfo Find(string typeName) => TryFind(typeName) ?? throw new NotImplementedException($"TypeDB: {typeName} not supported.");
     public static IntInfo Find(System.Type type) => Find(type.ToString());
@@ -45,11 +55,20 @@ public static class TypeDB
 
             "bool" => Bool,
 
-            "nint" => Int32,   // TODO: 32/64 bit switch
-            "nuint" => UInt32, // TODO: 32/64 bit switch
+            "nint" => NInt,
+            "nuint" => NUInt,
             _ => null
         };
     }
+
+    private static IntInfo bitness_aware(IntInfo int32, IntInfo int64) =>
+        Bitness switch
+        {
+            32 => int32,
+            64 => int64,
+            0 => throw new NotSupportedException($"TypeDB.Bitness is not set."),
+            _ => throw new NotSupportedException($"TypeDB.Bitness {Bitness} is not supported.")
+        };
 
     public static string ShortType(string type)
     {
@@ -75,6 +94,13 @@ public static class TypeDB
             "UInt32" => "uint",
             "Int64" => "long",
             "UInt64" => "ulong",
+
+            "IntPtr" => "nint",
+            "System.IntPtr" => "nint",
+
+            "UIntPtr" => "nuint",
+            "System.UIntPtr" => "nuint",
+
             _ => type,
         };
     }
@@ -84,6 +110,7 @@ public static class TypeDB
         public readonly string Name;
         public readonly System.Type Type;
         public readonly int nbits;
+        public readonly int ByteSize;
         public readonly bool signed;
         public readonly SyntaxKind Kind;
 
@@ -101,6 +128,7 @@ public static class TypeDB
             Name = name;
             Type = type;
             this.nbits = nbits;
+            this.ByteSize = nbits / 8;
             this.signed = signed;
             Kind = kind;
             MinValue = signed ? -(1L << (nbits - 1)) : 0;
@@ -114,7 +142,7 @@ public static class TypeDB
         }
 
         public override string ToString() => Name;
-        public override bool Equals(object? obj) => (obj is IntInfo other) && nbits == other.nbits && signed == other.signed;
+        public override bool Equals(object? obj) => (obj is IntInfo other) && nbits == other.nbits && Type == other.Type;
         public override int GetHashCode() => HashCode.Combine(nbits, signed);
 
         public bool CanFit(long value)

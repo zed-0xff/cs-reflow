@@ -31,6 +31,7 @@ class Program
         bool reflow,
         bool showAnnotations,
         bool showProgress,
+        int bitness,
         int verbosity,
         string? dumpIntermediateLogs,
         string? expr,
@@ -83,6 +84,16 @@ class Program
             description: "Set lineno:bool control flow hint.",
             parseArgument: result => result.Tokens.Select(t => t.Value).ToList()
         );
+
+        var bitnessOpt = new Option<int>(
+            aliases: new[] { "--bitness", "-b" },
+            getDefaultValue: () => 0,
+            description: "Bitness of the code (32 or 64)."
+        )
+        {
+            ArgumentHelpName = "bitness",
+            Arity = ArgumentArity.ExactlyOne
+        };
 
         var verbosityOpt = new Option<int>(
             aliases: new[] { "--verbose", "-v" },
@@ -224,6 +235,7 @@ class Program
         var rootCommand = new RootCommand("Control flow reflow tool for .cs files")
         {
             addCommentsOpt,
+            bitnessOpt,
             colorizeOpt,
             debugTagsOpt,
             dropVarsOpt,
@@ -254,6 +266,7 @@ class Program
         {
             var opts = new Options(
                 addComments: context.ParseResult.GetValueForOption(addCommentsOpt),
+                bitness: context.ParseResult.GetValueForOption(bitnessOpt),
                 colorize: context.ParseResult.GetValueForOption(colorizeOpt),
                 debugTags: context.ParseResult.GetValueForOption(debugTagsOpt) ?? new(),
                 dropVars: context.ParseResult.GetValueForOption(dropVarsOpt) ?? new(),
@@ -279,6 +292,7 @@ class Program
             );
 
             Logger.EnableTags(opts.debugTags);
+            TypeDB.Bitness = opts.bitness;
             var hints = new HintsDictionary();
 
             foreach (var entry in opts.hintList ?? Enumerable.Empty<string>())

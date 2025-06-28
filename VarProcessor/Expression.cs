@@ -223,8 +223,18 @@ public partial class VarProcessor
                 "uint" => (uint)value,
                 "long" => (long)value,
                 "ulong" => (ulong)value,
-                "nint" => (int)value,   // TODO: 32/64 bit cmdline switch
-                "nuint" => (uint)value, // TODO: 32/64 bit cmdline switch
+                "nint" => TypeDB.Bitness switch
+                {
+                    32 => (int)value,
+                    64 => (long)value,
+                    _ => throw new NotSupportedException($"TypeDB.Bitness {TypeDB.Bitness} is not supported.")
+                },
+                "nuint" => TypeDB.Bitness switch
+                {
+                    32 => (uint)value,
+                    64 => (ulong)value,
+                    _ => throw new NotSupportedException($"TypeDB.Bitness {TypeDB.Bitness} is not supported.")
+                },
                 "string" => value.ToString() ?? string.Empty,
                 _ => throw new NotSupportedException($"Cast from '{value?.GetType()}' to '{toType}' is not supported.")
             };
@@ -494,8 +504,8 @@ public partial class VarProcessor
                         "sizeof(float)" => sizeof(float),
                         "sizeof(int)" => sizeof(int),
                         "sizeof(long)" => sizeof(long),
-                        // "sizeof(nint)" => sizeof(nint),   // TODO: 32/64 bit cmdline switch
-                        // "sizeof(nuint)" => sizeof(nuint), // TODO: 32/64 bit cmdline switch
+                        "sizeof(nint)" => TypeDB.NInt.ByteSize,
+                        "sizeof(nuint)" => TypeDB.NUInt.ByteSize,
                         "sizeof(sbyte)" => sizeof(sbyte),
                         "sizeof(uint)" => sizeof(uint),
                         "sizeof(ulong)" => sizeof(ulong),

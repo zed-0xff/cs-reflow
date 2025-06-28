@@ -30,6 +30,8 @@ public class ReflowTests
 
     public static void CheckData(string fname)
     {
+        TypeDB.Bitness = 32;
+
         var inputPath = Path.Combine(ReflowTests.DataPath, fname.Trim());
         var expectedPath = inputPath + ".out";
 
