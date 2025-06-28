@@ -77,7 +77,7 @@ public partial class VarProcessor
                 result = ice.Value;
             }
             Result = result;
-            _logger.debug(() => $"{node.Title()} => {result}", "Expression.Evaluate");
+            _logger.debug(() => $"{node.Title()} => {result}");
             return result;
         }
 
@@ -85,19 +85,19 @@ public partial class VarProcessor
         {
             if (Verbosity > 2)
             {
-                _logger.debug($"{localDeclaration}", "Expression.ProcessLocalDeclaration");
+                _logger.debug($"{localDeclaration}");
                 if (Verbosity > 3)
                 {
-                    _logger.debug($"Expression.ProcessLocalDeclaration: .Declaration = {localDeclaration.Declaration}", "Expression.ProcessLocalDeclaration");
-                    _logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Type = {localDeclaration.Declaration.Type}", "Expression.ProcessLocalDeclaration");
-                    _logger.debug($"Expression.ProcessLocalDeclaration: .Declaration.Variables = {localDeclaration.Declaration.Variables}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($".Declaration = {localDeclaration.Declaration}");
+                    _logger.debug($".Declaration.Type = {localDeclaration.Declaration.Type}");
+                    _logger.debug($".Declaration.Variables = {localDeclaration.Declaration.Variables}");
                 }
             }
 
             foreach (var variable in localDeclaration.Declaration.Variables)
             {
                 if (Verbosity > 2)
-                    _logger.debug($"Expression.ProcessLocalDeclaration: A Variable = {variable}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"A Variable = {variable}");
 
                 // Get the variable name (e.g., "num3")
                 var varID = variable.Identifier;
@@ -123,7 +123,7 @@ public partial class VarProcessor
                 }
 
                 if (Verbosity > 2)
-                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: C varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"C varID={varID} value={value}");
 
                 // narrow returned value type, when possible
                 if (localDeclaration.Declaration.Type is not null && TypeDB.TryFind(localDeclaration.Declaration.Type.ToString()) is not null)
@@ -140,13 +140,13 @@ public partial class VarProcessor
                 }
 
                 if (Verbosity > 3)
-                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: D varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"D varID={varID} value={value}");
 
                 // if (value is UnknownValueBase unk)
                 //     value = unk.WithTag(varID);
 
                 if (Verbosity > 3)
-                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: E varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"E varID={varID} value={value}");
 
                 // do not overwrite existing variable values if initializerExpression is null
                 if (initializerExpression != null || !_varDict.ContainsKey(varID))
@@ -155,7 +155,7 @@ public partial class VarProcessor
                 }
 
                 if (Verbosity > 3)
-                    _logger.debug($"[d] Expression.ProcessLocalDeclaration: F varID={varID} value={value}", "Expression.ProcessLocalDeclaration");
+                    _logger.debug($"F varID={varID} value={value}");
 
                 // don't return 'value' bc it might be an UnknownValue from empty declaration, but vars may already have its value
                 //return _varDict[varID];
