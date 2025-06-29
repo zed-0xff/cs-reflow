@@ -564,7 +564,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     {
                         var caseValue = EvaluateExpression(caseLabel.Value);
                         if (caseValue.GetType() != value.GetType())
-                            throw new NotSupportedException($"Switch case value type mismatch: case {caseValue.GetType()} vs actual {value.GetType()}");
+                            throw new NotSupportedException($"Switch case value type mismatch: case {caseValue.GetType()} vs actual {value.GetType()}: {caseLabel.TitleWithLineNo()}");
                         if (caseValue.Equals(value))
                         {
                             swLabel = caseLabel;
@@ -999,7 +999,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             Console.Write(ANSI.COLOR_RESET);
         Console.WriteLine();
         if (Verbosity > 1)
-            Console.WriteLine($"    vars: {_varProcessor.VariableValues()}");
+            Console.WriteLine($"    vars: {_varProcessor.VariableValues().ToString(Verbosity > 2)}");
     }
 
     // return: bool skip?

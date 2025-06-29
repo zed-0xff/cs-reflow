@@ -23,7 +23,7 @@ public partial class ExpressionTests
     {
         string typeName = value switch
         {
-            UnknownTypedValue ut => ut.Type.Name,
+            UnknownTypedValue ut => ut.type.Name,
             _ => value.GetType().Name
         };
         var V = _varDB.Add(name, typeName);
@@ -508,7 +508,7 @@ public partial class ExpressionTests
         // TBD
     }
 
-    void check0(string exprected_res_type, int expected_res, string type1, object value1, string op, string value2)
+    void check0(string expected_res_type, int expected_res, string type1, object value1, string op, string value2)
     {
         var decl = $"{type1} x = {value1}";
         var expr = $"x {op} {value2}";
@@ -516,11 +516,11 @@ public partial class ExpressionTests
         Eval(decl);
         var result = Eval(expr);
         var short_res_type = TypeDB.ShortType(result!.GetType().Name);
-        Assert.True(exprected_res_type == short_res_type, $"{decl}; {expr} == ({exprected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
+        Assert.True(expected_res_type == short_res_type, $"{decl}; {expr} == ({expected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
         Assert.Equal(expected_res.ToString(), result.ToString());
     }
 
-    void check1(string exprected_res_type, int expected_res, string type1, object value1, string op, string value2)
+    void check1(string expected_res_type, int expected_res, string type1, object value1, string op, string value2)
     {
         var decl = $"{type1} x = {value1}";
         var expr = $"{value2} {op} x";
@@ -528,7 +528,7 @@ public partial class ExpressionTests
         Eval(decl);
         var result = Eval(expr);
         var short_res_type = TypeDB.ShortType(result!.GetType().Name);
-        Assert.True(exprected_res_type == short_res_type, $"{decl}; {expr} == ({exprected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
+        Assert.True(expected_res_type == short_res_type, $"{decl}; {expr} == ({expected_res_type}) {expected_res}; // got ({short_res_type}) {result}");
         Assert.Equal(expected_res.ToString(), result.ToString());
     }
 }

@@ -2,16 +2,16 @@ public class UnknownValueRange : UnknownValueRangeBase
 {
     public readonly LongRange Range; // immutable!
 
-    public UnknownValueRange(TypeDB.IntInfo type, LongRange? range = null) : base(type)
+    public UnknownValueRange(TypeDB.IntType type, LongRange? range = null) : base(type)
     {
         Range = range ?? this.type.Range;
     }
 
-    public UnknownValueRange(TypeDB.IntInfo type, long min, long max) :
+    public UnknownValueRange(TypeDB.IntType type, long min, long max) :
         this(type, new LongRange(min, max))
     { }
 
-    public UnknownValueRange(UnknownTypedValue parent, TypeDB.IntInfo type, LongRange range) :
+    public UnknownValueRange(UnknownTypedValue parent, TypeDB.IntType type, LongRange range) :
         this(type, range)
     {
         _var_id = parent._var_id;
@@ -19,7 +19,7 @@ public class UnknownValueRange : UnknownValueRangeBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, Range) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
-    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueRange(type, Range); // TODO: type conversion
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueRange(type, Range); // TODO: type conversion
 
     public override bool Equals(object? obj) => (obj is UnknownValueRange r) && type == r.type && Range.Equals(r.Range);
 
@@ -44,7 +44,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         return base.CanConvertTo<T>();
     }
 
-    public override object Cast(TypeDB.IntInfo toType)
+    public override object Cast(TypeDB.IntType toType)
     {
         if (toType == TypeDB.ULong)
             throw new NotImplementedException("Cast to ULong is not implemented for UnknownValueRange.");
@@ -190,30 +190,25 @@ public class UnknownValueRange : UnknownValueRangeBase
         return new UnknownValueRange(type, Range >> (int)l);
     }
 
-    public override UnknownValueRange TypedUnsignedShiftRight(object right) // '>>>'
+    public override UnknownTypedValue TypedUnsignedShiftRight(object right) // '>>>'
     {
         if (!TryConvertToLong(right, out long l))
-            return new(type);
+            return UnknownTypedValue.Create(type);
 
         int shift = (int)l;
 
-        if (Range.Min >= 0)
+        if (Range.Min >= 0) // handles all unsigned types + limited ranges of signed types
             return new UnknownValueRange(type, Range >> shift);
 
-        long min, max;
-        (min, max) = type.Name switch
-        {
-            "int" => ((long)((int)Range.Min >>> shift), (long)((int)Range.Max >>> shift)),
-            "nint" => ((long)((int)Range.Min >>> shift), (long)((int)Range.Max >>> shift)), // TODO: 32/64 bit cmdline switch
-            "sbyte" => ((long)((sbyte)Range.Min >>> shift), (long)((sbyte)Range.Max >>> shift)),
-            "short" => ((long)((short)Range.Min >>> shift), (long)((short)Range.Max >>> shift)),
-            _ => (Range.Min >>> shift, Range.Max >>> shift)
-        };
+        if (Range.Max < 0)
+            return new UnknownValueRange(type, new LongRange(Range.Min >>> shift, Range.Max >>> shift));
 
-        if (min > max)
-            (min, max) = (max, min);
-
-        return new UnknownValueRange(type, min, max);
+        // Range.Min < 0 && Range.Max >= 0
+        return new UnknownValueRanges(type,
+            new List<LongRange>(){
+                new LongRange(0, Range.Max >>> shift),
+                new LongRange((Range.Min & type.Mask) >>> shift, type.Mask >>> shift)
+            });
     }
 
     public override UnknownTypedValue TypedMod(object right)

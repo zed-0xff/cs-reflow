@@ -9,15 +9,15 @@ public class UnknownValueBits : UnknownValueBitsBase
     public const sbyte ONE = 1;
     public const sbyte ZERO = 0;
 
-    public UnknownValueBits(TypeDB.IntInfo type, BitSpan bitspan) : base(type, bitspan)
+    public UnknownValueBits(TypeDB.IntType type, BitSpan bitspan) : base(type, bitspan)
     {
     }
 
-    public UnknownValueBits(TypeDB.IntInfo type, IEnumerable<BitType>? bits = null) :
+    public UnknownValueBits(TypeDB.IntType type, IEnumerable<BitType>? bits = null) :
         this(type, bits2span(type, bits))
     { }
 
-    protected static BitSpan bits2span(TypeDB.IntInfo type, IEnumerable<BitType>? bits)
+    protected static BitSpan bits2span(TypeDB.IntType type, IEnumerable<BitType>? bits)
     {
         if (bits == null)
             return type.BitSpan;
@@ -60,14 +60,14 @@ public class UnknownValueBits : UnknownValueBitsBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bitspan) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bitspan) { _var_id = id };
-    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueBits(type, _bitspan); // TODO: check
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueBits(type, _bitspan); // TODO: check
 
-    public static UnknownValueBits CreateFromAnd(TypeDB.IntInfo type, long mask)
+    public static UnknownValueBits CreateFromAnd(TypeDB.IntType type, long mask)
     {
         return new UnknownValueBits(type, type.BitSpan & mask);
     }
 
-    public static UnknownValueBits CreateFromOr(TypeDB.IntInfo type, long mask)
+    public static UnknownValueBits CreateFromOr(TypeDB.IntType type, long mask)
     {
         return new UnknownValueBits(type, type.BitSpan | mask);
     }
@@ -160,7 +160,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         };
     }
 
-    public override object Cast(TypeDB.IntInfo toType) => (toType.nbits == type.nbits) ? new UnknownValueBits(toType, _bitspan) : base.Cast(toType);
+    public override object Cast(TypeDB.IntType toType) => (toType.nbits == type.nbits) ? new UnknownValueBits(toType, _bitspan) : base.Cast(toType);
 
     public override bool Typed_IntersectsWith(UnknownTypedValue other)
     {

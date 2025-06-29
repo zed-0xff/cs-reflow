@@ -2,24 +2,24 @@ public class UnknownValueRanges : UnknownValueRangeBase
 {
     readonly LongRangeSet _rangeSet = new(); // should be immutable!
 
-    public UnknownValueRanges(TypeDB.IntInfo type, LongRangeSet rangeSet) : base(type)
+    public UnknownValueRanges(TypeDB.IntType type, LongRangeSet rangeSet) : base(type)
     {
         _rangeSet = rangeSet;
     }
 
-    public UnknownValueRanges(TypeDB.IntInfo type, long min, long max) : base(type)
+    public UnknownValueRanges(TypeDB.IntType type, long min, long max) : base(type)
     {
         _rangeSet.Add(new LongRange(min, max));
     }
 
-    public UnknownValueRanges(TypeDB.IntInfo type, IEnumerable<LongRange> ranges) : base(type)
+    public UnknownValueRanges(TypeDB.IntType type, IEnumerable<LongRange> ranges) : base(type)
     {
         _rangeSet.Add(ranges);
     }
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _rangeSet) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _rangeSet) { _var_id = id };
-    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueRanges(type, _rangeSet); // TODO: type conversion
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueRanges(type, _rangeSet); // TODO: type conversion
 
     public override bool Equals(object? obj)
     {
@@ -36,7 +36,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
     public override BitSpan BitSpan() => _rangeSet.BitSpan();
 
     // TODO: DRY with UnknownValueRange.Cast()
-    public override object Cast(TypeDB.IntInfo toType)
+    public override object Cast(TypeDB.IntType toType)
     {
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {

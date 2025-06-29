@@ -1,17 +1,22 @@
-public abstract class UnknownTypedValue : UnknownValueBase
+using Microsoft.CodeAnalysis.CSharp;
+
+public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 {
     public static readonly ulong MAX_DISCRETE_CARDINALITY = 1_000_000UL;
     public static readonly Type DEFAULT_TYPE = typeof(UnknownValueRange);
 
-    public TypeDB.IntInfo type { get; }
-    public TypeDB.IntInfo Type => type;
+    public TypeDB.IntType type { get; }
+    public Microsoft.CodeAnalysis.SpecialType IntTypeID => type.id;
+    public bool CanBeNegative => type.CanBeNegative;
 
-    public UnknownTypedValue(TypeDB.IntInfo type) : base()
+    public UnknownTypedValue(TypeDB.IntType type) : base()
     {
+        if (type == null)
+            throw new ArgumentNullException(nameof(type), "TypeDB.IntType cannot be null");
         this.type = type;
     }
 
-    public abstract UnknownTypedValue WithType(TypeDB.IntInfo type);
+    public abstract UnknownTypedValue WithType(TypeDB.IntType type);
 
     public abstract UnknownTypedValue TypedAdd(object right);
     public abstract UnknownValueBase TypedDiv(object right);
@@ -23,16 +28,16 @@ public abstract class UnknownTypedValue : UnknownValueBase
     public abstract UnknownValueBase TypedSignedShiftRight(object right);
     public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
 
-    public static UnknownValueRange Create(TypeDB.IntInfo type) => new UnknownValueRange(type); // DEFAULT_TYPE
+    public static UnknownValueRange Create(TypeDB.IntType type) => new UnknownValueRange(type); // DEFAULT_TYPE
 
-    static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _zeroes = new();
-    static readonly Dictionary<TypeDB.IntInfo, UnknownTypedValue> _ones = new();
+    static readonly Dictionary<TypeDB.IntType, UnknownTypedValue> _zeroes = new();
+    static readonly Dictionary<TypeDB.IntType, UnknownTypedValue> _ones = new();
 
-    public static UnknownTypedValue Zero(TypeDB.IntInfo type) =>
+    public static UnknownTypedValue Zero(TypeDB.IntType type) =>
         _zeroes.TryGetValue(type, out var zero) ? zero :
         (_zeroes[type] = new UnknownValueRange(type, 0, 0));
 
-    public static UnknownTypedValue One(TypeDB.IntInfo type) =>
+    public static UnknownTypedValue One(TypeDB.IntType type) =>
         _ones.TryGetValue(type, out var one) ? one :
         (_ones[type] = new UnknownValueRange(type, 1, 1));
 
@@ -101,6 +106,99 @@ public abstract class UnknownTypedValue : UnknownValueBase
 
         return this;
     }
+
+    public override object UnaryOp(SyntaxKind op) =>
+        op switch
+        {
+            SyntaxKind.PostIncrementExpression => Add(1),
+            SyntaxKind.PostDecrementExpression => Sub(1),
+            SyntaxKind.BitwiseNotExpression => BitwiseNot(),
+            SyntaxKind.UnaryPlusExpression => this,
+            SyntaxKind.UnaryMinusExpression => Negate(),
+            SyntaxKind.LogicalNotExpression => Eq(0),
+            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
+        };
+
+    private object BinaryOpNoPromote(string op, object rValue) =>
+        op switch
+        {
+            "+" => Add(rValue),
+            "-" => Sub(rValue),
+            "*" => Mul(rValue),
+            "/" => Div(rValue),
+            "%" => Mod(rValue),
+            "^" => Xor(rValue),
+
+            "!=" => Ne(rValue),
+            "<" => Lt(rValue),
+            "<=" => Lte(rValue),
+            "==" => Eq(rValue),
+            ">" => Gt(rValue),
+            ">=" => Gte(rValue),
+
+            "&" => BitwiseAnd(rValue),
+            "|" => BitwiseOr(rValue),
+
+            "<<" => ShiftLeft(rValue),
+            ">>" => SignedShiftRight(rValue),
+            ">>>" => UnsignedShiftRight(rValue),
+
+            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
+        };
+
+    public override object BinaryOp(string op, object rValue)
+    {
+        if (rValue is UnknownValue)
+            return UnknownValue.Create();
+
+        if (op == "<<" || op == ">>" || op == ">>>")
+        {
+            if (type.ByteSize < 4)
+                return Upcast(TypeDB.Int).BinaryOpNoPromote(op, rValue);
+        }
+        else
+        {
+            var (tl, tr) = TypeDB.Promote(this, rValue);
+            if (tl != null || tr != null)
+            {
+                Logger.debug(() => $"{ToString()}.BinaryOp({op}, {rValue}): promoting {tl} and {tr}", "UnknownTypedValue.BinaryOp");
+                if (tr != null)
+                {
+                    rValue = rValue switch
+                    {
+                        UnknownTypedValue rt => rt.Upcast(tr),
+                        _ => tr.ConvertAny(rValue)
+                    };
+                }
+                if (tl != null)
+                    return Upcast(tl).BinaryOpNoPromote(op, rValue);
+            }
+        }
+
+        return BinaryOpNoPromote(op, rValue);
+    }
+
+    // swap the left and right operands
+    // XXX it is necessary to call BinaryOp() here bc BinaryOp() also handles type promotion
+    public override object InverseBinaryOp(string op, object lValue) =>
+        op switch
+        {
+            "+" => BinaryOp(op, lValue),
+            "-" => Negate().BinaryOp("+", lValue), // N - unk = (-unk) + N
+            "*" => BinaryOp(op, lValue),
+            "^" => BinaryOp(op, lValue),
+            "&" => BinaryOp(op, lValue),
+            "|" => BinaryOp(op, lValue),
+            "!=" => BinaryOp(op, lValue),
+            "==" => BinaryOp(op, lValue),
+
+            "<" => BinaryOp(">=", lValue),
+            "<=" => BinaryOp(">", lValue),
+            ">" => BinaryOp("<=", lValue),
+            ">=" => BinaryOp("<", lValue),
+
+            _ => throw new NotImplementedException($"{ToString()}.InverseOp(): '{op}' is not implemented"),
+        };
 
     public override object Eq(object other)
     {
@@ -190,6 +288,8 @@ public abstract class UnknownTypedValue : UnknownValueBase
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        var (tl, tr) = TypeDB.Promote(this, right);
 
         if (TryConvertToLong(right, out long l) && (l == 0))
             return this;
@@ -464,7 +564,21 @@ public abstract class UnknownTypedValue : UnknownValueBase
         return MaybeNormalize(MaybeConvertTo<UnknownValueBitTracker>().TypedXor(right));
     }
 
-    public override object Cast(TypeDB.IntInfo toType)
+    public UnknownTypedValue Upcast(TypeDB.IntType toType)
+    {
+        if (toType == type)
+            return this;
+
+        if (toType.nbits >= type.nbits && toType.signed == type.signed)
+            return WithType(toType);
+
+        if (toType.nbits > type.nbits && !type.signed && toType.signed)
+            return WithType(toType);
+
+        throw new NotImplementedException($"{ToString()}.Upcast({toType}): not implemented. (toType.nbits = {toType.nbits}, type.nbits = {type.nbits})");
+    }
+
+    public override object Cast(TypeDB.IntType toType)
     {
         if (toType == TypeDB.Bool)
         {
@@ -475,17 +589,11 @@ public abstract class UnknownTypedValue : UnknownValueBase
                 case 1:
                     return !Contains(0);
                 default:
-                    return Contains(0) ? UnknownValue.Create(TypeDB.Bool) : true;
+                    return Contains(0) ? ((type == toType) ? this : UnknownValue.Create(TypeDB.Bool)) : true;
             }
         }
 
-        if (toType == type)
-            return this;
-
-        if (toType.nbits == type.nbits || (toType.nbits > type.nbits && !toType.signed))
-            return WithType(toType);
-
-        throw new NotImplementedException($"{ToString()}.Cast({toType}): not implemented. (toType.nbits = {toType.nbits}, type.nbits = {type.nbits})");
+        return Upcast(toType);
     }
 
     public sealed override UnknownValueBase BitwiseAnd(object right)

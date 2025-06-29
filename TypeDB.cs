@@ -1,46 +1,60 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Numerics;
 
-public static class TypeDB
+public static partial class TypeDB
 {
     public static int Bitness = 0;
 
-    public static readonly IntInfo Int8 = new IntInfo("sbyte", typeof(sbyte), 8, true, SyntaxKind.SByteKeyword);
-    public static readonly IntInfo UInt8 = new IntInfo("byte", typeof(byte), 8, false, SyntaxKind.ByteKeyword);
-    public static readonly IntInfo Int16 = new IntInfo("short", typeof(short), 16, true, SyntaxKind.ShortKeyword);
-    public static readonly IntInfo UInt16 = new IntInfo("ushort", typeof(ushort), 16, false, SyntaxKind.UShortKeyword);
-    public static readonly IntInfo Int32 = new IntInfo("int", typeof(int), 32, true, SyntaxKind.IntKeyword);
-    public static readonly IntInfo UInt32 = new IntInfo("uint", typeof(uint), 32, false, SyntaxKind.UIntKeyword);
-    public static readonly IntInfo Int64 = new IntInfo("long", typeof(long), 64, true, SyntaxKind.LongKeyword);
-    public static readonly IntInfo UInt64 = new IntInfo("ulong", typeof(ulong), 64, false, SyntaxKind.ULongKeyword);
-    public static readonly IntInfo Bool = new IntInfo("bool", typeof(bool), 1, false, SyntaxKind.BoolKeyword);
+    public const SpecialType ST_SByte = SpecialType.System_SByte;
+    public const SpecialType ST_Byte = SpecialType.System_Byte;
+    public const SpecialType ST_Int16 = SpecialType.System_Int16;
+    public const SpecialType ST_UInt16 = SpecialType.System_UInt16;
+    public const SpecialType ST_Int32 = SpecialType.System_Int32;
+    public const SpecialType ST_UInt32 = SpecialType.System_UInt32;
+    public const SpecialType ST_Int64 = SpecialType.System_Int64;
+    public const SpecialType ST_UInt64 = SpecialType.System_UInt64;
+    public const SpecialType ST_Boolean = SpecialType.System_Boolean;
+    public const SpecialType ST_IntPtr = SpecialType.System_IntPtr;
+    public const SpecialType ST_UIntPtr = SpecialType.System_UIntPtr;
 
-    public static readonly IntInfo IntPtr32 = new IntInfo("nint", typeof(nint), 32, true, SyntaxKind.IntKeyword);
-    public static readonly IntInfo UIntPtr32 = new IntInfo("nuint", typeof(nuint), 32, false, SyntaxKind.UIntKeyword);
-    public static readonly IntInfo IntPtr64 = new IntInfo("nint", typeof(nint), 64, true, SyntaxKind.LongKeyword);
-    public static readonly IntInfo UIntPtr64 = new IntInfo("nuint", typeof(nuint), 64, false, SyntaxKind.ULongKeyword);
+    public static readonly IntType Int8 = new IntType("sbyte", typeof(sbyte), 8, true, ST_SByte);
+    public static readonly IntType UInt8 = new IntType("byte", typeof(byte), 8, false, ST_Byte);
+    public static readonly IntType Int16 = new IntType("short", typeof(short), 16, true, ST_Int16);
+    public static readonly IntType UInt16 = new IntType("ushort", typeof(ushort), 16, false, ST_UInt16);
+    public static readonly IntType Int32 = new IntType("int", typeof(int), 32, true, ST_Int32);
+    public static readonly IntType UInt32 = new IntType("uint", typeof(uint), 32, false, ST_UInt32);
+    public static readonly IntType Int64 = new IntType("long", typeof(long), 64, true, ST_Int64);
+    public static readonly IntType UInt64 = new IntType("ulong", typeof(ulong), 64, false, ST_UInt64);
+    public static readonly IntType Bool = new IntType("bool", typeof(bool), 1, false, ST_Boolean);
+
+    public static readonly IntType IntPtr32 = new IntType("nint", typeof(nint), 32, true, ST_IntPtr);
+    public static readonly IntType UIntPtr32 = new IntType("nuint", typeof(nuint), 32, false, ST_UIntPtr);
+
+    public static readonly IntType IntPtr64 = new IntType("nint", typeof(nint), 64, true, ST_IntPtr);
+    public static readonly IntType UIntPtr64 = new IntType("nuint", typeof(nuint), 64, false, ST_UIntPtr);
 
     // aliases
-    public static readonly IntInfo Byte = UInt8;
-    public static readonly IntInfo SByte = Int8;
-    public static readonly IntInfo Short = Int16;
-    public static readonly IntInfo UShort = UInt16;
-    public static readonly IntInfo Int = Int32;
-    public static readonly IntInfo UInt = UInt32;
-    public static readonly IntInfo Long = Int64;
-    public static readonly IntInfo ULong = UInt64;
+    public static readonly IntType Byte = UInt8;
+    public static readonly IntType SByte = Int8;
+    public static readonly IntType Short = Int16;
+    public static readonly IntType UShort = UInt16;
+    public static readonly IntType Int = Int32;
+    public static readonly IntType UInt = UInt32;
+    public static readonly IntType Long = Int64;
+    public static readonly IntType ULong = UInt64;
 
-    public static IntInfo NInt => bitness_aware(IntPtr32, IntPtr64);
-    public static IntInfo NUInt => bitness_aware(UIntPtr32, UIntPtr64);
+    public static IntType NInt => bitness_aware(IntPtr32, IntPtr64);
+    public static IntType NUInt => bitness_aware(UIntPtr32, UIntPtr64);
 
-    public static IntInfo Find(string typeName) => TryFind(typeName) ?? throw new NotImplementedException($"TypeDB: {typeName} not supported.");
-    public static IntInfo Find(System.Type type) => Find(type.ToString());
-    public static IntInfo Find(TypeSyntax type) => Find(type.ToString());
+    public static IntType Find(string typeName) => TryFind(typeName) ?? throw new NotImplementedException($"TypeDB: {typeName} not supported.");
+    public static IntType Find(System.Type type) => Find(type.ToString());
+    public static IntType Find(TypeSyntax type) => Find(type.ToString());
 
-    public static IntInfo? TryFind(TypeSyntax type) => TryFind(type.ToString());
-    public static IntInfo? TryFind(System.Type type) => TryFind(type.ToString());
-    public static IntInfo? TryFind(string typeName)
+    public static IntType? TryFind(TypeSyntax type) => TryFind(type.ToString());
+    public static IntType? TryFind(System.Type type) => TryFind(type.ToString());
+    public static IntType? TryFind(string typeName)
     {
         return ShortType(typeName) switch
         {
@@ -61,12 +75,12 @@ public static class TypeDB
         };
     }
 
-    private static IntInfo bitness_aware(IntInfo int32, IntInfo int64) =>
+    private static IntType bitness_aware(IntType int32, IntType int64) =>
         Bitness switch
         {
             32 => int32,
             64 => int64,
-            0 => throw new NotSupportedException($"TypeDB.Bitness is not set."),
+            0 => throw new InvalidOperationException($"TypeDB.Bitness is not set."),
             _ => throw new NotSupportedException($"TypeDB.Bitness {Bitness} is not supported.")
         };
 
@@ -85,6 +99,8 @@ public static class TypeDB
             "System.UInt32" => "uint",
             "System.Int64" => "long",
             "System.UInt64" => "ulong",
+            "System.IntPtr" => "nint",
+            "System.UIntPtr" => "nuint",
 
             "Byte" => "byte",
             "SByte" => "sbyte",
@@ -94,132 +110,58 @@ public static class TypeDB
             "UInt32" => "uint",
             "Int64" => "long",
             "UInt64" => "ulong",
-
             "IntPtr" => "nint",
-            "System.IntPtr" => "nint",
-
             "UIntPtr" => "nuint",
-            "System.UIntPtr" => "nuint",
 
             _ => type,
         };
     }
 
-    public interface IIntInfo
+    public static (IntType?, IntType?) Promote(object l, object r)
     {
-        IntInfo IntType { get; }
-        bool CanBeNegative { get; }
+        var il = IIntType.From(l);
+        var ir = IIntType.From(r);
+        return PromoteTypes(il, ir);
     }
 
-    public class IntInfo : IIntInfo
+    // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
+    public static (IntType?, IntType?) PromoteTypes(IIntType l, IIntType r)
     {
-        public bool CanBeNegative => signed;
-        public IntInfo IntType => this;
-
-        public readonly string Name;
-        public readonly System.Type Type;
-        public readonly int nbits;
-        public readonly int ByteSize;
-        public readonly bool signed;
-        public readonly SyntaxKind Kind;
-
-        public readonly long MinValue;
-        public readonly long MaxSignedValue;
-        public readonly ulong MaxUnsignedValue;
-
-        public readonly long Mask;
-        public readonly long SignMask;
-        public readonly LongRange Range;
-        public readonly BitSpan BitSpan;
-
-        public IntInfo(string name, System.Type type, int nbits, bool signed, SyntaxKind kind)
+        var lid = l.IntTypeID;
+        var rid = r.IntTypeID;
+        switch (lid, rid)
         {
-            Name = name;
-            Type = type;
-            this.nbits = nbits;
-            this.ByteSize = nbits / 8;
-            this.signed = signed;
-            Kind = kind;
-            MinValue = signed ? -(1L << (nbits - 1)) : 0;
-            MaxSignedValue = (nbits == 64 || signed) ? (1L << (nbits - 1)) - 1 : (1L << nbits) - 1;
-            MaxUnsignedValue = (nbits == 64 && !signed) ? unchecked((ulong)(-1L)) : (ulong)MaxSignedValue;
-
-            Mask = (1L << nbits) - 1;
-            SignMask = signed ? (1L << (nbits - 1)) : 0;
-            Range = new LongRange(MinValue, MaxSignedValue);
-            BitSpan = new BitSpan(0, Mask);
-        }
-
-        public override string ToString() => Name;
-        public override bool Equals(object? obj) => (obj is IntInfo other) && nbits == other.nbits && Type == other.Type;
-        public override int GetHashCode() => HashCode.Combine(nbits, signed);
-
-        public bool CanFit(long value)
-        {
-            return value >= MinValue && value <= MaxSignedValue;
-        }
-
-        public bool CanFit(ulong value)
-        {
-            return value <= MaxUnsignedValue;
-        }
-    }
-
-    public static (IntInfo?, IntInfo?) PromoteTypes(IIntInfo l, IIntInfo r)
-    {
-        var ltype = l.IntType;
-        var rtype = r.IntType;
-        // [floats skipped]
-        // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
-        // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
-        if (ltype == ULong || rtype == ULong)
-        {
-            if (ltype != ULong) return (ULong, null);
-            if (rtype != ULong) return (null, ULong);
-        }
-
-        // Otherwise, if either operand is of type long, the OTHER OPERAND is converted to type long.
-        else if (ltype == Long || rtype == Long)
-        {
-            if (ltype != Long) return (Long, null);
-            if (rtype != Long) return (null, Long);
-        }
-
-        // Otherwise, if either operand is of type uint and the other operand is of type sbyte, short, or int, BOTH OPERANDS are converted to type long.
-        // XXX not always true XXX
-        else if (
-                (ltype == UInt && (rtype == SByte || rtype == Short || rtype == Int)) ||
-                (rtype == UInt && (ltype == SByte || ltype == Short || ltype == Int))
-                )
-        {
-            // if left is uint and right is int, but can fit in uint => right is converted to uint
-            if (ltype == UInt && rtype == Int && !r.CanBeNegative)
-            {
-                return (null, UInt);
-            }
-            else if (rtype == UInt && ltype == Int && !l.CanBeNegative)
-            {
-                return (UInt, null);
-            }
-            else
-            {
+            case (ST_Int32, ST_Int32): // fast check for most common case
+                return (null, null);
+            // [floats skipped]
+            // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
+            // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
+            case (ST_UInt64, _) or (_, ST_UInt64):
+                if (lid != ST_UInt64) return (ULong, null);
+                if (rid != ST_UInt64) return (null, ULong);
+                break;
+            // Otherwise, if either operand is of type long, the OTHER OPERAND is converted to type long.
+            case (ST_Int64, _) or (_, ST_Int64):
+                if (lid != ST_Int64) return (Long, null);
+                if (rid != ST_Int64) return (null, Long);
+                break;
+            // Otherwise, if either operand is of type uint and the other operand is of type sbyte, short, or int, BOTH OPERANDS are converted to type long.
+            // XXX not always true XXX
+            case (ST_UInt32, ST_SByte or ST_Int16 or ST_Int32) or (ST_SByte or ST_Int16 or ST_Int32, ST_UInt32):
+                // if left is uint and right is int, but can fit in uint => right is converted to uint
+                if (lid == ST_UInt32 && rid == ST_Int32 && !r.CanBeNegative) return (null, UInt);
+                if (rid == ST_UInt32 && lid == ST_Int32 && !l.CanBeNegative) return (UInt, null);
                 return (Long, Long);
-            }
-        }
-
-        // Otherwise, if either operand is of type uint, the OTHER OPERAND is converted to type uint.
-        else if (ltype == UInt || rtype == UInt)
-        {
-            if (ltype != UInt)
-                return (UInt, null);
-            if (rtype != UInt)
-                return (null, UInt);
-        }
-        else
-        {
+            // Otherwise, if either operand is of type uint, the OTHER OPERAND is converted to type uint.
+            case (ST_UInt32, _) or (_, ST_UInt32):
+                if (lid != ST_UInt32) return (UInt, null);
+                if (rid != ST_UInt32) return (null, UInt);
+                break;
             // Otherwise, BOTH OPERANDS are converted to type int.
-            return (Int, Int);
+            default:
+                return (Int, Int);
         }
+        ;
 
         return (null, null); // no promotion necessary
     }

@@ -106,6 +106,11 @@ public static class Logger
                 EnabledCategories.Add(trimmed.Substring(0, trimmed.Length - 1));
                 EnabledCategories.Add(trimmed.Substring(0, trimmed.Length - 2));
             }
+            else if (trimmed.EndsWith(".all"))
+            {
+                EnabledCategories.Add(trimmed.Substring(0, trimmed.Length - 3));
+                EnabledCategories.Add(trimmed.Substring(0, trimmed.Length - 4));
+            }
             else
                 EnabledTags.Add(trimmed);
         }

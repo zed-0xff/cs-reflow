@@ -1,6 +1,3 @@
-using System;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 public class UnknownValue : UnknownValueBase
 {
     public class Builder
@@ -32,19 +29,23 @@ public class UnknownValue : UnknownValueBase
     }
 
     public static UnknownValueBase Create(Type? type) => (type == null) ? Create() : Create(type.ToString());
-    public static UnknownValueBase Create(TypeSyntax type) => Create(type.ToString());
-    public static UnknownValueBase Create(TypeDB.IntInfo? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
+    public static UnknownValueBase Create(Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax type) => Create(type.ToString());
+    public static UnknownValueBase Create(TypeDB.IntType? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new() { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new() { _var_id = id };
 
-    public override UnknownValueBase Cast(TypeDB.IntInfo toType) => Create(toType);
+    public override UnknownValueBase Cast(TypeDB.IntType toType) => Create(toType);
 
     public override string ToString() => "UnknownValue" + TagStr();
 
     public override bool Contains(long value) => throw new NotImplementedException($"{ToString()}.Contains(): not implemented.");
     public override ulong Cardinality() => throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
     public override IEnumerable<long> Values() => throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
+
+    public override object UnaryOp(Microsoft.CodeAnalysis.CSharp.SyntaxKind op) => new UnknownValue();
+    public override object BinaryOp(string op, object rValue) => new UnknownValue();
+    public override object InverseBinaryOp(string op, object lValue) => new UnknownValue();
 
     public override UnknownValue Add(object right) => new UnknownValue();
     public override UnknownValue Div(object right) => new UnknownValue();

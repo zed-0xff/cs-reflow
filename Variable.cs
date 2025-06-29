@@ -10,7 +10,7 @@ public class Variable
     public readonly string VarID;
 
     public readonly SyntaxAnnotation Annotation;
-    public readonly TypeDB.IntInfo? IntType;
+    public readonly TypeDB.IntType? IntType;
 
     public const int FLAG_LOOP = 1;
 

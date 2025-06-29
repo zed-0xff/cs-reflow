@@ -69,11 +69,19 @@ public class VarDict
     }
 
     // XXX all Sets should call this one
-    void setVar(int id, object? value)
+    void setVar(Variable V, object? value)
     {
-        if (value is UnknownValueBase unk)
-            value = unk.WithVarID(id);
-        _values[id] = value;
+        _logger.debug(() => $"setVar: {V} = ({value?.GetType()}) {value}");
+        if (value is UnknownTypedValue ut && V.IntType != null && ut.type != V.IntType)
+            value = ut.Cast(V.IntType);
+
+        _values[V.id] = value switch
+        {
+            UnknownValue u => V.IntType != null ? UnknownTypedValue.Create(V.IntType).WithVarID(V.id) : u,
+            UnknownTypedValue ut2 => ut2.WithVarID(V.id),
+            IntConstExpr ice => ice.Materialize(V.IntType),
+            _ => value
+        };
     }
 
     public void ResetVar(SyntaxToken token)
@@ -81,7 +89,7 @@ public class VarDict
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug($"Resetting variable {V}");
-            setVar(V!.id, DefaultValue(V!.id));
+            setVar(V!, DefaultValue(V!.id));
         }
     }
 
@@ -90,15 +98,15 @@ public class VarDict
     public void Set(int id, object? value, [CallerMemberName] string caller = "")
     {
         _logger.debug(() => $"{_varDB[id]} = {value} [caller: {caller}]");
-        setVar(id, value);
+        setVar(_varDB[id], value);
     }
 
-    public void Set(SyntaxToken token, object? value)
+    public void Set(SyntaxToken token, object? value, [CallerMemberName] string caller = "")
     {
         if (_varDB.TryGetValue(token, out var V))
         {
-            _logger.debug($"{V} = {value}");
-            setVar(V!.id, value);
+            _logger.debug(() => $"{V} = ({value?.GetType()}) {value} [caller: {caller}]");
+            setVar(V!, value);
         }
         else
         {
@@ -231,5 +239,6 @@ public class VarDict
         return hash;
     }
 
-    public override string ToString() => "<VarDict " + string.Join(", ", _values.Select(kvp => $"{_varDB[kvp.Key].Name}={kvp.Value}")) + ">";
+    public override string ToString() => ToString(false);
+    public string ToString(bool showType) => "<VarDict " + string.Join(", ", _values.Select(kvp => $"{_varDB[kvp.Key].Name}={(showType ? $"({kvp.Value?.GetType()}) " : "")}{kvp.Value}")) + ">";
 }

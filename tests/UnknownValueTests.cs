@@ -41,7 +41,7 @@ public class UnknownValueTests
         var b = UnknownValue.Create(type);
         Assert.True(b is UnknownValue);
 
-        TypeDB.IntInfo? intType = null;
+        TypeDB.IntType? intType = null;
         var c = UnknownValue.Create(intType);
         Assert.True(c is UnknownValue);
     }

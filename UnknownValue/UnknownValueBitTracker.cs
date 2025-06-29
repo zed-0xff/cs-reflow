@@ -34,19 +34,19 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         _bits = new(init(bits));
     }
 
-    public UnknownValueBitTracker(TypeDB.IntInfo type, int var_id, IEnumerable<BitType>? bits = null) : base(type, bits2span(type, bits))
+    public UnknownValueBitTracker(TypeDB.IntType type, int var_id, IEnumerable<BitType>? bits = null) : base(type, bits2span(type, bits))
     {
         _var_id = var_id;
         _bits = new(init(bits));
     }
 
-    public UnknownValueBitTracker(TypeDB.IntInfo type, int var_id, BitSpan bitspan) : base(type, bitspan)
+    public UnknownValueBitTracker(TypeDB.IntType type, int var_id, BitSpan bitspan) : base(type, bitspan)
     {
         _var_id = var_id;
         _bits = new(span2bits(init(null), bitspan, ZERO, ONE));
     }
 
-    protected static BitSpan bits2span(TypeDB.IntInfo type, IEnumerable<BitType>? bits)
+    protected static BitSpan bits2span(TypeDB.IntType type, IEnumerable<BitType>? bits)
     {
         if (bits == null)
             return type.BitSpan;
@@ -87,7 +87,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBitTracker(this, _bits) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBitTracker(type, id, _bits);
-    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueBitTracker(type, _var_id!.Value, _bits); // TODO: type conversion
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueBitTracker(type, _var_id!.Value, _bits); // TODO: type conversion
 
     public bool HasPrivateBits() => _bits.Any(b => b.IsPrivateBit());
 
@@ -116,7 +116,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         return new UnknownValueBitTracker(this, _bits.Select((b, i) => i == idx ? value : b));
     }
 
-    public override object Cast(TypeDB.IntInfo toType)
+    public override object Cast(TypeDB.IntType toType)
     {
         if (toType.nbits == type.nbits)
             return new UnknownValueBitTracker(toType!, _var_id!.Value, _bits);

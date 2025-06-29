@@ -3,7 +3,7 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
     protected readonly BitSpan _bitspan;
     public override BitSpan BitSpan() => _bitspan;
 
-    public UnknownValueBitsBase(TypeDB.IntInfo type, BitSpan bitspan) : base(type)
+    public UnknownValueBitsBase(TypeDB.IntType type, BitSpan bitspan) : base(type)
     {
         _bitspan = bitspan & type.Mask;
     }

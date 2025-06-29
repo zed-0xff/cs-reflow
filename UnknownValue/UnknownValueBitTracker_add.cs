@@ -51,6 +51,10 @@ public partial class UnknownValueBitTracker
                 case (BitType a, bool b, BitType c) when a.IsPrivateBit() && c.IsPrivateBit():
                     (newBits[i], carry) = a.AddRegular3(b ? ONE : ZERO, c);
                     break;
+                case (ONE, true, BitType c) when c.IsPrivateBit():
+                    newBits[i] = c;
+                    carry = ONE;
+                    break;
                 default:
                     throw new NotImplementedException($"Cannot add: ({newBits[i]}, {add_bit}, {carry})");
             }

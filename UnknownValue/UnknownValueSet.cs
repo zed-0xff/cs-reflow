@@ -4,13 +4,13 @@ public class UnknownValueSet : UnknownTypedValue
 {
     readonly ImmutableHashSet<long> _values = ImmutableHashSet<long>.Empty;
 
-    public UnknownValueSet(TypeDB.IntInfo type, List<long>? values = null) : base(type)
+    public UnknownValueSet(TypeDB.IntType type, List<long>? values = null) : base(type)
     {
         if (values != null)
             _values = ImmutableHashSet.CreateRange(values);
     }
 
-    public UnknownValueSet(TypeDB.IntInfo type, IEnumerable<long> values) : base(type)
+    public UnknownValueSet(TypeDB.IntType type, IEnumerable<long> values) : base(type)
     {
         if (values != null)
             _values = ImmutableHashSet.CreateRange(values);
@@ -18,7 +18,7 @@ public class UnknownValueSet : UnknownTypedValue
 
     public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _values) { _tag = tag };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
-    public override UnknownTypedValue WithType(TypeDB.IntInfo type) => new UnknownValueSet(type, _values); // TODO: type conversion
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueSet(type, _values); // TODO: type conversion
 
     public override bool IsFullRange() => Cardinality() == type.Range.Count && Min() == type.Range.Min && Max() == type.Range.Max;
 
@@ -83,7 +83,7 @@ public class UnknownValueSet : UnknownTypedValue
     public override UnknownValueBase Negate() => new UnknownValueSet(type, _values.Select(v => MaskWithSign(-v)));
     public override UnknownValueBase BitwiseNot() => new UnknownValueSet(type, _values.Select(v => MaskWithSign(~v)));
 
-    public override object Cast(TypeDB.IntInfo toType)
+    public override object Cast(TypeDB.IntType toType)
     {
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {

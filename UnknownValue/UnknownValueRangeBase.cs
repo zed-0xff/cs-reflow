@@ -1,6 +1,6 @@
 public abstract class UnknownValueRangeBase : UnknownTypedValue
 {
-    public UnknownValueRangeBase(TypeDB.IntInfo type) : base(type)
+    public UnknownValueRangeBase(TypeDB.IntType type) : base(type)
     {
     }
 }

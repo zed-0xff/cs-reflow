@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Globalization;
@@ -21,17 +22,20 @@ public static class NumberUtils
 }
 
 public class IntConstExpr :
+    TypeDB.IIntType,
     INumber<IntConstExpr>,
     IBitwiseOperators<IntConstExpr, IntConstExpr, IntConstExpr>,
     IShiftOperators<IntConstExpr, int, IntConstExpr>,
     IShiftOperators<IntConstExpr, IntConstExpr, IntConstExpr>
 {
     public int Value { get; }
-    public TypeDB.IntInfo IntType { get; }
+    public TypeDB.IntType IntType { get; }
+    public Microsoft.CodeAnalysis.SpecialType IntTypeID => IntType.id;
+    public bool CanBeNegative => (Value < 0);
 
-    public IntConstExpr(int value, TypeDB.IntInfo? type = null)
+    public IntConstExpr(int value, TypeDB.IntType? type = null)
     {
-        type ??= TypeDB.Int32; // Default to Int32 if no type is provided
+        type ??= TypeDB.Int; // Default to int if no type is provided
 
         if (!type.CanFit(value))
             throw new InvalidCastException($"Cannot create IntConstExpr with value {value} and type {type}. Value is out of range for type {type}.");
@@ -94,7 +98,6 @@ public class IntConstExpr :
         };
 
     public override int GetHashCode() => Value.GetHashCode();
-
     public override string ToString() => Value.ToString();
 
     // Required members of INumber
@@ -249,9 +252,9 @@ public class IntConstExpr :
     public static bool operator >=(IntConstExpr left, IntConstExpr right) => left.Value >= right.Value;
     public static IntConstExpr operator %(IntConstExpr left, IntConstExpr right) => new(left.Value % right.Value);
 
-    public bool CanCast(TypeDB.IntInfo toType) => toType.CanFit(Value);
+    public bool CanCast(TypeDB.IntType toType) => toType.CanFit(Value);
 
-    public IntConstExpr FakeCast(TypeDB.IntInfo toType)
+    public IntConstExpr FakeCast(TypeDB.IntType toType)
     {
         if (!CanCast(toType))
             throw new InvalidCastException($"Cannot cast IntConstExpr to {toType}. {Value.GetType()} {Value} is out of range for type {toType}.");
@@ -260,28 +263,22 @@ public class IntConstExpr :
     }
 
     // "A constant_expression (§12.23) of type int can be converted to type sbyte, byte, short, ushort, uint, or ulong, provided the value of the constant_expression is within the range of the destination type."
-    public dynamic Cast(TypeDB.IntInfo toType)
+    public object Cast(TypeDB.IntType toType)
     {
         if (!CanCast(toType))
             throw new InvalidCastException($"Cannot cast IntConstExpr to {toType}. {Value.GetType()} {Value} is out of range for type {toType}.");
 
-        return toType.Kind switch
-        {
-            SyntaxKind.SByteKeyword => (sbyte)Value,
-            SyntaxKind.ByteKeyword => (byte)Value,
-            SyntaxKind.ShortKeyword => (short)Value,
-            SyntaxKind.UShortKeyword => (ushort)Value,
-            SyntaxKind.IntKeyword => Value,
-            SyntaxKind.UIntKeyword => (uint)Value,
-            SyntaxKind.ULongKeyword => (ulong)(uint)Value,
-            SyntaxKind.LongKeyword => (long)Value,
-            _ => throw new NotImplementedException($"TypeDB: {toType} not supported for casting from IntConstExpr.")
-        };
+        return toType.ConvertInt(Value);
     }
 
-    public dynamic TypedValue() => (IntType == TypeDB.Int32) ? Value : Cast(IntType);
+    public object Materialize(TypeDB.IntType? asType = null)
+    {
+        object result = ((asType ?? IntType) == TypeDB.Int32) ? Value : Cast(asType ?? IntType);
+        Logger.debug(() => $"{this} as {asType ?? IntType} => {result} ({result.GetType()})", "IntConstExpr.Materialize");
+        return result;
+    }
 
-    public dynamic Cast(string toTypeName) => Cast(TypeDB.Find(toTypeName));
+    public object Cast(string toTypeName) => Cast(TypeDB.Find(toTypeName));
     public object TryCast(System.Type toType) => TryCast(toType.ToString());
     public object TryCast(string toTypeName)
     {

@@ -393,13 +393,13 @@ public class UnknownValueRangeTests
 
         for (int i = 0; i < 8; i++)
         {
-            var shifted = range.SignedShiftRight(i) as UnknownTypedValue;
+            var shifted = range.BinaryOp(">>", i) as UnknownTypedValue;
             Assert.NotNull(shifted);
 
-            var b0_ = b0 >>> i;
+            var b0_ = b0 >> i;
             Assert.Equal(b0_.GetType(), shifted.type.Type);
-            Assert.Equal(b0 >>> i, shifted.Min());
-            Assert.Equal(b1 >>> i, shifted.Max());
+            Assert.Equal(b0_, shifted.Min());
+            Assert.Equal(b1 >> i, shifted.Max());
         }
     }
 
@@ -412,9 +412,56 @@ public class UnknownValueRangeTests
 
         for (int i = 0; i < 8; i++)
         {
-            var shifted = range.SignedShiftRight(i);
-            Assert.Equal(b0 >>> i, shifted.Min());
+            var shifted = range.BinaryOp(">>", i) as UnknownTypedValue;
+            var b0_ = b0 >> i;
+            Assert.Equal(b0_.GetType(), shifted.type.Type);
+            Assert.Equal(b0_, shifted.Min());
+            Assert.Equal(b1 >> i, shifted.Max());
+        }
+    }
+
+    [Fact]
+    public void Test_UnsignedShiftRight_byte()
+    {
+        UnknownValueRange range = new(TypeDB.Byte);
+        byte b0 = Byte.MinValue;
+        byte b1 = Byte.MaxValue;
+
+        for (int i = 0; i < 8; i++)
+        {
+            var shifted = range.BinaryOp(">>>", i) as UnknownTypedValue;
+            Assert.NotNull(shifted);
+
+            var b0_ = b0 >>> i;
+            Assert.Equal(b0_.GetType(), shifted.type.Type);
+            Assert.Equal(b0_, shifted.Min());
             Assert.Equal(b1 >>> i, shifted.Max());
+        }
+    }
+
+    [Fact]
+    public void Test_UnsignedShiftRight_sbyte()
+    {
+        UnknownValueRange range = new(TypeDB.SByte);
+        sbyte b0 = SByte.MinValue;
+        sbyte b1 = SByte.MaxValue;
+        sbyte m1 = -1;
+
+        var shifted = range.BinaryOp(">>>", 0) as UnknownTypedValue;
+        var b0_ = b0 >>> 0;
+        Assert.Equal(b0_.GetType(), shifted.type.Type);
+        Assert.Equal(b0_, shifted.Min());
+        Assert.Equal(b1 >>> 0, shifted.Max());
+
+        for (int i = 1; i < 8; i++)
+        {
+            shifted = range.BinaryOp(">>>", i) as UnknownTypedValue;
+            b0_ = b0 >>> i;
+            Assert.Equal(b0_.GetType(), shifted.type.Type);
+            Assert.True(shifted.Contains(b0_));
+            Assert.True(shifted.Contains(b1 >>> i));
+            Assert.Equal(m1 >>> i, shifted.Max());
+            Assert.Equal(0, shifted.Min());
         }
     }
 }

@@ -232,76 +232,14 @@ public partial class VarProcessor : ICloneable
         return true;
     }
 
-    public static (dynamic, dynamic) PromoteInts(dynamic l, dynamic r)
+    // also materialize IntConstExpr
+    public static (object, object) PromoteInts(object l, object r)
     {
-        var iceL = l as IntConstExpr;
-        var iceR = r as IntConstExpr;
-        var ltype = (iceL != null) ? iceL.IntType.Type : l.GetType();
-        var rtype = (iceR != null) ? iceR.IntType.Type : r.GetType();
-        // [floats skipped]
-        // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
-        // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
-        if (ltype == typeof(ulong) || rtype == typeof(ulong))
-        {
-            if (ltype != typeof(ulong))
-                l = (iceL != null) ? iceL.Cast(TypeDB.ULong) : Convert.ToUInt64(l);
-            if (rtype != typeof(ulong))
-                r = (iceR != null) ? iceR.Cast(TypeDB.ULong) : Convert.ToUInt64(r);
-        }
-
-        // Otherwise, if either operand is of type long, the OTHER OPERAND is converted to type long.
-        else if (ltype == typeof(long) || rtype == typeof(long))
-        {
-            if (ltype != typeof(long))
-                l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);
-            if (rtype != typeof(long))
-                r = (iceR != null) ? iceR.Cast(TypeDB.Long) : Convert.ToInt64(r);
-        }
-
-        // Otherwise, if either operand is of type uint and the other operand is of type sbyte, short, or int, BOTH OPERANDS are converted to type long.
-        // XXX not always true XXX
-        else if (
-                (ltype == typeof(uint) && (rtype == typeof(sbyte) || rtype == typeof(short) || rtype == typeof(int))) ||
-                (rtype == typeof(uint) && (ltype == typeof(sbyte) || ltype == typeof(short) || ltype == typeof(int)))
-                )
-        {
-            // if left is uint and right is int, but can fit in uint => right is converted to uint
-            if (ltype == typeof(uint) && rtype == typeof(int) && iceR != null && iceR!.Value >= 0)
-            {
-                r = iceR!.Cast(TypeDB.UInt);
-            }
-            else if (rtype == typeof(uint) && ltype == typeof(int) && iceL != null && iceL!.Value >= 0)
-            {
-                l = iceL!.Cast(TypeDB.UInt);
-            }
-            else
-            {
-                l = (iceL != null) ? iceL.Cast(TypeDB.Long) : Convert.ToInt64(l);
-                r = (iceR != null) ? iceR.Cast(TypeDB.Long) : Convert.ToInt64(r);
-            }
-        }
-
-        // Otherwise, if either operand is of type uint, the OTHER OPERAND is converted to type uint.
-        else if (ltype == typeof(uint) || rtype == typeof(uint))
-        {
-            if (ltype != typeof(uint))
-                l = (iceL != null) ? iceL.Cast(TypeDB.UInt) : Convert.ToUInt32(l);
-            if (rtype != typeof(uint))
-                r = (iceR != null) ? iceR.Cast(TypeDB.UInt) : Convert.ToUInt32(r);
-        }
-        else
-        {
-            // Otherwise, BOTH OPERANDS are converted to type int.
-            l = (iceL != null) ? iceL.Cast(TypeDB.Int) : Convert.ToInt32(l);
-            r = (iceR != null) ? iceR.Cast(TypeDB.Int) : Convert.ToInt32(r);
-        }
-
-        if (l is IntConstExpr iceL2)
-            l = iceL2.TypedValue();
-
-        if (r is IntConstExpr iceR2)
-            r = iceR2.TypedValue();
-
+        var (tl, tr) = TypeDB.Promote(l, r);
+        if (tl != null || tr != null)
+            Logger.debug(() => $"PromoteInts: ({l.GetType()}) {l} and ({r.GetType()}) ({r}) => ({tl}, {tr})", "VarProcessor.PromoteInts");
+        l = l is IntConstExpr iceL ? iceL.Materialize(tl) : tl != null ? tl.ConvertInt(l) : l;
+        r = r is IntConstExpr iceR ? iceR.Materialize(tr) : tr != null ? tr.ConvertInt(r) : r;
         return (l, r);
     }
 

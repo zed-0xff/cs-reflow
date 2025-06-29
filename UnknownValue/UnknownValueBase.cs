@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis;
 
 public abstract class UnknownValueBase
 {
@@ -12,7 +11,6 @@ public abstract class UnknownValueBase
         {
             null => string.Empty,
             string s => $"`{s}",
-            SyntaxAnnotation sa => $"`{sa.Data}",
             _ => $"`{_tag}"
         };
     }
@@ -23,7 +21,7 @@ public abstract class UnknownValueBase
     public abstract UnknownValueBase WithVarID(int id);
 
     public abstract override string ToString();
-    public abstract object Cast(TypeDB.IntInfo toType);
+    public abstract object Cast(TypeDB.IntType toType);
     public abstract ulong Cardinality();
     public abstract IEnumerable<long> Values();
 
@@ -69,71 +67,9 @@ public abstract class UnknownValueBase
     public virtual object Gte(object right) => LogicalNot(Lt(right));
     public virtual object Ne(object right) => LogicalNot(Eq(right));
 
-    public object Op(SyntaxKind op) // unary op
-    {
-        return op switch
-        {
-            SyntaxKind.PostIncrementExpression => Add(1),
-            SyntaxKind.PostDecrementExpression => Sub(1),
-            SyntaxKind.BitwiseNotExpression => BitwiseNot(),
-            SyntaxKind.UnaryPlusExpression => this,
-            SyntaxKind.UnaryMinusExpression => Negate(),
-            SyntaxKind.LogicalNotExpression => Eq(0),
-            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
-        };
-    }
-
-    public object Op(string op, object rValue) // binary op
-    {
-        return op switch
-        {
-            "+" => Add(rValue),
-            "-" => Sub(rValue),
-            "*" => Mul(rValue),
-            "/" => Div(rValue),
-            "%" => Mod(rValue),
-            "^" => Xor(rValue),
-
-            "!=" => Ne(rValue),
-            "<" => Lt(rValue),
-            "<=" => Lte(rValue),
-            "==" => Eq(rValue),
-            ">" => Gt(rValue),
-            ">=" => Gte(rValue),
-
-            "&" => BitwiseAnd(rValue),
-            "|" => BitwiseOr(rValue),
-
-            "<<" => ShiftLeft(rValue),
-            ">>" => SignedShiftRight(rValue), // TODO
-            ">>>" => UnsignedShiftRight(rValue),
-
-            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
-        };
-    }
-
-    // swap the left and right operands
-    public object InverseOp(string op, object lValue)
-    {
-        return op switch
-        {
-            "+" => Op(op, lValue),
-            "-" => Negate().Add(lValue), // N - unk = (-unk) + N
-            "*" => Op(op, lValue),
-            "^" => Op(op, lValue),
-            "&" => Op(op, lValue),
-            "|" => Op(op, lValue),
-            "!=" => Op(op, lValue),
-            "==" => Op(op, lValue),
-
-            "<" => Op(">=", lValue),
-            "<=" => Op(">", lValue),
-            ">" => Op("<=", lValue),
-            ">=" => Op("<", lValue),
-
-            _ => throw new NotImplementedException($"{ToString()}.InverseOp(): '{op}' is not implemented"),
-        };
-    }
+    public abstract object UnaryOp(SyntaxKind op);
+    public abstract object BinaryOp(string op, object rValue);
+    public abstract object InverseBinaryOp(string op, object lValue);
 
     public static bool TryConvertToLong(object? obj, out long result)
     {

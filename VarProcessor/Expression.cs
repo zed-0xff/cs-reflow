@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -72,12 +73,9 @@ public partial class VarProcessor
                     throw new NotSupportedException($"Syntax node type '{node?.GetType()}' is not supported.");
             }
             if (result is IntConstExpr ice)
-            {
-                // if the result is an IntConstExpr, convert it to its value
-                result = ice.Value;
-            }
+                result = ice.Materialize();
             Result = result;
-            _logger.debug(() => $"{node.Title()} => {result}");
+            _logger.debug(() => $"{node.Title()} => ({result?.GetType()}) {result}");
             return result;
         }
 
@@ -165,79 +163,31 @@ public partial class VarProcessor
         void setVar(IdentifierNameSyntax id, object value) => setVar(id.Identifier, value);
         void setVar(SyntaxToken token, object value)
         {
-            if (_varDict.TryGetValue(token, out var existingValue))
-            {
-                switch (value)
-                {
-                    case UnknownValue:
-                        // if the variable already exists, use its type
-                        value = existingValue switch
-                        {
-                            UnknownValue => value, // no luck
-                            UnknownTypedValue utv => UnknownValue.Create(utv.type),
-                            _ => UnknownValue.Create(existingValue?.GetType()) // handles null values as well
-                        };
-                        break;
-
-                    case IntConstExpr ice:
-                        // if the variable already exists, use its type
-                        value = existingValue switch
-                        {
-                            null => ice.Value, // int
-                            UnknownValue => ice.Value, // int
-                            UnknownTypedValue utv => ice.Cast(utv.type),
-                            _ => ice.TryCast(existingValue.GetType()) ?? ice.Value
-                        };
-                        break;
-                }
-            }
-
-            // if (value is UnknownValueBase unk)
-            //     value = unk.WithTag(varName);
-
-            // both after previous if/switch or if the variable does not exist
-            if (value is IntConstExpr ice2)
-                value = ice2.Value; // int
-
             _varDict.Set(token, value);
         }
 
-        object cast_var(dynamic value, string toType)
+        object cast_var(dynamic value, string toTypeName)
         {
+            if (toTypeName == "string" || toTypeName == "String" || toTypeName == "System.String")
+                return value.ToString();
+
+            var toType = TypeDB.TryFind(toTypeName);
+            if (toType == null)
+            {
+                if (value is UnknownValueBase uv)
+                    return new UnknownValue();
+                throw new NotSupportedException($"Type '{toTypeName}' is not supported.");
+            }
+
             switch (value)
             {
                 case UnknownValueBase uv:
-                    return TypeDB.TryFind(toType) == null ? new UnknownValue() : uv.Cast(TypeDB.Find(toType));
+                    return uv.Cast(toType);
                 case IntConstExpr ice:
-                    return ice.FakeCast(TypeDB.Find(toType));
+                    return ice.FakeCast(toType);
             }
 
-            return toType switch
-            {
-                "bool" => Convert.ToBoolean(value),
-                "byte" => (byte)value,
-                "sbyte" => (sbyte)value,
-                "short" => (short)value,
-                "ushort" => (ushort)value,
-                "int" => (int)value,
-                "uint" => (uint)value,
-                "long" => (long)value,
-                "ulong" => (ulong)value,
-                "nint" => TypeDB.Bitness switch
-                {
-                    32 => (int)value,
-                    64 => (long)value,
-                    _ => throw new NotSupportedException($"TypeDB.Bitness {TypeDB.Bitness} is not supported.")
-                },
-                "nuint" => TypeDB.Bitness switch
-                {
-                    32 => (uint)value,
-                    64 => (ulong)value,
-                    _ => throw new NotSupportedException($"TypeDB.Bitness {TypeDB.Bitness} is not supported.")
-                },
-                "string" => value.ToString() ?? string.Empty,
-                _ => throw new NotSupportedException($"Cast from '{value?.GetType()}' to '{toType}' is not supported.")
-            };
+            return toType.ConvertInt(value);
         }
 
         [ThreadStatic]
@@ -557,7 +507,7 @@ public partial class VarProcessor
                 ulong ul => eval_prefix(ul, kind),
                 ushort us => eval_prefix(us, kind),
                 IntConstExpr ice => eval_prefix(ice, kind),
-                UnknownValueBase unk => unk.Op(kind),
+                UnknownValueBase unk => unk.UnaryOp(kind),
                 _ => throw new NotSupportedException($"Unary operator '{kind}' is not supported for {value.GetType()}.")
             };
         }
@@ -623,7 +573,7 @@ public partial class VarProcessor
                 uint u => eval_postfix(u, kind),
                 ulong ul => eval_postfix(ul, kind),
                 ushort us => eval_postfix(us, kind),
-                UnknownValueBase u => u.Op(kind),
+                UnknownValueBase u => u.UnaryOp(kind),
                 _ => throw new NotSupportedException($"Unary postfix operator '{kind}' is not supported for {value.GetType()}.")
             };
             if (expr.Operand is IdentifierNameSyntax id)
@@ -823,15 +773,36 @@ public partial class VarProcessor
             return false;
         }
 
+        bool IsPromotionRequired<TL, TR>(TL l, TR r)
+            where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
+            where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
+        {
+            // promote & materialize IntConstExprs, if any
+            if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
+                return true;
+
+            int sizeL = Unsafe.SizeOf<TL>();
+            if (sizeL < 4)
+                return true;
+
+            int sizeR = Unsafe.SizeOf<TR>();
+            if (sizeR < 4)
+                return true;
+
+            if (sizeL != sizeR)
+                return true;
+
+            return typeof(TL) != typeof(TR);
+        }
+
         object eval_binary<TL, TR>(TL l, SyntaxKind kind, TR r)
             where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
             where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
         {
-            if (Verbosity > 2)
-                Console.Error.WriteLine($"[d] eval_binary: ({l.GetType()}) #{l} {kind} ({r.GetType()}) {r}");
+            _logger.debug(() => $"[d] eval_binary: ({l.GetType()}) {l} {kind} ({r.GetType()}) {r}");
 
             // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
-            if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
+            if (IsPromotionRequired(l, r))
             {
                 var (lp, rp) = VarProcessor.PromoteInts(l, r);
                 return eval_binary((dynamic)lp, kind, (dynamic)rp);
@@ -968,10 +939,10 @@ public partial class VarProcessor
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
 
             if (lValue is UnknownValueBase luv)
-                return luv.Op(op, rValue);
+                return luv.BinaryOp(op, rValue);
 
             if (rValue is UnknownValueBase ruv)
-                return ruv.InverseOp(op, lValue);
+                return ruv.InverseBinaryOp(op, lValue);
 
             return eval_binary((dynamic)lValue, binaryExpr.Kind(), (dynamic)rValue);
         }
