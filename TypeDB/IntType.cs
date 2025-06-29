@@ -66,6 +66,7 @@ public static partial class TypeDB
             return ConvertInt(value);
         }
 
+        // converts the argument to boxed int of the type represented by this IntType
         public object ConvertInt(object value)
         {
             long l = Convert.ToInt64(value);

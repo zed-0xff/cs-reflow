@@ -119,8 +119,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
         };
 
-    private object BinaryOpNoPromote(string op, object rValue) =>
-        op switch
+    private object BinaryOpNoPromote(string op, object rValue)
+    {
+        var result = op switch
         {
             "+" => Add(rValue),
             "-" => Sub(rValue),
@@ -145,6 +146,13 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
             _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
         };
+
+        // materialize the UnknownTypedValue if it has only one value
+        if (result is UnknownTypedValue ut && ut.Cardinality() == 1)
+            return ut.type.ConvertInt(ut.Values().First());
+
+        return result;
+    }
 
     public override object BinaryOp(string op, object rValue)
     {
