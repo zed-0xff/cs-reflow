@@ -63,9 +63,17 @@ public class SyntaxNodeExtensionsTests
     }
 
     [Fact]
-    public void IsIdempotent_ReturnsTrue_ForStr()
+    public void IsIdempotent_ReturnsTrue_ForStrA()
     {
         string expr_str = "(0x359 ^ ((0x82E & num4) * (int)(num9 << 14))";
+        var expr = SyntaxFactory.ParseExpression(expr_str);
+        Assert.True(expr.IsIdempotent());
+    }
+
+    [Fact]
+    public void IsIdempotent_ReturnsTrue_ForStrB()
+    {
+        string expr_str = "(nint)Type.EmptyTypes.LongLength + 3";
         var expr = SyntaxFactory.ParseExpression(expr_str);
         Assert.True(expr.IsIdempotent());
     }

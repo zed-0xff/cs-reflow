@@ -1799,9 +1799,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
 
         if (isMethod && statements.Count > 1 && statements.Last().ToString() == "return;")
-        {
             statements.RemoveAt(statements.Count - 1);
-        }
 
         BlockSyntax result = SyntaxFactory.Block(statements);
 
@@ -1965,6 +1963,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             {
                 body = body.ReplaceWith(body3);
             }
+        }
+
+        if (body.Statements.Count > 0 && body.Statements.Last() is ReturnStatementSyntax retStmt && retStmt.Expression == null)
+        {
+            // remove trailing "return;"
+            body = body.ReplaceWith(
+                    body.WithStatements(body.Statements.RemoveAt(body.Statements.Count - 1))
+                    );
         }
 
         if (ShowAnnotations)

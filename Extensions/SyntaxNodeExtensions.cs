@@ -69,6 +69,9 @@ public static class SyntaxNodeExtensions
             case LiteralExpressionSyntax:
                 return true; // constants are idempotent
 
+            case MemberAccessExpressionSyntax memberAccess:
+                return VarProcessor.Constants.ContainsKey(memberAccess.ToString());
+
             case ParenthesizedExpressionSyntax paren:
                 return paren.Expression.IsIdempotent();
 

@@ -110,7 +110,7 @@ public class VarDict
         }
         else
         {
-            _logger.warn($"Variable not found in VarDB for {token}");
+            _logger.warn_once($"Variable not found in VarDB for {token}");
         }
     }
 
