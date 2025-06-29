@@ -329,7 +329,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             .SelectMany(s => s.Declaration.Variables)
             .Select(v => v.VarID())
             .Where(v => v != null)
-            .Select(v => _varDB[v].id)
+            .Select(v => _varDB[v!].id)
             .ToHashSet();
 
         var written = new HashSet<int>();

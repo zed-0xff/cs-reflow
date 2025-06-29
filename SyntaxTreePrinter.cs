@@ -111,6 +111,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
     public List<StatementSyntax> TraceBlock(BlockSyntax block)
     {
         var traced = new List<StatementSyntax>();
+        var visited = new HashSet<StatementSyntax>();
 
         // Index labels for quick lookup
         foreach (var stmt in block.Statements.OfType<LabeledStatementSyntax>())
@@ -120,9 +121,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         }
 
         // Start tracing from the top
-        StatementSyntax current = block.Statements.FirstOrDefault();
-        var visited = new HashSet<StatementSyntax>();
-
+        StatementSyntax? current = block.Statements.FirstOrDefault();
         while (current != null)
         {
             if (!visited.Add(current))
@@ -149,9 +148,9 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
                 case WhileStatementSyntax whileStmt:
                     var cond = whileStmt.Condition.ToString();
-                    if (cond == "true" || cond == "1")
+                    if ((cond == "true" || cond == "1") && whileStmt.Statement is BlockSyntax whileBlk)
                     {
-                        TraceBlock(whileStmt.Statement as BlockSyntax);
+                        TraceBlock(whileBlk);
                         continue;
                     }
                     throw new NotImplementedException("While statements are not supported yet.");

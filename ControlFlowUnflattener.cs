@@ -662,7 +662,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
-    void update_flow_info(StatementSyntax stmt, object value)
+    void update_flow_info(StatementSyntax stmt, object? value)
     {
         int id = stmt.LineNo();
         var flowInfo = flow_info(stmt);
@@ -1906,6 +1906,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         var trackedBody = tracker.Track(body) as BlockSyntax;
         body = body.ReplaceWith(trackedBody);
 
+        if (_fmt == null)
+            throw new InvalidOperationException("Formatter is not set.");
+
         while (PreProcess)
         {
             // remove unused vars _before_ main processing
@@ -2005,6 +2008,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
         Console.WriteLine();
         Console.WriteLine("Processed Control Flow Tree:");
-        _flowRoot.PrintTree();
+        _flowRoot?.PrintTree();
     }
 }

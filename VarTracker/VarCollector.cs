@@ -35,7 +35,7 @@ public partial class VarTracker
                     var decls = field.DeclaringSyntaxReferences;
                     if (decls.Length == 0)
                     {
-                        if (VarProcessor.Constants.ContainsKey(field.ToString()))
+                        if (VarProcessor.Constants.ContainsKey(field.ToString()!))
                         {
                             Logger.debug($"Field {field} is a known constant", "VarCollector.Process");
                             continue;
@@ -71,7 +71,7 @@ public partial class VarTracker
             if (symbol == null || _sym2ann.ContainsKey(symbol))
                 return;
 
-            ITypeSymbol typeSymbol = _semanticModel.GetTypeInfo(node).Type;
+            var typeSymbol = _semanticModel.GetTypeInfo(node).Type;
 
             switch (symbol)
             {
@@ -88,7 +88,7 @@ public partial class VarTracker
                     return;
             }
 
-            _sym2ann[symbol] = _varDB.Add(node, typeSymbol.ToString()).Annotation;
+            _sym2ann[symbol] = _varDB.Add(node, typeSymbol.ToString()!).Annotation;
         }
     }
 }

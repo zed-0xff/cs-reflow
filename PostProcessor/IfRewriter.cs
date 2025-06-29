@@ -198,7 +198,7 @@ public class IfRewriter : CSharpSyntaxRewriter
     }
 
     // convert 'if' to 'while'
-    public override SyntaxNode VisitLabeledStatement(LabeledStatementSyntax node0)
+    public override SyntaxNode? VisitLabeledStatement(LabeledStatementSyntax node0)
     {
         var newNode = base.VisitLabeledStatement(node0);
         if (newNode is not LabeledStatementSyntax node)
