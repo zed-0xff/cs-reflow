@@ -185,7 +185,7 @@ public class VarDict
                 continue; // Values are equal, nothing to do
 
             if (thisValue != null && other_kvp.Value != null)
-                Set(other_kvp.Key, VarProcessor.MergeVar("_", thisValue, other_kvp.Value)); // TODO: return back var name (display only)
+                Set(other_kvp.Key, VarProcessor.MergeVar(_varDB[other_kvp.Key].Name, thisValue, other_kvp.Value)); // TODO: return back var name (display only)
             else if (thisValue == null && other_kvp.Value != null)
                 Set(other_kvp.Key, other_kvp.Value);
         }

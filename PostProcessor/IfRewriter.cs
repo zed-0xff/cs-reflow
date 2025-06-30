@@ -119,23 +119,113 @@ public class IfRewriter : CSharpSyntaxRewriter
             return newNode;
 
         // remove empty else
-        if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count == 0)
-            ifStmt = ifStmt.WithElse(null);
-
-        // if (!bool_0aw) {} else …
-        if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
-            ifStmt = ifStmt
-                .WithCondition(invert_condition(ifStmt.Condition))
-                .WithStatement(ifStmt.Else.Statement)
-                .WithElse(null);
-
-        // if (…) {} else { if (…) {} }
-        if (ifStmt.Else != null
-                && ifStmt.Else.Statement is BlockSyntax block2
-                && block2.Statements.Count == 1
-                && block2.Statements[0] is IfStatementSyntax)
         {
-            ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block2.Statements[0]));
+            if (ifStmt.Else is not null && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count == 0)
+                ifStmt = ifStmt.WithElse(null);
+        }
+
+        // remove empty then
+        {
+            if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
+                ifStmt = ifStmt
+                    .WithCondition(invert_condition(ifStmt.Condition))
+                    .WithStatement(ifStmt.Else.Statement)
+                    .WithElse(null);
+        }
+
+        // if (…) {} else { if (…) {} } =>
+        // if (…) {} else if (…) {}
+        {
+            if (ifStmt.Else != null
+                    && ifStmt.Else.Statement is BlockSyntax block
+                    && block.Statements.Count == 1
+                    && block.Statements[0] is IfStatementSyntax)
+            {
+                ifStmt = ifStmt.WithElse(ifStmt.Else.WithStatement(block.Statements[0]));
+            }
+        }
+
+        bool condIsNot = ifStmt.Condition.StripParentheses() is PrefixUnaryExpressionSyntax prefixUnary && prefixUnary.IsKind(SyntaxKind.LogicalNotExpression);
+
+        // if (x) { return … } else {…} =>
+        //
+        // if (x) return …;
+        // …
+        {
+            if (ifStmt.Else != null
+                    && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count == 1 && thenBlk.Statements[0] is ReturnStatementSyntax returnStmt
+                    && ifStmt.Else.Statement is BlockSyntax elseBlk)
+            {
+                // invert a inverted condition if 'then' and 'else' blocks are single statements
+                if (condIsNot && elseBlk.Statements.Count == 1)
+                {
+                    return Block(
+                            (
+                             ifStmt
+                             .WithCondition(invert_condition(ifStmt.Condition))
+                             .WithStatement(elseBlk)
+                             .WithElse(null)
+                            ),
+                            thenBlk.Statements[0]
+                    );
+                }
+
+                return Block(List([
+                            ifStmt.WithElse(null),
+                            ..elseBlk.Statements
+                ]));
+            }
+        }
+
+        // if (x) {          =>  if (x) {…}
+        //   …                   return list2;
+        //   return list2;
+        // } else {
+        //   return list2;
+        // }
+        {
+            if (ifStmt.Else != null
+                    && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 0
+                    && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 0
+                    && thenBlk.Statements[^1] is ReturnStatementSyntax returnStmt && returnStmt.IsSameStmt(elseBlk.Statements[^1]))
+            {
+                return Block(List<StatementSyntax>([
+                            (
+                             ifStmt
+                             .WithStatement(
+                                 thenBlk.WithStatements(
+                                     List(thenBlk.Statements.Take(thenBlk.Statements.Count - 1))))
+                             .WithElse(
+                                 ifStmt.Else
+                                 .WithStatement(
+                                     elseBlk.WithStatements(
+                                         List(elseBlk.Statements.Take(elseBlk.Statements.Count - 1)))))
+                            ),
+                            returnStmt
+                ]));
+            }
+        }
+
+        // if (x) {…} else { return … }
+        //
+        // if (!x) return …;
+        // …
+        {
+            if (ifStmt.Else != null
+                    && ifStmt.Statement is BlockSyntax thenBlk && (thenBlk.Statements.Count > 1 || (thenBlk.Statements.Count == 1 && condIsNot))
+                    && ifStmt.Else.Statement is BlockSyntax elseBlk
+                    && elseBlk.Statements.Count == 1 && elseBlk.Statements[0] is ReturnStatementSyntax returnStmt)
+            {
+                return Block(List([
+                            (
+                             ifStmt
+                             .WithCondition(invert_condition(ifStmt.Condition))
+                             .WithStatement(elseBlk)
+                             .WithElse(null)
+                            ),
+                            ..thenBlk.Statements
+                ]));
+            }
         }
 
         return ifStmt;
@@ -192,7 +282,7 @@ public class IfRewriter : CSharpSyntaxRewriter
                     statements.Add(stmt);
                 }
             }
-            node = node.WithStatements(SyntaxFactory.List(statements));
+            node = node.WithStatements(List(statements));
         }
         return node;
     }
@@ -203,6 +293,28 @@ public class IfRewriter : CSharpSyntaxRewriter
         var newNode = base.VisitLabeledStatement(node0);
         if (newNode is not LabeledStatementSyntax node)
             return newNode;
+
+        // same as the next one, but label is on a Block (after the 'if' statements rewrite)
+        {
+            if (node.Statement is BlockSyntax block && block.Statements.Count > 1 && block.Statements[0] is IfStatementSyntax ifStmt0
+                    && ifStmt0.Else == null
+                    && !block.DescendantNodes().OfType<BreakStatementSyntax>().Any()
+                    && !block.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
+                    && block.Statements[^1] is GotoStatementSyntax gotoStmt1 && gotoStmt1.Expression is IdentifierNameSyntax gotoId1
+                    && gotoId1.Identifier.ValueText == node.Identifier.ValueText)
+            {
+                List<StatementSyntax> newStatements = new List<StatementSyntax>(
+                        ifStmt0.Statement is BlockSyntax eb ? eb.Statements : SingletonList(ifStmt0.Statement)
+                        );
+                newStatements.Insert(0,
+                        WhileStatement(
+                            invert_condition(ifStmt0.Condition),
+                            Block(block.Statements.Skip(1).Take(block.Statements.Count - 2))
+                            )
+                        );
+                return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+            }
+        }
 
         if (node.Statement is not IfStatementSyntax ifStmt)
             return newNode;
@@ -215,25 +327,27 @@ public class IfRewriter : CSharpSyntaxRewriter
         //     goto lbl_372;
         //   }
         // else ...
-        if (
-                ifStmt.Else != null
-                && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 1
-                && !thenBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
-                && !thenBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
-                && thenBlk.Statements[^1] is GotoStatementSyntax gotoStmt1 && gotoStmt1.Expression is IdentifierNameSyntax gotoId1
-                && gotoId1.Identifier.ValueText == node.Identifier.ValueText
-           )
         {
-            List<StatementSyntax> newStatements = new List<StatementSyntax>(
-                    ifStmt.Else.Statement is BlockSyntax eb ? eb.Statements : SingletonList(ifStmt.Else.Statement)
-                    );
-            newStatements.Insert(0,
-                    WhileStatement(
-                        ifStmt.Condition,
-                        Block(thenBlk.Statements.Take(thenBlk.Statements.Count - 1))
-                        )
-                    );
-            return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+            if (
+                    // TODO: check if it's the only goto to this label
+                    ifStmt.Else != null
+                    && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 1
+                    && !thenBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
+                    && !thenBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
+                    && thenBlk.Statements[^1] is GotoStatementSyntax gotoStmt1 && gotoStmt1.Expression is IdentifierNameSyntax gotoId1
+                    && gotoId1.Identifier.ValueText == node.Identifier.ValueText)
+            {
+                List<StatementSyntax> newStatements = new List<StatementSyntax>(
+                        ifStmt.Else.Statement is BlockSyntax eb ? eb.Statements : SingletonList(ifStmt.Else.Statement)
+                        );
+                newStatements.Insert(0,
+                        WhileStatement(
+                            ifStmt.Condition,
+                            Block(thenBlk.Statements.Take(thenBlk.Statements.Count - 1))
+                            )
+                        );
+                return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+            }
         }
 
         // lbl_336:
@@ -245,25 +359,27 @@ public class IfRewriter : CSharpSyntaxRewriter
         //        num10++;
         //        goto lbl_336;
         //    }
-        if (
-                ifStmt.Else != null
-                && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 1
-                && !elseBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
-                && !elseBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
-                && elseBlk.Statements[^1] is GotoStatementSyntax gotoStmt2 && gotoStmt2.Expression is IdentifierNameSyntax gotoId2
-                && gotoId2.Identifier.ValueText == node.Identifier.ValueText
-           )
         {
-            List<StatementSyntax> newStatements = new List<StatementSyntax>(
-                    ifStmt.Statement is BlockSyntax tb ? tb.Statements : SingletonList(ifStmt.Statement)
-                    );
-            newStatements.Insert(0,
-                    WhileStatement(
-                        invert_condition(ifStmt.Condition),
-                        Block(elseBlk.Statements.Take(elseBlk.Statements.Count - 1))
-                        )
-                    );
-            return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+            if (
+                    ifStmt.Else != null
+                    && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 1
+                    && !elseBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
+                    && !elseBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
+                    && elseBlk.Statements[^1] is GotoStatementSyntax gotoStmt2 && gotoStmt2.Expression is IdentifierNameSyntax gotoId2
+                    && gotoId2.Identifier.ValueText == node.Identifier.ValueText
+               )
+            {
+                List<StatementSyntax> newStatements = new List<StatementSyntax>(
+                        ifStmt.Statement is BlockSyntax tb ? tb.Statements : SingletonList(ifStmt.Statement)
+                        );
+                newStatements.Insert(0,
+                        WhileStatement(
+                            invert_condition(ifStmt.Condition),
+                            Block(elseBlk.Statements.Take(elseBlk.Statements.Count - 1))
+                            )
+                        );
+                return VisitBlock(Block(newStatements)); // XXX in _most_ cases, block is not necessary here, but we can't return multiple statements directly
+            }
         }
 
         return node;

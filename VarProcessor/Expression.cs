@@ -180,8 +180,8 @@ public partial class VarProcessor
 
         object cast_var(dynamic value, string toTypeName)
         {
-            if (toTypeName == "string" || toTypeName == "String" || toTypeName == "System.String")
-                return value.ToString();
+            // if (toTypeName == "string" || toTypeName == "String" || toTypeName == "System.String")
+            //     return value.ToString();
 
             var toType = TypeDB.TryFind(toTypeName);
             if (toType == null)

@@ -1,0 +1,30 @@
+	public unsafe static string a6b9c1c081314e13bfac93c6ac01a767(object object_0as)
+	{
+	    string a7adf881292040d386ae7ea0d9c98fce = Strings_a392.a7adf881292040d386ae7ea0d9c98fce;
+	    if (String.op_Equality((string)object_0as, a7adf881292040d386ae7ea0d9c98fce))
+	    {
+	        return Strings_a392.ac5923d2e8494cc0b3ab270d681f6e5c;
+	    }
+	
+	    if (String.op_Equality((string)object_0as, Strings_a392.a5ba8d381fd246b9a83132de88ccff0d))
+	    {
+	        return Strings_a392.c110efd81e7b4317a4a49f8c9d041c90;
+	    }
+	
+	    if (String.op_Equality((string)object_0as, Strings_a392.b5643a2021fa4247a84d55d813b16724))
+	    {
+	        return Strings_a392.bb2a10ded574403e98317a61127245ee;
+	    }
+	
+	    if (String.op_Equality((string)object_0as, Strings_a392.d30c8335f6e34dedb062401eb494970c))
+	    {
+	        return Strings_a392.eb34feb6eeba42eca3cdd9a44e583316;
+	    }
+	
+	    if (String.op_Equality((string)object_0as, Strings_a392.ad0552d5a15e4e3ba3f88d9c603d48ae))
+	    {
+	        return Strings_a392.a4115adbc2404fd7b2d6a876a5e57357;
+	    }
+	
+	    return (string)object_0as;
+	}

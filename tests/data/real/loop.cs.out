@@ -17,12 +17,8 @@
 	            list2.Add(IO.Path.GetFileNameWithoutExtension((string)((object[])obj)[num10]));
 	            num10++;
 	        }
+	    }
 	
-	        return list2;
-	    }
-	    else
-	    {
-	        return list2;
-	    }
+	    return list2;
 	}
 

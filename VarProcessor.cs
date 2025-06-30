@@ -14,6 +14,8 @@ public partial class VarProcessor : ICloneable
     Dictionary<string, bool> _traceVars = new(); // value is true if trace only unique
     Dictionary<int, HashSet<object?>> _uniqValues = new(); // shared, r/w
 
+    static readonly TaggedLogger _logger = new("VarProcessor");
+
     public VarProcessor(VarDB db, int verbosity = 0, VarDict? varDict = null) // vars arg is for tests
     {
         _varDB = db;
@@ -65,6 +67,8 @@ public partial class VarProcessor : ICloneable
         readonly Dictionary<int, object?>? _original;
         readonly Dictionary<int, bool> _resolvedTraceVars = new();
 
+        static readonly TaggedLogger _logger = new("TraceScope");
+
         public TraceScope(VarProcessor processor, SyntaxNode? node, [CallerMemberName] string caller = "")
         {
             _caller = caller;
@@ -81,7 +85,7 @@ public partial class VarProcessor : ICloneable
                     {
                         _original[kvp.Key] = kvp.Value;
                         _resolvedTraceVars[kvp.Key] = isUniq;
-                        Logger.debug($"varName: {varName}, key: {kvp.Key}, value: {kvp.Value}, isUniq: {isUniq}, caller: {_caller}", "TraceScope.ctor");
+                        _logger.debug($"varName: {varName}, key: {kvp.Key}, value: {kvp.Value}, isUniq: {isUniq}, caller: {_caller}");
                     }
                 }
             }
@@ -105,7 +109,7 @@ public partial class VarProcessor : ICloneable
                 if (_processor._varDict.TryGetValue(key, out var newVal))
                     newValue = newVal;
 
-                Logger.debug(() => $"TraceScope: {key} old: {oldValue}, new: {newValue}, isUniq: {isUniq}, caller: {_caller}", "TraceScope.Dispose");
+                _logger.debug(() => $"TraceScope: {key} old: {oldValue}, new: {newValue}, isUniq: {isUniq}, caller: {_caller}");
 
                 if (Equals(oldValue, newValue))
                     continue;
@@ -237,7 +241,7 @@ public partial class VarProcessor : ICloneable
     {
         var (tl, tr) = TypeDB.Promote(l, r);
         if (tl != null || tr != null)
-            Logger.debug(() => $"PromoteInts: ({l.GetType()}) {l} and ({r.GetType()}) ({r}) => ({tl}, {tr})", "VarProcessor.PromoteInts");
+            _logger.debug(() => $"PromoteInts: ({l.GetType()}) {l} and ({r.GetType()}) ({r}) => ({tl}, {tr})");
         l = l is IntConstExpr iceL ? iceL.Materialize(tl) : tl != null ? tl.ConvertInt(l) : l;
         r = r is IntConstExpr iceR ? iceR.Materialize(tr) : tr != null ? tr.ConvertInt(r) : r;
         return (l, r);
@@ -247,9 +251,9 @@ public partial class VarProcessor : ICloneable
     public static object MergeVar(string key, object value1, object value2, int depth = 0)
     {
         if (value2 is UnknownValueBase && value1 is not UnknownValueBase)
-        {
             return MergeVar(key, value2, value1); // Ensure UnknownValueBase is always first
-        }
+
+        // _logger.debug(() => $" {key,-10} ({value1?.GetType()}) {value1,-20} ({value2?.GetType()}) {value2,-20}");
 
         object result = value1 switch
         {
@@ -261,11 +265,11 @@ public partial class VarProcessor : ICloneable
             ushort us1 when value2 is ushort us2 => new UnknownValueSet(TypeDB.UShort, new() { us1, us2 }),
             long l1 when value2 is long l2 => new UnknownValueSet(TypeDB.Long, new() { l1, l2 }),
             ulong ul1 when value2 is ulong ul2 => throw new NotImplementedException("Merging ulong values is not implemented."),
-            UnknownValueBase unk1 => unk1.Merge(value2),
+            UnknownValueBase uvb1 => uvb1.Merge(value2),
             _ => PromoteAndMergeVar(key, value1, value2, depth)
         };
 
-        Logger.debug(() => $" {key,-10} {value1,-20} {value2,-20} => {result}");
+        _logger.debug(() => $" {key,-10} {value1,-20} {value2,-20} => {result}");
 
         return result;
     }

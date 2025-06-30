@@ -13,10 +13,8 @@
 	            {
 	                return null;
 	            }
-	            else
-	            {
-	                return aa966298b6f9473baff9d7a8e3b76841(obj);
-	            }
+	
+	            return aa966298b6f9473baff9d7a8e3b76841(obj);
 	        }
 	        else
 	        {
@@ -26,10 +24,8 @@
 	            {
 	                return null;
 	            }
-	            else
-	            {
-	                return rsa_a143(obj);
-	            }
+	
+	            return rsa_a143(obj);
 	        }
 	    }
 	    else
@@ -40,10 +36,8 @@
 	        {
 	            return null;
 	        }
-	        else
-	        {
-	            return rsa_a143(obj);
-	        }
+	
+	        return rsa_a143(obj);
 	    }
 	}
 

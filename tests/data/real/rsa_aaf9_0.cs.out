@@ -11,10 +11,6 @@
 	        {
 	            return rsa_a143(obj2);
 	        }
-	        else
-	        {
-	            return null;
-	        }
 	    }
 	    else if ((int) /*calli with instance method signature not supportd*/ == 0)
 	    {
@@ -23,10 +19,6 @@
 	        if (obj2 != null)
 	        {
 	            return rsa_a143(obj2);
-	        }
-	        else
-	        {
-	            return null;
 	        }
 	    }
 	    else
@@ -37,10 +29,8 @@
 	        {
 	            return aa966298b6f9473baff9d7a8e3b76841(obj2);
 	        }
-	        else
-	        {
-	            return null;
-	        }
 	    }
+	
+	    return null;
 	}
 

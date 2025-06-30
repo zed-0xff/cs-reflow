@@ -40,9 +40,8 @@ class Program
 
     static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints, bool dummyClassWrap)
     {
-        return new ControlFlowUnflattener(code, hints, dummyClassWrap)
+        return new ControlFlowUnflattener(code, verbosity: opts.verbosity, flowHints: hints, dummyClassWrap: dummyClassWrap)
         {
-            Verbosity = opts.verbosity,
             AddComments = opts.addComments,
             ShowAnnotations = opts.showAnnotations,
             MoveDeclarations = opts.moveDeclarations,

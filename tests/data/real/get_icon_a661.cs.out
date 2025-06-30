@@ -39,21 +39,22 @@
 	    {
 	        return Class_ae29.ae97e074e9e7420fa7898158aca772e9;
 	    }
-	    else if (String.op_Equality((string)object_0a, "com.sbi.upi"))
+	
+	    if (String.op_Equality((string)object_0a, "com.sbi.upi"))
 	    {
 	        return Class_ae29.a715a55768504143ad6674958663538e;
 	    }
-	    else if (String.op_Equality((string)object_0a, "com.upi.axispay"))
+	
+	    if (String.op_Equality((string)object_0a, "com.upi.axispay"))
 	    {
 	        return Class_ae29.b64_axisPay_jpg;
 	    }
-	    else if (!String.op_Equality((string)object_0a, "com.sbi.SBISecure"))
-	    {
-	        return string.Empty;
-	    }
-	    else
+	
+	    if (String.op_Equality((string)object_0a, "com.sbi.SBISecure"))
 	    {
 	        return Class_ae29.b46_secureOTP_jpg;
 	    }
+	
+	    return string.Empty;
 	}
 

@@ -87,6 +87,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     string _status;
 
     // configuration
+    const int DEFAULT_VERBOSITY = 0;
+
     public bool AddComments = true;
     public bool MoveDeclarations = true;
     public bool PostProcess = true;
@@ -95,7 +97,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool ShowAnnotations = false;
     public bool ShowProgress = true;
     public bool isClone = false;
-    public int Verbosity = 0;
+    public int Verbosity = DEFAULT_VERBOSITY;
     public int commentPadding = 100;
     public string? dumpIntermediateLogs;
 
@@ -285,8 +287,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _traceLog;
     }
 
-    public ControlFlowUnflattener(string code, HintsDictionary? flowHints = null, bool dummyClassWrap = false)
+    public ControlFlowUnflattener(string code, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false)
     {
+        Verbosity = verbosity;
+
         _fmt = new(code); // needs to be initialized before dummy class wrap
         if (dummyClassWrap)
         {

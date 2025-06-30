@@ -2,6 +2,7 @@
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 
 using System.Collections;
+using System.Diagnostics;
 using System.IO;
 using Xunit;
 
@@ -28,23 +29,45 @@ public class ReflowTests
         }
     }
 
+    static void runColordiff(string fname_out, string fname_actual)
+    {
+        Console.WriteLine($"colordiff -u {fname_out} {fname_actual}");
+
+        var pathname_out = Path.Combine(ReflowTests.DataPath, fname_out);
+        var pathname_actual = Path.Combine(ReflowTests.DataPath, fname_actual);
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "colordiff",
+                Arguments = $"-u \"{pathname_out}\" \"{pathname_actual}\"",
+                UseShellExecute = false,
+                CreateNoWindow = false
+            }
+        };
+
+        process.Start();
+        process.WaitForExit();
+    }
+
     public static void CheckData(string fname)
     {
         TypeDB.Bitness = 32;
 
-        var inputPath = Path.Combine(ReflowTests.DataPath, fname.Trim());
-        var expectedPath = inputPath + ".out";
+        fname = fname.Trim();
+        var fname_out = fname + ".out";
+        var inputPath = Path.Combine(ReflowTests.DataPath, fname);
+        var expectedPath = Path.Combine(ReflowTests.DataPath, fname_out);
 
         var input = File.ReadAllText(inputPath);
         var expectedOutput = File.ReadAllText(expectedPath);
 
         // Act
-        var controlFlowUnflattener = new ControlFlowUnflattener(input);
+        var controlFlowUnflattener = new ControlFlowUnflattener(input, verbosity: -2);
         if (controlFlowUnflattener.Methods.Count == 0)
-            controlFlowUnflattener = new ControlFlowUnflattener(input, dummyClassWrap: true);
+            controlFlowUnflattener = new ControlFlowUnflattener(input, verbosity: -2, dummyClassWrap: true);
 
         controlFlowUnflattener.AddComments = false;
-        controlFlowUnflattener.Verbosity = -2;
 
         string actualOutput = "";
         foreach (var kv in controlFlowUnflattener.Methods)
@@ -56,11 +79,13 @@ public class ReflowTests
             actualOutput += "\n";
         }
 
-        var actualPath = inputPath + ".out.actual";
+        var fname_actual = fname_out + ".actual";
+        var actualPath = Path.Combine(ReflowTests.DataPath, fname_actual);
         if (expectedOutput.TrimEnd() != actualOutput.TrimEnd())
         {
             // write to file
             File.WriteAllText(actualPath, actualOutput);
+            runColordiff(fname_out, fname_actual);
         }
         else
         {
