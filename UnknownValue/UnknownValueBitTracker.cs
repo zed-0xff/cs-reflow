@@ -124,6 +124,15 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         return base.Cast(toType);
     }
 
+    public override UnknownTypedValue Upcast(TypeDB.IntType toType)
+    {
+        var newBits = new List<BitType>(_bits);
+        BitType b = (type.signed && toType.signed) ? _bits[type.nbits - 1] : ZERO;
+        while (newBits.Count < toType.nbits)
+            newBits.Insert(0, b);
+        return new UnknownValueBitTracker(toType, _var_id!.Value, newBits);
+    }
+
     public override bool Typed_IntersectsWith(UnknownTypedValue other)
     {
         if (other is UnknownValueBitTracker otherBT)

@@ -1,0 +1,12 @@
+void case1(int x)
+{
+    if (x >= 0)
+    {
+        maybe_called();
+    }
+}
+
+void case2(uint x)
+{
+    always_called();
+}

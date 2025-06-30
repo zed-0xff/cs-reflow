@@ -34,19 +34,31 @@ public partial class VarProcessor
         VarDict _varDict;
         public int Verbosity = 0;
 
-        public List<string> VarsWritten { get; } = new();
-        public List<string> VarsRead { get; } = new();
-        public List<string> VarsReferenced => VarsRead.Union(VarsWritten).ToList();
+        private HashSet<int>? _varsRead;
+        private HashSet<int>? _varsWritten;
+        private HashSet<int>? _varsReferenced;
+
+        public IEnumerable<int> VarsRead => _varsRead ?? calc_accessed_vars().read;
+        public IEnumerable<int> VarsWritten => _varsWritten ?? calc_accessed_vars().written;
+        public IEnumerable<int> VarsReferenced => _varsReferenced ?? calc_accessed_vars().referenced;
 
         public object? Result { get; private set; } = UnknownValue.Create();
 
-        static readonly string TAG = "Expression";
-        private static readonly TaggedLogger _logger = new(TAG);
+        static readonly TaggedLogger _logger = new("Expression");
 
         public Expression(CSharpSyntaxNode node, VarDict varDict)
         {
             this.node = node;
             this._varDict = varDict;
+        }
+
+        (IEnumerable<int> read, IEnumerable<int> written, IEnumerable<int> referenced) calc_accessed_vars()
+        {
+            var (declared, read, written) = _varDict._varDB.CollectVars(node);
+            _varsRead = read;
+            _varsWritten = written;
+            _varsReferenced = read.Union(written).ToHashSet();
+            return (_varsRead, _varsWritten, _varsReferenced);
         }
 
         public Expression SetVerbosity(int verbosity)
@@ -457,6 +469,7 @@ public partial class VarProcessor
                         "sizeof(nint)" => TypeDB.NInt.ByteSize,
                         "sizeof(nuint)" => TypeDB.NUInt.ByteSize,
                         "sizeof(sbyte)" => sizeof(sbyte),
+                        "sizeof(short)" => sizeof(short),
                         "sizeof(uint)" => sizeof(uint),
                         "sizeof(ulong)" => sizeof(ulong),
                         "sizeof(ushort)" => sizeof(ushort),
@@ -528,9 +541,9 @@ public partial class VarProcessor
                 switch (expr.Operand)
                 {
                     case IdentifierNameSyntax id:
-                        // VarsWritten.Add(id.Identifier);
-                        // VarsRead.Add(id.Identifier);
-                        _varDict.Set(id, retValue);
+                        int var_id = _varDict.Set(id, retValue);
+                        // VarsWritten.Add(var_id);
+                        // VarsRead.Add(var_id);
                         break;
                     case LiteralExpressionSyntax num:
                         retValue = value;
@@ -576,11 +589,11 @@ public partial class VarProcessor
                 UnknownValueBase u => u.UnaryOp(kind),
                 _ => throw new NotSupportedException($"Unary postfix operator '{kind}' is not supported for {value.GetType()}.")
             };
-            if (expr.Operand is IdentifierNameSyntax id)
+            if (expr.Operand is IdentifierNameSyntax idName)
             {
-                // VarsWritten.Add(varName);
-                // VarsRead.Add(varName);
-                _varDict.Set(id, newValue);
+                _varDict.Set(idName, newValue);
+                // VarsWritten.Add(var_id);
+                // VarsRead.Add(var_id);
             }
             else
             {

@@ -70,7 +70,7 @@ public static class SyntaxNodeExtensions
                 return true; // constants are idempotent
 
             case MemberAccessExpressionSyntax memberAccess:
-                return VarProcessor.Constants.ContainsKey(memberAccess.ToString());
+                return memberAccess.IsKnownConstant();
 
             case ParenthesizedExpressionSyntax paren:
                 return paren.Expression.IsIdempotent();
@@ -105,7 +105,7 @@ public static class SyntaxNodeExtensions
         return null;
     }
 
-    public static BlockSyntax ReplaceWith(this BlockSyntax? oldNode, SyntaxNode? newNode)
+    public static T ReplaceWith<T>(this T oldNode, SyntaxNode newNode) where T : SyntaxNode
     {
         if (oldNode == null)
             throw new ArgumentNullException(nameof(oldNode));
@@ -118,7 +118,10 @@ public static class SyntaxNodeExtensions
         var oldRoot = oldNode.SyntaxTree.GetCompilationUnitRoot();
         var newRoot = oldRoot.ReplaceNode(oldNode, annotatedNewNode);
 
-        return newRoot.GetAnnotatedNodes(annotation).OfType<BlockSyntax>().First();
+        var result = newRoot.GetAnnotatedNodes(annotation).OfType<T>().First() as T;
+        if (result == null)
+            throw new InvalidOperationException($"Failed to replace node {oldNode} with {newNode}");
+        return result;
     }
 
     public static bool IsSameStmt(this SyntaxNode node1, SyntaxNode node2)

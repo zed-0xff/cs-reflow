@@ -96,7 +96,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     {
         return node.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any()
             || node.DescendantNodesAndSelf().OfType<ObjectCreationExpressionSyntax>().Any()
-            || node.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(m => !VarProcessor.Constants.ContainsKey(m.ToString()));
+            || node.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(m => !m.IsKnownConstant());
     }
 
     class Collector : CSharpSyntaxWalker
@@ -302,127 +302,6 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         }
     }
 
-    //    public HashSet<ISymbol> FindCallArgs(SyntaxNode rootNode)
-    //    {
-    //        var ids = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
-    //
-    //        foreach (var id in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
-    //        {
-    //            var symbol = _ctx.Model.GetSymbolInfo(id).Symbol;
-    //            if (symbol == null || symbol.Kind != SymbolKind.Local)
-    //                continue;
-    //
-    //            var call = id.FirstAncestorOrSelf<InvocationExpressionSyntax>();
-    //            if (call == null)
-    //                continue;
-    //
-    //            ids.Add(symbol);
-    //        }
-    //
-    //        return ids;
-    //    }
-
-    // same as ReadInside(), but also include ++/--
-    (HashSet<int>, HashSet<int>, HashSet<int>) CollectVars(SyntaxNode rootNode)
-    {
-        var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
-            .SelectMany(s => s.Declaration.Variables)
-            .Select(v => v.VarID())
-            .Where(v => v != null)
-            .Select(v => _varDB[v!].id)
-            .ToHashSet();
-
-        var written = new HashSet<int>();
-        var read = new HashSet<int>();
-
-        foreach (var idNode in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
-        {
-            var ann = idNode.VarID();
-            if (ann == null)
-                continue;
-            int id = _varDB[ann].id;
-
-            var expr = idNode.Parent;
-            if (expr is null)
-                throw new InvalidOperationException($"Identifier {idNode.Identifier.Text} has no parent expression.");
-
-            // ++x, --x, !x, ~x, ...
-            if (expr is PrefixUnaryExpressionSyntax unaryPrefix)
-            {
-                if (expr.Parent is not ExpressionStatementSyntax) // y = ++x; / while(++x){ ... }
-                    read.Add(id);
-                if (unaryPrefix.IsKind(SyntaxKind.PreIncrementExpression) || unaryPrefix.IsKind(SyntaxKind.PreDecrementExpression))
-                    written.Add(id);
-                else
-                    read.Add(id);
-                continue;
-            }
-
-            // x++, x--
-            if (expr is PostfixUnaryExpressionSyntax unaryPostfix)
-            {
-                if (expr.Parent is not ExpressionStatementSyntax)
-                    read.Add(id);
-                if (unaryPostfix.IsKind(SyntaxKind.PostIncrementExpression) || unaryPostfix.IsKind(SyntaxKind.PostDecrementExpression))
-                    written.Add(id);
-                else
-                    read.Add(id);
-                continue;
-            }
-
-            // =, +=, -=, *=, /=, %=, ...
-            AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
-            if (assExpr != null)
-            {
-                var tokens = assExpr.Left.CollectTokens();
-                if (tokens.Any(t => t.IsSameVar(ann)))
-                {
-                    _logger.debug(() => $"WRITE {ann.Data}");
-                    written.Add(id); // intentionally do not interpret self-read as 'read'
-                }
-                else
-                {
-                    _logger.debug(() => $"READ  {ann.Data}");
-                    read.Add(id);
-                }
-                continue;
-            }
-
-            LocalDeclarationStatementSyntax? declStmt = expr.FirstAncestorOrSelfUntil<LocalDeclarationStatementSyntax, BlockSyntax>();
-            if (declStmt != null)
-            {
-                // local variable declaration: int x = 123 + [...]
-                if (declStmt.IsSameVar(ann))
-                {
-                    _logger.debug(() => $"DECLARE {ann.Data}");
-                    declared.Add(id);
-                }
-                else
-                {
-                    _logger.debug(() => $"READ  {ann.Data}");
-                    read.Add(id); // variable is read in the other variable's initializer
-                }
-                continue;
-            }
-
-            // foo(x)
-            ArgumentSyntax? argExpr = expr.FirstAncestorOrSelfUntil<ArgumentSyntax, BlockSyntax>();
-            if (argExpr != null)
-            {
-                _logger.debug(() => $"READ  {ann.Data}");
-                read.Add(id);
-                if (!argExpr.RefOrOutKeyword.IsKind(SyntaxKind.None))
-                    written.Add(id); // ref/out arguments are both read and written
-                continue;
-            }
-
-            _logger.debug(() => $"unhandled expression: {expr.Kind()} at {expr.TitleWithLineNo()} => READ {ann.Data}");
-            read.Add(id); // fallback: treat as read
-        }
-
-        return (declared, read, written);
-    }
-
     SyntaxNode? RewriteBlock(SyntaxNode block)
     {
         if (_mainCtx == null)
@@ -462,7 +341,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         if (dataFlow.WrittenOutside.Count() > 0)
             _logger.debug(() => $"[d] dataFlow.WrittenOutside   : {string.Join(", ", dataFlow.WrittenOutside.Select(s => s.Name))}");
 
-        var (declared, read, written) = CollectVars(block);
+        var (declared, read, written) = _varDB.CollectVars(block);
 
         if (declared.Count > 0)
             _logger.debug(() => $"[d] declared: {string.Join(", ", declared.Select(s => _varDB[s]))}");

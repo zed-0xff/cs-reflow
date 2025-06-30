@@ -8,11 +8,12 @@ public class VarDict
 {
     static readonly string TAG = "VarDict";
     private static readonly TaggedLogger _logger = new(TAG);
-    public const int FLAG_LOOP = 1;
+
+    public const int UNKNOWN_VAR_ID = -1;
 
     DefaultDict<int, int> _flags = new();
     Dictionary<int, object?> _values = new();
-    readonly VarDB _varDB;
+    public readonly VarDB _varDB;
 
     public VarDict(VarDB db)
     {
@@ -95,26 +96,29 @@ public class VarDict
 
     public void Remove(int key) => _values.Remove(key); // XXX _flags?
 
-    public void Set(int id, object? value, [CallerMemberName] string caller = "")
+    public int Set(int id, object? value, [CallerMemberName] string caller = "")
     {
         _logger.debug(() => $"{_varDB[id]} = {value} [caller: {caller}]");
         setVar(_varDB[id], value);
+        return id;
     }
 
-    public void Set(SyntaxToken token, object? value, [CallerMemberName] string caller = "")
+    public int Set(SyntaxToken token, object? value, [CallerMemberName] string caller = "")
     {
         if (_varDB.TryGetValue(token, out var V))
         {
             _logger.debug(() => $"{V} = ({value?.GetType()}) {value} [caller: {caller}]");
             setVar(V!, value);
+            return V!.id;
         }
         else
         {
             _logger.warn_once($"Variable not found in VarDB for {token}");
+            return UNKNOWN_VAR_ID;
         }
     }
 
-    public void Set(IdentifierNameSyntax id, object? value) => Set(id.Identifier, value);
+    public int Set(IdentifierNameSyntax id, object? value) => Set(id.Identifier, value);
 
     public VarDict ShallowClone()
     {

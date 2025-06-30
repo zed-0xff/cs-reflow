@@ -60,10 +60,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     public abstract override long Max();
     public abstract BitSpan BitSpan();
 
-    public UnknownValueBitsBase ToBits() => ToBits(BitSpan());
-    public UnknownValueBitsBase ToBits(BitSpan bitspan) =>
+    public UnknownValueBitsBase ToBits() =>
         (this is UnknownValueBitsBase bits) ? bits :
-        (_var_id == null) ? new UnknownValueBits(type, bitspan) : new UnknownValueBitTracker(type, _var_id.Value, bitspan);
+        (_var_id == null) ? new UnknownValueBits(type, BitSpan()) : new UnknownValueBitTracker(type, _var_id.Value, BitSpan());
 
     public bool CanConvertTo(UnknownTypedValue other)
     {
@@ -93,8 +92,10 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         {
             return this is not UnknownValueBitTracker
                 && _var_id is not null
-                && IsFullRange();
+                && IsFullRange(); // TODO: IsMonotonic
         }
+        if (typeof(UnknownValueBitsBase).IsAssignableFrom(typeof(T)) && typeof(T) != typeof(UnknownValueBitTracker))
+            return IsFullRange(); // TODO: IsMonotonic
 
         return false;
     }
@@ -572,7 +573,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         return MaybeNormalize(MaybeConvertTo<UnknownValueBitTracker>().TypedXor(right));
     }
 
-    public UnknownTypedValue Upcast(TypeDB.IntType toType)
+    public virtual UnknownTypedValue Upcast(TypeDB.IntType toType)
     {
         if (toType == type)
             return this;
@@ -664,11 +665,11 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
             return otherBT.TypedBitwiseOr(this);
 
-        if (CanConvertTo<UnknownValueBitTracker>())
-            return ConvertTo<UnknownValueBitTracker>().BitwiseOr(right);
+        if (this is UnknownValueBitsBase thisBits)
+            return thisBits.TypedBitwiseOr(right);
 
-        if (this is UnknownValueBitsBase bits)
-            return bits.TypedBitwiseOr(right);
+        if (CanConvertTo<UnknownValueBitsBase>())
+            return ToBits().BitwiseOr(right);
 
         if (!TryConvertToLong(right, out long mask))
             return UnknownValue.Create(type);
@@ -676,7 +677,8 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
             return new UnknownValueSet(type, Values().Select(v => v | mask));
 
-        return UnknownValueBits.CreateFromOr(type, mask);
+        // lossy - BitSpan() for range will mark some extra bits as ANY, bc not all ranges can be represented as a BitSpan
+        return new UnknownValueBits(type, BitSpan() | mask);
     }
 
     public sealed override UnknownValueBase Sub(object right)

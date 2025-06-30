@@ -294,6 +294,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             // not adding newlines to keep original line numbers
             code = "class DummyClass { " + code + " }";
         }
+        update_progress("parsing code");
         _tree = CSharpSyntaxTree.ParseText(code);
 
         if (flowHints != null)
@@ -1891,24 +1892,37 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return body;
     }
 
+    void update_progress(string msg)
+    {
+        if (Verbosity >= 0 && ShowProgress)
+        {
+            msg = $"[{ElapsedTime()}] {msg} ..";
+            if (Verbosity == 0)
+                Console.Error.Write(msg + ANSI.ERASE_TILL_EOL + "\r");
+            else
+                Console.WriteLine(msg);
+        }
+    }
+
     public string ReflowMethod(CSharpSyntaxNode methodNode)
     {
+        // collect all declarations from body prior to any processing
+        // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
+        var tracker = new VarTracker(_varDB);
+        var trackedMethod = tracker.Track(methodNode); // tracker has to be run on method itself (not only body) to capture method arguments
+        methodNode = methodNode.ReplaceWith(trackedMethod);
+
         BlockSyntax body = GetMethodBody(methodNode);
 
         // annotate body with original line numbers
         body = body.ReplaceWith(new OriginalLineNoAnnotator().Visit(body) as BlockSyntax);
-
-        // collect all declarations from body prior to any processing
-        // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
-        var tracker = new VarTracker(_varDB);
-        var trackedBody = tracker.Track(body) as BlockSyntax;
-        body = body.ReplaceWith(trackedBody);
 
         if (_fmt == null)
             throw new InvalidOperationException("Formatter is not set.");
 
         while (PreProcess)
         {
+            update_progress("pre-processing");
             // remove unused vars _before_ main processing
             var body_ = new UnusedLocalsRemover(_varDB, Verbosity, _keepVars).Process(body) as BlockSyntax;
             if (body_.IsEquivalentTo(body))
@@ -1943,15 +1957,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         while (PostProcess)
         {
-            if (Verbosity >= 0 && ShowProgress)
-            {
-                string msg = $"[{ElapsedTime()}] post-processing ..";
-                if (Verbosity == 0)
-                    Console.Error.Write(msg + "\r");
-                else
-                    Console.WriteLine(msg);
-            }
-
+            update_progress("post-processing");
             var body2 = new UnusedLocalsRemover(_varDB, Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varDB);
             var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals

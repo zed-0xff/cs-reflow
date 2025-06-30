@@ -10,6 +10,7 @@ public partial class ExpressionTests
 
     public ExpressionTests()
     {
+        TypeDB.Bitness = 32;
         _varDict = new VarDict(_varDB);
         _processor = new VarProcessor(_varDB, varDict: _varDict);
         var v = Environment.GetEnvironmentVariable("REFLOW_VERBOSITY");
@@ -39,10 +40,11 @@ public partial class ExpressionTests
 
     object? Eval(string expr_str) => _processor.EvaluateString(expr_str);
 
-    void check_expr(string expr_str)
+    void check_expr(string expr_str, object? expected_result = null)
     {
+        expected_result ??= true;
         var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        Assert.Equal(expected_result, result);
     }
 
     [Fact]
@@ -376,6 +378,12 @@ public partial class ExpressionTests
     public void Test_exprW()
     {
         check_expr("int num9; (num9) = (((nint)((Type.EmptyTypes).LongLength)) + (0)); num9 == 0");
+    }
+
+    [Fact]
+    public void Test_exprX()
+    {
+        check_expr("int x,num2; ((0x3FFFFFF | ((uint)y / 83u)) != 67108863) ? (sizeof(uint) + -1519903925) : ((4238 + ((x << 3) - 5591) != (3 * x + x + 2896) * 2) ? (sizeof(float) + 41656) : ((((uint)(0x1883 | (num2 * 5 + num2 * 11)) & ((uint)num2 / 1105u)) != 2032147771) ? ((nint)Type.EmptyTypes.LongLength + 1936443285) : ((nint)Type.EmptyTypes.LongLength + -857404704)))", 41660);
     }
 
     [Fact]
