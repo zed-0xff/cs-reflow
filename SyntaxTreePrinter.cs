@@ -162,7 +162,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
                     throw new NotImplementedException("If statements are not supported yet.");
 
                 case ReturnStatementSyntax:
-                    throw new ReturnException(null);
+                    throw new ReturnException(current.LineNo());
 
                 default:
                     current = GetNextStatement(current, block);

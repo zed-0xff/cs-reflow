@@ -161,7 +161,7 @@ public static class SyntaxNodeExtensions
         {
             if (item.IsNode)
             {
-                foreach (var ann in item.AsNode().GetAnnotations(ANNOTATION_KINDS))
+                foreach (var ann in item.AsNode()!.GetAnnotations(ANNOTATION_KINDS))
                     annotations.Add($"{ann.Kind}:{ann.Data}");
             }
             else

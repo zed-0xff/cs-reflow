@@ -232,7 +232,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public void TraceVars(List<string> vars) => _varProcessor.TraceVars(vars);
     public void TraceUniqVars(List<string> vars) => _varProcessor.TraceUniqVars(vars);
 
-    public CSharpSyntaxNode GetMethod(string methodName)
+    public SyntaxNode GetMethod(string methodName)
     {
         var methods = _tree.GetRoot().DescendantNodes()
             .Where(n =>
@@ -253,14 +253,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
-    public CSharpSyntaxNode GetMethod(int lineno)
+    public SyntaxNode GetMethod(int lineno)
     {
         return _tree.GetRoot().DescendantNodes()
             .Where(n =>
-                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno) //||
-                                                                                                         //(n is LocalFunctionStatementSyntax l && l.SpanStart <= lineno && l.Span.End > lineno)
+                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno)
                   )
-            .First() as CSharpSyntaxNode;
+            .First();
     }
 
     public BlockSyntax GetMethodBody(string methodName)
@@ -618,12 +617,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 trace_switch(switchStmt, e);
                 return;
             }
-            catch (ReturnException e)
+            catch (ReturnException)
             {
                 flow_info(switchStmt).hasReturn = true;
                 throw;
             }
-            catch (ContinueException e)
+            catch (ContinueException)
             {
                 flow_info(switchStmt).hasContinue = true;
                 throw;
@@ -870,24 +869,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             .WithStatement(newBlock);
     }
 
-    public object EvaluateExpression(ExpressionSyntax expression)
-    {
-        return _varProcessor.EvaluateExpression(expression);
-    }
+    public object? EvaluateExpression(ExpressionSyntax expression) =>
+        _varProcessor.EvaluateExpression(expression);
 
-    public VarProcessor.Expression EvaluateExpressionEx(StatementSyntax expression)
-    {
-        return _varProcessor.EvaluateExpressionEx(expression);
-    }
+    public VarProcessor.Expression EvaluateExpressionEx(StatementSyntax expression) =>
+        _varProcessor.EvaluateExpressionEx(expression);
 
-    public VarProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression)
-    {
-        return _varProcessor.EvaluateExpressionEx(expression);
-    }
+    public VarProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression) =>
+        _varProcessor.EvaluateExpressionEx(expression);
 
     public object EvaluateBoolExpression(ExpressionSyntax expression)
     {
-        object value = _varProcessor.EvaluateExpression(expression);
+        var value = _varProcessor.EvaluateExpression(expression);
         switch (value)
         {
             case UInt32 u32:
@@ -1709,15 +1702,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return finalLog;
     }
 
-    public string ReflowMethod(int lineno)
-    {
-        return ReflowMethod(GetMethod(lineno));
-    }
-
-    public string ReflowMethod(string methodName)
-    {
-        return ReflowMethod(GetMethod(methodName));
-    }
+    public string ReflowMethod(int lineno) => ReflowMethod(GetMethod(lineno));
+    public string ReflowMethod(string methodName) => ReflowMethod(GetMethod(methodName));
 
     // trace block and reflow it, returning a new BlockSyntax
     // does not alter _traceLog
@@ -1882,7 +1868,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         };
     }
 
-    public BlockSyntax GetMethodBody(CSharpSyntaxNode methodNode)
+    public BlockSyntax GetMethodBody(SyntaxNode methodNode)
     {
         var body = methodNode switch
         {
@@ -1910,7 +1896,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
-    public string ReflowMethod(CSharpSyntaxNode methodNode)
+    public string ReflowMethod(SyntaxNode methodNode)
     {
         // collect all declarations from body prior to any processing
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration

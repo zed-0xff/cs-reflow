@@ -1,5 +1,6 @@
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Collections.Generic;
@@ -343,7 +344,7 @@ class Program
             }
 
             bool printAll = false;
-            List<CSharpSyntaxNode> methods = new List<CSharpSyntaxNode>();
+            var methods = new List<SyntaxNode>();
             if (opts.methods == null || opts.methods.Count == 0)
             {
                 printAll = true;

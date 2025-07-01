@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis;
 // remove duplicate declarations left after flow tree unflattening
 public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
 {
-    public override SyntaxNode VisitBlock(BlockSyntax node)
+    public override SyntaxNode? VisitBlock(BlockSyntax node)
     {
         var groups = node.Statements
             .OfType<LocalDeclarationStatementSyntax>()

@@ -55,7 +55,7 @@ public partial class VarTracker
                         _logger.warn($"Field {field.Name} has a non-variable declarator syntax reference");
                         continue;
                     }
-                    _sym2ann[field] = _varDB.Add(declNode, field.Type.ToString()).Annotation;
+                    _sym2ann[field] = _varDB.Add(declNode, field.Type.ToString()!).Annotation;
                 }
             }
         }

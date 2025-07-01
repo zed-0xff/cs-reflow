@@ -172,11 +172,8 @@ public partial class VarProcessor
             }
         }
 
-        void setVar(IdentifierNameSyntax id, object value) => setVar(id.Identifier, value);
-        void setVar(SyntaxToken token, object value)
-        {
-            _varDict.Set(token, value);
-        }
+        void setVar(IdentifierNameSyntax id, object? value) => setVar(id.Identifier, value);
+        void setVar(SyntaxToken token, object? value) => _varDict.Set(token, value);
 
         object cast_var(dynamic value, string toTypeName)
         {
