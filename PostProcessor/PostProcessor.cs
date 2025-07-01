@@ -47,6 +47,7 @@ public class PostProcessor
         block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
         block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
         block = new IfRewriter(_varDB).Visit(block) as BlockSyntax; // should be after EmptiesRemover
+        block = new TernaryRewriter(_varDB).Visit(block) as BlockSyntax;
         return block;
     }
 

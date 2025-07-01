@@ -4,16 +4,13 @@ using Microsoft.CodeAnalysis;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-public class IfRewriter : CSharpSyntaxRewriter
+public class IfRewriter : RewriterBase
 {
-    readonly VarDB _varDB;
-
     static readonly ExpressionSyntax TRUE_LITERAL = LiteralExpression(SyntaxKind.TrueLiteralExpression);
     static readonly ExpressionSyntax FALSE_LITERAL = LiteralExpression(SyntaxKind.FalseLiteralExpression);
 
-    public IfRewriter(VarDB varDB)
+    public IfRewriter(VarDB varDB) : base(varDB)
     {
-        _varDB = varDB;
     }
 
     // "if (condition || always_true)" => "if (condition)"
@@ -94,22 +91,6 @@ public class IfRewriter : CSharpSyntaxRewriter
             }
         }
         return expr;
-    }
-
-    bool? eval_constexpr(ExpressionSyntax expr)
-    {
-        VarProcessor processor = new(_varDB);
-        var result = processor.EvaluateExpression(expr);
-        return result switch
-        {
-            bool b => b,
-            UnknownValueBase unk => unk.Cast(TypeDB.Bool) switch
-            {
-                bool b => b,
-                _ => null // can't evaluate
-            },
-            _ => null // can't evaluate
-        };
     }
 
     // if (x) {          =>  if (x) {…}
