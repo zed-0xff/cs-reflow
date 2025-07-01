@@ -123,7 +123,8 @@ public class IfRewriter : CSharpSyntaxRewriter
         if (ifStmt.Else != null
                 && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 0
                 && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 0
-                && thenBlk.Statements[^1] is ReturnStatementSyntax returnStmt && returnStmt.IsSameStmt(elseBlk.Statements[^1]))
+                && thenBlk.Statements[^1] is ReturnStatementSyntax returnStmt
+                && returnStmt.ToString() == elseBlk.Statements[^1].ToString()) // not IsSameStmt() intentionally
         {
             return Block(List<StatementSyntax>([
                         (
