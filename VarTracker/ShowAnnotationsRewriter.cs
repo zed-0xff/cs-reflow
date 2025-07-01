@@ -38,6 +38,9 @@ public partial class VarTracker
                 if (append)
                 {
                     string cmt = node.GetTrailingTrivia().ToString();
+                    if (cmt.EndsWith(ann_str))
+                        return node;
+
                     cmt = string.IsNullOrEmpty(cmt) ? "" : cmt.Trim().Replace("// ", "");
                     return node.WithComment($"{cmt} // {ann_str}");
                 }

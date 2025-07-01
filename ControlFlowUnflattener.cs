@@ -1220,7 +1220,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             var state = new State(stmt.LineNo(), _varProcessor.VariableValues());
             if (_states.TryGetValue(state, out int idx))
             {
-                throw new LoopException($"Loop detected at line {stmt.LineNo()}: \"{stmt.Title()}\" (state: {idx})", stmt.LineNo(), idx);
+                throw new LoopException($"Loop detected at line {stmt.LineNo()}: \"{stmt.Title()}\" (idx: {idx}/{_traceLog.entries.Count})", stmt.LineNo(), idx);
             }
             else
             {
@@ -1521,22 +1521,24 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 }
                 catch (LoopException l)
                 {
+                    Logger.debug($"[d] {l.GetType()}: {l.Message}", "ControlFlowUnflattener.LoopException");
                     if (Verbosity > 1)
-                        Console.WriteLine($"[d] {l.GetType()}: {l.Message}");
+                        clone._traceLog.Print("LOOP");
 
                     int idx = l.idx;
                     VarDict varValues = clone._varProcessor.VariableValues();
-                    while (idx > 0 && clone._traceLog.entries.Last().stmt.StripLabel() == clone._traceLog.entries[idx].stmt)
+                    while (idx >= 0 && clone._traceLog.entries.Last().stmt.IsSameStmt(clone._traceLog.entries[idx].stmt))
                     {
+                        // expecting that clone._traceLog last entry always be a duplicate entry that has to be removed
+                        Logger.debug(() => $"removing {clone._traceLog.entries.Last()}", "ControlFlowUnflattener.LoopException");
                         varValues = clone._traceLog.entries.Last().vars;
                         clone._traceLog.entries.RemoveAt(clone._traceLog.entries.Count - 1);
                         idx--;
                     }
+                    idx++;
 
                     var targetStmt = clone._traceLog.entries[idx].stmt;
-                    if (Verbosity > 0)
-                        Console.WriteLine($"[.] loop at line {l.lineno} -> lbl_{targetStmt.LineNo()} (idx={l.idx}, log_len={clone._traceLog.entries.Count})");
-
+                    Logger.debug($"[.] loop at line {l.lineno} -> lbl_{targetStmt.LineNo()}: {targetStmt.Title()}", "ControlFlowUnflattener.LoopException");
 
                     SyntaxToken labelId;
                     if (clone._traceLog.entries[idx].stmt is LabeledStatementSyntax labelStmt)

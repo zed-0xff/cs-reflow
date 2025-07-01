@@ -49,6 +49,7 @@ public class TraceEntry
         return stmt.Equals(other.stmt) && vars.Equals(other.vars);
     }
 
+    public override string ToString() => TitleWithLineNo();
     public override int GetHashCode() => HashCode.Combine(stmt, vars, value);
 }
 

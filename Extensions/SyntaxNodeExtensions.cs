@@ -215,13 +215,23 @@ public static class SyntaxNodeExtensions
         return node.WithAdditionalAnnotations(newAnnotation);
     }
 
-    public static StatementSyntax ToEmptyStmt(this SyntaxNode node)
+    public static EmptyStatementSyntax ToEmptyStmt(this SyntaxNode node)
     {
-        return EmptyStatement()
+        if (node is EmptyStatementSyntax thisEmpty)
+            return thisEmpty;
+
+        var annotations = new List<SyntaxAnnotation>();
+
+        var stmtId = node.GetAnnotations("StmtID").FirstOrDefault();
+        if (stmtId != null)
+            annotations.Add(stmtId);
+
+        // after StmtID to match other nodes visual output on -A
+        annotations.Add(new SyntaxAnnotation("LineNo", node.LineNo().ToString()));
+
+        return SyntaxFactory.EmptyStatement()
             .WithComment(node.Title())
-            .WithAdditionalAnnotations(
-                    new SyntaxAnnotation("LineNo", node.LineNo().ToString())
-                    );
+            .WithAdditionalAnnotations(annotations);
     }
 
     public static SyntaxAnnotation? VarID(this VariableDeclaratorSyntax node) => node.Identifier.VarID();

@@ -112,6 +112,38 @@ public class IfRewriter : CSharpSyntaxRewriter
         };
     }
 
+    // if (x) {          =>  if (x) {…}
+    //   …                   return list2;
+    //   return list2;
+    // } else {
+    //   return list2;
+    // }
+    BlockSyntax? merge_returns(IfStatementSyntax ifStmt)
+    {
+        if (ifStmt.Else != null
+                && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 0
+                && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 0
+                && thenBlk.Statements[^1] is ReturnStatementSyntax returnStmt && returnStmt.IsSameStmt(elseBlk.Statements[^1]))
+        {
+            return Block(List<StatementSyntax>([
+                        (
+                         ifStmt
+                         .WithStatement(
+                             thenBlk.WithStatements(
+                                 List(thenBlk.Statements.Take(thenBlk.Statements.Count - 1))))
+                         .WithElse(
+                             ifStmt.Else
+                             .WithStatement(
+                                 elseBlk.WithStatements(
+                                     List(elseBlk.Statements.Take(elseBlk.Statements.Count - 1)))))
+                        ),
+                        returnStmt
+            ]));
+        }
+
+        return null;
+    }
+
     public override SyntaxNode VisitIfStatement(IfStatementSyntax node0)
     {
         var newNode = base.VisitIfStatement(node0);
@@ -177,33 +209,10 @@ public class IfRewriter : CSharpSyntaxRewriter
             }
         }
 
-        // if (x) {          =>  if (x) {…}
-        //   …                   return list2;
-        //   return list2;
-        // } else {
-        //   return list2;
-        // }
         {
-            if (ifStmt.Else != null
-                    && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 0
-                    && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 0
-                    && thenBlk.Statements[^1] is ReturnStatementSyntax returnStmt && returnStmt.IsSameStmt(elseBlk.Statements[^1]))
-            {
-                return Block(List<StatementSyntax>([
-                            (
-                             ifStmt
-                             .WithStatement(
-                                 thenBlk.WithStatements(
-                                     List(thenBlk.Statements.Take(thenBlk.Statements.Count - 1))))
-                             .WithElse(
-                                 ifStmt.Else
-                                 .WithStatement(
-                                     elseBlk.WithStatements(
-                                         List(elseBlk.Statements.Take(elseBlk.Statements.Count - 1)))))
-                            ),
-                            returnStmt
-                ]));
-            }
+            var blk = merge_returns(ifStmt);
+            if (blk != null)
+                return blk;
         }
 
         // if (x) {…} else { return … }
