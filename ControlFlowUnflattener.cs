@@ -66,7 +66,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     CodeFmtInfo? _fmt;
 
     // shared
-    SyntaxTree _tree;
     ControlFlowNode? _flowRoot;
     FlowDictionary _flowDict;
     HashSet<string> _visitedLabels = new();
@@ -82,7 +81,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     Dictionary<int, List<State>> _condStates = new();
     DefaultDict<int, int> _visitedLines = new();
     ReturnsDictionary _parentReturns = new();
-    Stopwatch _stopWatch = Stopwatch.StartNew();
     ControlFlowUnflattener? _parent = null;
     string _status;
 
@@ -95,9 +93,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool PreProcess = true;
     public bool Reflow = true;
     public bool ShowAnnotations = false;
-    public bool ShowProgress = true;
     public bool isClone = false;
-    public int Verbosity = DEFAULT_VERBOSITY;
     public int commentPadding = 100;
     public string? dumpIntermediateLogs;
 
@@ -232,36 +228,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public void TraceVars(List<string> vars) => _varProcessor.TraceVars(vars);
     public void TraceUniqVars(List<string> vars) => _varProcessor.TraceUniqVars(vars);
 
-    public SyntaxNode GetMethod(string methodName)
-    {
-        var methods = _tree.GetRoot().DescendantNodes()
-            .Where(n =>
-                    (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
-                    //(n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName) ||
-                    (n is ConstructorDeclarationSyntax c && c.Identifier.Text == methodName)
-                  )
-            .ToList();
-
-        switch (methods.Count())
-        {
-            case 0:
-                throw new ArgumentException($"Method '{methodName}' not found.");
-            case 1:
-                return (CSharpSyntaxNode)methods.First();
-            default:
-                throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
-        }
-    }
-
-    public SyntaxNode GetMethod(int lineno)
-    {
-        return _tree.GetRoot().DescendantNodes()
-            .Where(n =>
-                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno)
-                  )
-            .First();
-    }
-
     public BlockSyntax GetMethodBody(string methodName)
     {
         return GetMethod(methodName) switch
@@ -286,19 +252,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _traceLog;
     }
 
-    public ControlFlowUnflattener(string code, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false)
+    public ControlFlowUnflattener(string code, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false) : base(code, verbosity, dummyClassWrap)
     {
-        Verbosity = verbosity;
-
-        _fmt = new(code); // needs to be initialized before dummy class wrap
-        if (dummyClassWrap)
-        {
-            // without the dummy class methods are defined as LocalFunctions, and SemanticModel leaks variables from one method to another
-            // not adding newlines to keep original line numbers
-            code = "class DummyClass { " + code + " }";
-        }
-        update_progress("parsing code");
-        _tree = CSharpSyntaxTree.ParseText(code);
+        _fmt = new(code); // needs to be initialized without dummy class wrap
 
         if (flowHints != null)
             _flowHints = new(flowHints);
@@ -362,17 +318,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         _traceLog.hints = new(_flowHints);
         return this;
     }
-
-    public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
-        .Where(n => n is BaseMethodDeclarationSyntax /*|| n is LocalFunctionStatementSyntax*/)
-        .ToDictionary(
-                n => n.SpanStart,
-                n => n is MethodDeclarationSyntax m ? m.Identifier.Text :
-                n is ConstructorDeclarationSyntax c ? c.Identifier.Text :
-                n is DestructorDeclarationSyntax d ? d.Identifier.Text :
-                n is LocalFunctionStatementSyntax l ? l.Identifier.Text :
-                "<unknown>"
-                );
 
     void trace_while(WhileStatementSyntax whileStmt)
     {
@@ -531,6 +476,19 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             .WithStatement(newBlock);
     }
 
+    SwitchStatementSyntax convert_switch(SwitchStatementSyntax switchStmt)
+    {
+        // convert switch statement to a new one with reflowed sections
+        var newSections = switchStmt.Sections.Select(s =>
+        {
+            var clone = Clone();
+            var log = clone.TraceBlock(s.Statements);
+            return s.WithStatements(log.ToSyntaxList());
+        });
+
+        return switchStmt.WithSections(List(newSections));
+    }
+
     void trace_switch(SwitchStatementSyntax switchStmt, object? value)
     {
         if (value is VarProcessor.Expression ex)
@@ -543,10 +501,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         if (value == null)
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
+
         if (value is UnknownValueBase)
         {
-            Logger.error($"vars: {_varProcessor.VariableValues().VarsFromNode(switchStmt.Expression)}");
-            throw new NotImplementedException($"Switch statement with {value}: {switchStmt.TitleWithLineNo()}");
+            // Logger.error($"vars: {_varProcessor.VariableValues().VarsFromNode(switchStmt.Expression)}");
+            Logger.warn_once($"switch statement with {value}: {switchStmt.TitleWithLineNo()}");
+            _traceLog.entries.Add(new TraceEntry(convert_switch(switchStmt), value, _varProcessor.VariableValues()));
+            return;
         }
 
         SwitchLabelSyntax swLabel = null, defaultLabel = null;
@@ -1402,11 +1363,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return grouped.Where(kv => kv.Value == states.Count).Select(kv => kv.Key).ToList();
     }
 
-    public string ElapsedTime()
-    {
-        return _stopWatch.Elapsed.ToString(@"mm\:ss");
-    }
-
     // does not update variables nor _traceLog
     public TraceLog TraceBlock(BlockSyntax block, int start_idx = 0)
     {
@@ -1639,23 +1595,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 if (maxIdx != -1)
                 {
                     if (Verbosity > 0)
-                    {
                         Console.WriteLine($"[d] merging {logs[i].Id} and {logs[maxIdx].Id} => {i}");
-                        if (Verbosity > 2)
-                        {
-                            foreach (var entry in logs[i].entries)
-                            {
-                                Console.WriteLine($"[d] A{(Verbosity > 3 ? entry.StmtWithLineNo() : entry.TitleWithLineNo())}");
-                            }
-                            Console.WriteLine();
-
-                            foreach (var entry in logs[maxIdx].entries)
-                            {
-                                Console.WriteLine($"[d] B{(Verbosity > 3 ? entry.StmtWithLineNo() : entry.TitleWithLineNo())}");
-                            }
-                            Console.WriteLine();
-                        }
-                    }
 
                     if (!string.IsNullOrEmpty(dumpIntermediateLogs))
                     {
@@ -1882,18 +1822,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             throw new InvalidOperationException("Method body cannot be null.");
 
         return body;
-    }
-
-    void update_progress(string msg)
-    {
-        if (Verbosity >= 0 && ShowProgress)
-        {
-            msg = $"[{ElapsedTime()}] {msg} ..";
-            if (Verbosity == 0)
-                Console.Error.Write(msg + ANSI.ERASE_TILL_EOL + "\r");
-            else
-                Console.WriteLine(msg);
-        }
     }
 
     public string ReflowMethod(SyntaxNode methodNode)

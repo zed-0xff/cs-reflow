@@ -352,14 +352,8 @@ class Program
             }
             else
             {
-                foreach (var methodName in opts.methods)
-                {
-                    // if methodName is integer
-                    if (int.TryParse(methodName, out int lineno))
-                        methods.Add(unflattener.GetMethod(lineno));
-                    else
-                        methods.Add(unflattener.GetMethod(methodName));
-                }
+                foreach (var methodNameOrLineNo in opts.methods)
+                    methods.Add(unflattener.GetMethod(methodNameOrLineNo));
             }
 
             // define lambda

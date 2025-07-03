@@ -83,6 +83,9 @@ public class TraceLog
 
     bool eq_stmt(StatementSyntax stmt1, StatementSyntax stmt2)
     {
+        if (stmt1.IsSameStmt(stmt2))
+            return true;
+
         if (stmt1.Equals(stmt2))
             return true;
 
@@ -282,6 +285,17 @@ public class TraceLog
             .WithAdditionalAnnotations(
                     new SyntaxAnnotation("LineNo", entries[start].stmt.LineNo().ToString())
                     );
+    }
+
+    public SyntaxList<StatementSyntax> ToSyntaxList(int start = 0, int count = -1)
+    {
+        if (count == -1)
+            count = entries.Count - start;
+
+        if (count == 0)
+            return SyntaxFactory.List<StatementSyntax>();
+
+        return SyntaxFactory.List(entries.GetRange(start, count).Select(e => e.stmt));
     }
 
     public void Print(

@@ -148,6 +148,14 @@ public class UnknownValueRangeTests
     }
 
     [Fact]
+    public void Test_Sub_range()
+    {
+        UnknownValueRange a = new(TypeDB.Int);
+        UnknownValueRange b = new(TypeDB.Int);
+        Assert.Equal(a, a.Sub(b));
+    }
+
+    [Fact]
     public void Test_int_mul_int()
     {
         UnknownValueRange a = new(TypeDB.Int, new LongRange(1, 3));

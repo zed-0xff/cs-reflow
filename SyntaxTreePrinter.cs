@@ -9,8 +9,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 {
     VarProcessor variableProcessor = new VarProcessor(new VarDB()); // XXX empty vardb
 
-    private SyntaxTree tree;
-    private SyntaxNode root;
     public int Verbosity;
 
     class ReturnException : Exception
@@ -24,14 +22,11 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
     public SyntaxTreePrinter(SyntaxTree tree)
     {
-        this.tree = tree;
-        this.root = tree.GetRoot();
+        _tree = tree;
     }
 
-    public SyntaxTreePrinter(string code)
+    public SyntaxTreePrinter(string code) : base(code)
     {
-        tree = CSharpSyntaxTree.ParseText(code);
-        root = tree.GetRoot();
     }
 
     public void Print(SyntaxNode node, int indent = 0)
@@ -91,101 +86,14 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
     private Dictionary<string, LabeledStatementSyntax> _labels = new();
 
-    public List<StatementSyntax> TraceMethod(string methodName)
-    {
-        var method = root.DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault(m => m.Identifier.Text == methodName);
-
-        if (method == null || method.Body == null)
-            throw new ArgumentException($"Method '{methodName}' not found or has no body.");
-
-        return TraceBlock(method.Body);
-    }
-
-    public List<string> Methods => root.DescendantNodes()
+    public List<string> Methods => _tree.GetRoot().DescendantNodes()
         .OfType<MethodDeclarationSyntax>()
         .Select(m => m.Identifier.Text)
         .ToList();
 
-    public List<StatementSyntax> TraceBlock(BlockSyntax block)
-    {
-        var traced = new List<StatementSyntax>();
-        var visited = new HashSet<StatementSyntax>();
-
-        // Index labels for quick lookup
-        foreach (var stmt in block.Statements.OfType<LabeledStatementSyntax>())
-        {
-            var labelName = stmt.Identifier.Text;
-            _labels[labelName] = stmt;
-        }
-
-        // Start tracing from the top
-        StatementSyntax? current = block.Statements.FirstOrDefault();
-        while (current != null)
-        {
-            if (!visited.Add(current))
-                break; // prevent infinite loops
-
-            var lineno = current.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
-            Console.WriteLine($"{lineno.ToString().PadLeft(6)}: {NodeTitle(current)}");
-            traced.Add(current);
-
-            switch (current)
-            {
-                case GotoStatementSyntax gotoStmt:
-                    if (gotoStmt.Expression is IdentifierNameSyntax labelId &&
-                            _labels.TryGetValue(labelId.Identifier.Text, out var targetLabel))
-                    {
-                        current = targetLabel.Statement;
-                        continue;
-                    }
-                    throw new ArgumentException($"Label '{gotoStmt.Expression}' not found.");
-
-                case LabeledStatementSyntax labeled:
-                    current = labeled.Statement;
-                    continue;
-
-                case WhileStatementSyntax whileStmt:
-                    var cond = whileStmt.Condition.ToString();
-                    if ((cond == "true" || cond == "1") && whileStmt.Statement is BlockSyntax whileBlk)
-                    {
-                        TraceBlock(whileBlk);
-                        continue;
-                    }
-                    throw new NotImplementedException("While statements are not supported yet.");
-
-                case IfStatementSyntax ifStmt:
-                    // Optionally handle branching here, or assume fall-through
-                    //current = GetNextStatement(current, block);
-                    //continue;
-                    throw new NotImplementedException("If statements are not supported yet.");
-
-                case ReturnStatementSyntax:
-                    throw new ReturnException(current.LineNo());
-
-                default:
-                    current = GetNextStatement(current, block);
-                    continue;
-            }
-        }
-
-        return traced;
-    }
-
-    private StatementSyntax? GetNextStatement(StatementSyntax current, BlockSyntax block)
-    {
-        var statements = block.Statements;
-        int index = statements.IndexOf(current);
-        return index >= 0 && index + 1 < statements.Count ? statements[index + 1] : null;
-    }
-
     public void PrintMethod(string methodName)
     {
-        var methodNode = root.DescendantNodes()
-            .FirstOrDefault(n =>
-                    (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
-                    (n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName));
+        var methodNode = GetMethod(methodName);
 
         switch (methodNode)
         {
@@ -232,6 +140,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
     public void Print()
     {
-        Print(root);
+        Print(_tree.GetRoot());
     }
 }

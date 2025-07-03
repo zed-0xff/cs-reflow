@@ -706,15 +706,16 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             if (otherTyped.IsZero())
                 return this;
 
-            ulong productCardinality = Cardinality() * otherTyped.Cardinality(); // pessimistic
+            float productCardinality = (float)Cardinality() * otherTyped.Cardinality(); // pessimistic
             var typedResult = TypedSub(right);
 
             if (typedResult.Cardinality() < productCardinality)
                 return typedResult;
 
-            return new UnknownValueSet(type,
-                    Values()
-                    .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
+            if (productCardinality < MAX_DISCRETE_CARDINALITY)
+                return new UnknownValueSet(type,
+                        Values()
+                        .SelectMany(l => otherTyped.Values(), (l, r) => MaskWithSign(l - r)));
         }
         return MaybeNormalize(TypedSub(right));
     }
