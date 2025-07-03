@@ -246,7 +246,7 @@ public partial class VarProcessor
                     }
                     Console.ResetColor();
                 }
-                return result;
+                return result!; // TODO: check nullability
             }
             catch (Exception ex)
             {
@@ -851,7 +851,7 @@ public partial class VarProcessor
             };
         }
 
-        object eval_binary_and(BinaryExpressionSyntax binaryExpr, object? lValue)
+        object eval_binary_and(BinaryExpressionSyntax binaryExpr, object lValue)
         {
             if (lValue is UnknownValueBase luvb)
                 lValue = luvb.Cast(TypeDB.Bool);
@@ -873,7 +873,7 @@ public partial class VarProcessor
             return UnknownValue.Create(TypeDB.Bool);
         }
 
-        object eval_binary_or(BinaryExpressionSyntax binaryExpr, object? lValue)
+        object eval_binary_or(BinaryExpressionSyntax binaryExpr, object lValue)
         {
             if (lValue is UnknownValueBase luvb)
                 lValue = luvb.Cast(TypeDB.Bool);
