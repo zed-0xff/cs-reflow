@@ -117,7 +117,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             SyntaxKind.UnaryPlusExpression => this,
             SyntaxKind.UnaryMinusExpression => Negate(),
             SyntaxKind.LogicalNotExpression => Eq(0),
-            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
+            _ => throw new NotImplementedException($"{ToString()}.UnaryOp({op}): not implemented"),
         };
 
     private object BinaryOpNoPromote(string op, object rValue)
@@ -145,7 +145,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             ">>" => SignedShiftRight(rValue),
             ">>>" => UnsignedShiftRight(rValue),
 
-            _ => throw new NotImplementedException($"{ToString()}.Op({op}): not implemented"),
+            _ => throw new NotImplementedException($"{ToString()}.BinaryOp({op}): not implemented"),
         };
 
         // materialize the UnknownTypedValue if it has only one value
@@ -600,6 +600,17 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                 default:
                     return Contains(0) ? ((type == toType) ? this : UnknownValue.Create(TypeDB.Bool)) : true;
             }
+        }
+
+        if (toType.ByteSize < type.ByteSize)
+        {
+            var res = BitwiseAnd(toType.Mask);
+            return res switch
+            {
+                UnknownTypedValue utv => utv.WithType(toType),
+                UnknownValue uv => UnknownTypedValue.Create(toType),
+                _ => throw new NotSupportedException($"Cannot cast {GetType()} to {toType}")
+            };
         }
 
         return Upcast(toType);

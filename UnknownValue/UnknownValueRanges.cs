@@ -17,7 +17,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
         _rangeSet.Add(ranges);
     }
 
-    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _rangeSet) { _tag = tag };
+    public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new(type, _rangeSet) { _tags = add_tag(key, value) };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _rangeSet) { _var_id = id };
     public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueRanges(type, _rangeSet); // TODO: type conversion
 

@@ -462,9 +462,23 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_expr_pointer_cast()
+    {
+        check_expr("int num = 0x2010; *(sbyte*)(&num) * 4 == 64");
+    }
+
+    [Fact]
     public void Test_sizeof_ulong()
     {
         check_expr("sizeof(ulong) == 8");
+    }
+
+    [Fact]
+    public void Test_sizeof_ptr()
+    {
+        // 4 because TypeDB.Bitness is 32
+        check_expr("sizeof(int*) == 4");
+        check_expr("sizeof(long*) == 4");
     }
 
     [Fact]

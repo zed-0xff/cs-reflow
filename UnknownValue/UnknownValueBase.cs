@@ -1,23 +1,70 @@
 using Microsoft.CodeAnalysis.CSharp;
+using System.Collections.ObjectModel;
 
 public abstract class UnknownValueBase
 {
-    protected object? _tag { get; init; } = null;
+    protected IReadOnlyDictionary<string, object>? _tags { get; init; } = null;
     public int? _var_id { get; init; } = null; // public for UnknownValueBitTracker
+
+    protected IReadOnlyDictionary<string, object>? add_tag(string key, object? value)
+    {
+        var dict = _tags == null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(_tags);
+
+        if (value == null)
+        {
+            if (dict.ContainsKey(key))
+                dict.Remove(key);
+            return dict.Count == 0 ? null : new ReadOnlyDictionary<string, object>(dict);
+        }
+        else
+        {
+            dict[key] = value;
+            return new ReadOnlyDictionary<string, object>(dict);
+        }
+    }
 
     protected string TagStr()
     {
-        return _tag switch
-        {
-            null => string.Empty,
-            string s => $"`{s}",
-            _ => $"`{_tag}"
-        };
+        if (_tags == null || _tags.Count == 0)
+            return string.Empty;
+
+        var tags = "{" + string.Join(", ", _tags.Select(kv => $"{kv.Key}={kv.Value}")) + "}";
+        return tags;
     }
+
+    public bool TryGetTag(string key, out object? value)
+    {
+        if (_tags == null || !_tags.TryGetValue(key, out value))
+        {
+            value = null;
+            return false;
+        }
+        return true;
+    }
+
+    protected bool HasTag(string key) => _tags != null && _tags.ContainsKey(key);
+    protected bool HasTag(string key, object? value)
+    {
+        if (value == null)
+            return _tags == null || !_tags.ContainsKey(key);
+
+        if (_tags == null)
+            return false;
+
+        if (!_tags.TryGetValue(key, out var tagValue))
+            return false;
+
+        return value == null ? tagValue == null : value.Equals(tagValue);
+    }
+
+    public bool IsPointer() => HasTag("pointee");
 
     protected string VarIDStr() => _var_id.HasValue ? $"`{_var_id.Value}" : string.Empty;
 
-    public abstract UnknownValueBase WithTag(object? tag);
+    public abstract UnknownValueBase WithTag(string key, object? value);
+    public UnknownValueBase WithoutTag(string key) => WithTag(key, null);
     public abstract UnknownValueBase WithVarID(int id);
 
     public abstract override string ToString();

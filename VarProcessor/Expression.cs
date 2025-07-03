@@ -190,19 +190,8 @@ public partial class VarProcessor
         void setVar(IdentifierNameSyntax id, object? value) => setVar(id.Identifier, value);
         void setVar(SyntaxToken token, object? value) => _varDict.Set(token, value);
 
-        object cast_var(dynamic value, string toTypeName)
+        static object cast_var(object value, TypeDB.IntType toType)
         {
-            // if (toTypeName == "string" || toTypeName == "String" || toTypeName == "System.String")
-            //     return value.ToString();
-
-            var toType = TypeDB.TryFind(toTypeName);
-            if (toType == null)
-            {
-                if (value is UnknownValueBase uv)
-                    return new UnknownValue();
-                throw new NotSupportedException($"Type '{toTypeName}' is not supported.");
-            }
-
             switch (value)
             {
                 case UnknownValueBase uv:
@@ -212,6 +201,25 @@ public partial class VarProcessor
             }
 
             return toType.ConvertInt(value);
+        }
+
+        static object cast_var(object value, TypeSyntax toTypeSyntax)
+        {
+            var toType = TypeDB.TryFind(toTypeSyntax);
+            if (toType != null)
+                return cast_var(value, toType);
+
+            if (value is UnknownValueBase uv)
+            {
+                if (toTypeSyntax is PointerTypeSyntax pts && uv.IsPointer())
+                {
+                    var ptrType = TypeDB.TryFind(pts.ElementType);
+                    if (ptrType != null)
+                        return uv.WithTag("ptr_cast", ptrType);
+                }
+                return new UnknownValue();
+            }
+            throw new NotSupportedException($"Type '{toTypeSyntax}' is not supported.");
         }
 
         [ThreadStatic]
@@ -396,7 +404,7 @@ public partial class VarProcessor
 
                 case CastExpressionSyntax castExpr:               // (uint)num2
                     var value = EvaluateExpression(castExpr.Expression);
-                    return cast_var(value, castExpr.Type.ToString());
+                    return cast_var(value, castExpr.Type);
 
                 case ConditionalExpressionSyntax conditionalExpr: // ternary operator: num3 == 0 ? num4 : num5
                     var condition = EvaluateExpression(conditionalExpr.Condition);
@@ -480,6 +488,23 @@ public partial class VarProcessor
 
         static object eval_prefix(object value, SyntaxKind kind)
         {
+            switch (kind)
+            {
+                case SyntaxKind.AddressOfExpression: // "&x"
+                    return UnknownTypedValue.Create(TypeDB.NInt).WithTag("pointee", value); // XXX returning NInt for all pointer types
+
+                case SyntaxKind.PointerIndirectionExpression: // "*x" => Dereference a pointer
+                    if (value is UnknownTypedValue utv && utv.TryGetTag("pointee", out var pointee))
+                    {
+                        if (utv.TryGetTag("ptr_cast", out var ptrCast) && ptrCast is TypeDB.IntType ptrType)
+                        {
+                            return cast_var(pointee!, ptrType);
+                        }
+                        return pointee!;
+                    }
+                    break;
+            }
+
             return value switch
             {
                 bool b => eval_prefix(b, kind),
@@ -893,24 +918,24 @@ public partial class VarProcessor
             return UnknownValue.Create(TypeDB.Bool);
         }
 
+        static readonly TypeSyntax NINT_TYPE = ParseTypeName("nint");
+        static readonly TypeSyntax NUINT_TYPE = ParseTypeName("nuint");
+
         object EvaluateBinaryExpression(BinaryExpressionSyntax binaryExpr)
         {
             // handle falsely misinterpreted "(nint)-17648"
+            // only 'nint' and 'nuint' are affected because they are not in PredefinedTypes
             if (binaryExpr.Left is ParenthesizedExpressionSyntax parenExpr
                     && binaryExpr.OperatorToken.Text == "-"
-                    && binaryExpr.Right is LiteralExpressionSyntax)
+                    && binaryExpr.Right.StripParentheses() is LiteralExpressionSyntax litR)
             {
-                string ls = binaryExpr.Left.ToString();
+                string ls = parenExpr.StripParentheses().ToString();
                 switch (ls)
                 {
-                    case "(int)":
-                    case "(nint)":
-                    case "(uint)":
-                    case "(nuint)":
-                        return cast_var(
-                                EvaluatePrefixExpression(SyntaxFactory.PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, binaryExpr.Right)),
-                                parenExpr.Expression.ToString()
-                                );
+                    case "nint":
+                        return cast_var(EvaluatePrefixExpression(SyntaxFactory.PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, litR)), NINT_TYPE);
+                    case "nuint":
+                        return cast_var(EvaluatePrefixExpression(SyntaxFactory.PrefixUnaryExpression(SyntaxKind.UnaryMinusExpression, litR)), NUINT_TYPE);
                 }
             }
 

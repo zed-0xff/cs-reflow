@@ -23,11 +23,20 @@ public class UnknownValueTests
         UnknownValue a = new();
         Assert.Equal("UnknownValue", a.ToString());
 
-        var b = a.WithTag("test");
-        Assert.Equal("UnknownValue`test", b.ToString());
+        var b = a.WithTag("foo", "bar");
+        Assert.Equal("UnknownValue{foo=bar}", b.ToString());
 
-        var c = b.WithTag(null);
-        Assert.Equal("UnknownValue", c.ToString());
+        b = b.WithTag("x", null);
+        Assert.Equal("UnknownValue{foo=bar}", b.ToString());
+
+        b = b.WithTag("x", "y");
+        Assert.Equal("UnknownValue{foo=bar, x=y}", b.ToString());
+
+        var c = b.WithTag("foo", null);
+        Assert.Equal("UnknownValue{x=y}", c.ToString());
+
+        var d = c.WithoutTag("x");
+        Assert.Equal("UnknownValue", d.ToString());
     }
 
     [Fact]

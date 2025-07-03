@@ -58,7 +58,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return new BitSpan(min, max);
     }
 
-    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new UnknownValueBits(type, _bitspan) { _tag = tag };
+    public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new UnknownValueBits(type, _bitspan) { _tags = add_tag(key, value) };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bitspan) { _var_id = id };
     public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueBits(type, _bitspan); // TODO: check
 

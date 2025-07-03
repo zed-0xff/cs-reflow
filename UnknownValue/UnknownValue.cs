@@ -1,20 +1,5 @@
 public class UnknownValue : UnknownValueBase
 {
-    public class Builder
-    {
-        private readonly object? _tag;
-
-        public Builder(object? tag)
-        {
-            _tag = tag;
-        }
-
-        public UnknownValueBase Create()
-        {
-            return new UnknownValue { _tag = _tag };
-        }
-    }
-
     public UnknownValue()
     {
     }
@@ -32,7 +17,7 @@ public class UnknownValue : UnknownValueBase
     public static UnknownValueBase Create(Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax type) => Create(type.ToString());
     public static UnknownValueBase Create(TypeDB.IntType? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
 
-    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new() { _tag = tag };
+    public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new() { _tags = add_tag(key, value) };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new() { _var_id = id };
 
     public override UnknownValueBase Cast(TypeDB.IntType toType) => Create(toType);

@@ -16,7 +16,7 @@ public class UnknownValueSet : UnknownTypedValue
             _values = ImmutableHashSet.CreateRange(values);
     }
 
-    public override UnknownValueBase WithTag(object? tag) => Equals(_tag, tag) ? this : new(type, _values) { _tag = tag };
+    public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new(type, _values) { _tags = add_tag(key, value) };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
     public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueSet(type, _values); // TODO: type conversion
 

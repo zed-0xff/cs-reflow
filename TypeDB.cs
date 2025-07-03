@@ -191,6 +191,7 @@ public static partial class TypeDB
 
                 _ => throw new NotSupportedException($"TypeDB.GetSize: {pts.Keyword} is not supported.")
             },
+            PointerTypeSyntax => NInt.ByteSize,
             IdentifierNameSyntax id => id.Identifier.ValueText switch
             {
                 "nint" => NInt.ByteSize,
@@ -255,8 +256,8 @@ public static partial class TypeDB
             },
             IdentifierNameSyntax id => id.Identifier.ValueText switch
             {
-                "nint" => (object)default(nint),
-                "nuint" => default(nuint),
+                "nint" => (object)UnknownTypedValue.Zero(NInt),
+                "nuint" => (object)UnknownTypedValue.Zero(NUInt),
                 "Guid" => Guid.Empty,
                 _ => throw new NotSupportedException($"TypeDB.Default: Identifier '{id.Identifier.ValueText}' is not supported.")
             },
