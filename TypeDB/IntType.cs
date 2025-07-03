@@ -12,7 +12,6 @@ public static partial class TypeDB
         public SpecialType IntTypeID => id;
 
         public readonly string Name;
-        public readonly System.Type Type; // XXX won't work when analyzing 32/64-bit code on opposite bitness host
         public readonly int nbits;
         public readonly int ByteSize;
         public readonly bool signed;
@@ -26,11 +25,10 @@ public static partial class TypeDB
         public readonly LongRange Range;
         public readonly BitSpan BitSpan;
 
-        public IntType(string name, System.Type type, int nbits, bool signed, SpecialType id)
+        public IntType(string name, int nbits, bool signed, SpecialType id)
         {
             this.id = id;
             Name = name;
-            Type = type;
             this.nbits = nbits;
             this.ByteSize = nbits / 8;
             this.signed = signed;

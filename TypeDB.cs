@@ -19,21 +19,24 @@ public static partial class TypeDB
     public const SpecialType ST_IntPtr = SpecialType.System_IntPtr;
     public const SpecialType ST_UIntPtr = SpecialType.System_UIntPtr;
 
-    public static readonly IntType Int8 = new IntType("sbyte", typeof(sbyte), 8, true, ST_SByte);
-    public static readonly IntType UInt8 = new IntType("byte", typeof(byte), 8, false, ST_Byte);
-    public static readonly IntType Int16 = new IntType("short", typeof(short), 16, true, ST_Int16);
-    public static readonly IntType UInt16 = new IntType("ushort", typeof(ushort), 16, false, ST_UInt16);
-    public static readonly IntType Int32 = new IntType("int", typeof(int), 32, true, ST_Int32);
-    public static readonly IntType UInt32 = new IntType("uint", typeof(uint), 32, false, ST_UInt32);
-    public static readonly IntType Int64 = new IntType("long", typeof(long), 64, true, ST_Int64);
-    public static readonly IntType UInt64 = new IntType("ulong", typeof(ulong), 64, false, ST_UInt64);
-    public static readonly IntType Bool = new IntType("bool", typeof(bool), 1, false, ST_Boolean);
+    public static readonly IntType Int8 = new IntType("sbyte", 8, true, ST_SByte);
+    public static readonly IntType UInt8 = new IntType("byte", 8, false, ST_Byte);
+    public static readonly IntType Int16 = new IntType("short", 16, true, ST_Int16);
+    public static readonly IntType UInt16 = new IntType("ushort", 16, false, ST_UInt16);
+    public static readonly IntType Int32 = new IntType("int", 32, true, ST_Int32);
+    public static readonly IntType UInt32 = new IntType("uint", 32, false, ST_UInt32);
+    public static readonly IntType Int64 = new IntType("long", 64, true, ST_Int64);
+    public static readonly IntType UInt64 = new IntType("ulong", 64, false, ST_UInt64);
+    public static readonly IntType Bool = new IntType("bool", 1, false, ST_Boolean);
 
-    public static readonly IntType IntPtr32 = new IntType("nint", typeof(nint), 32, true, ST_IntPtr);
-    public static readonly IntType UIntPtr32 = new IntType("nuint", typeof(nuint), 32, false, ST_UIntPtr);
+    public static readonly IntType IntPtr32 = new IntType("nint", 32, true, ST_IntPtr);
+    public static readonly IntType UIntPtr32 = new IntType("nuint", 32, false, ST_UIntPtr);
 
-    public static readonly IntType IntPtr64 = new IntType("nint", typeof(nint), 64, true, ST_IntPtr);
-    public static readonly IntType UIntPtr64 = new IntType("nuint", typeof(nuint), 64, false, ST_UIntPtr);
+    public static readonly IntType IntPtr64 = new IntType("nint", 64, true, ST_IntPtr);
+    public static readonly IntType UIntPtr64 = new IntType("nuint", 64, false, ST_UIntPtr);
+
+    // XXX: make sure it's not leaked into UnknownTypedValue
+    private static readonly IntType GUID = new IntType("Guid", 128, false, SpecialType.None);
 
     // aliases
     public static readonly IntType Byte = UInt8;
@@ -75,11 +78,11 @@ public static partial class TypeDB
         };
     }
 
-    private static IntType bitness_aware(IntType int32, IntType int64) =>
+    private static T bitness_aware<T>(T res32, T res64) =>
         Bitness switch
         {
-            32 => int32,
-            64 => int64,
+            32 => res32,
+            64 => res64,
             0 => throw new InvalidOperationException($"TypeDB.Bitness is not set."),
             _ => throw new NotSupportedException($"TypeDB.Bitness {Bitness} is not supported.")
         };
@@ -165,5 +168,99 @@ public static partial class TypeDB
 
         return (null, null); // no promotion necessary
     }
+
+    public static int SizeOf(TypeSyntax type) =>
+        type switch
+        {
+            PredefinedTypeSyntax pts => pts.Keyword.Kind() switch
+            {
+                SyntaxKind.ByteKeyword => sizeof(byte),
+                SyntaxKind.SByteKeyword => sizeof(sbyte),
+                SyntaxKind.ShortKeyword => sizeof(short),
+                SyntaxKind.UShortKeyword => sizeof(ushort),
+                SyntaxKind.IntKeyword => sizeof(int),
+                SyntaxKind.UIntKeyword => sizeof(uint),
+                SyntaxKind.LongKeyword => sizeof(long),
+                SyntaxKind.ULongKeyword => sizeof(ulong),
+
+                SyntaxKind.FloatKeyword => sizeof(float),
+                SyntaxKind.DoubleKeyword => sizeof(double),
+
+                SyntaxKind.BoolKeyword => sizeof(bool),
+                SyntaxKind.CharKeyword => sizeof(char),
+
+                _ => throw new NotSupportedException($"TypeDB.GetSize: {pts.Keyword} is not supported.")
+            },
+            IdentifierNameSyntax id => id.Identifier.ValueText switch
+            {
+                "nint" => NInt.ByteSize,
+                "nuint" => NUInt.ByteSize,
+                "Guid" => GUID.ByteSize,
+                _ => throw new NotSupportedException($"TypeDB.SizeOf: Identifier '{id.Identifier.ValueText}' is not supported.")
+            },
+            _ => throw new NotSupportedException($"TypeDB.GetSize: {type} is not supported.")
+        };
+
+    public static int SizeOf(object obj) =>
+        obj switch
+        {
+            byte => sizeof(byte),
+            sbyte => sizeof(sbyte),
+            short => sizeof(short),
+            ushort => sizeof(ushort),
+            int => sizeof(int),
+            uint => sizeof(uint),
+            long => sizeof(long),
+            ulong => sizeof(ulong),
+
+            nint => NInt.ByteSize,
+            nuint => NUInt.ByteSize,
+
+            float => sizeof(float),
+            double => sizeof(double),
+
+            char => sizeof(char),
+            bool => sizeof(bool),
+
+            Guid => GUID.ByteSize,
+
+            _ => throw new NotSupportedException($"TypeDB.GetSize: {obj.GetType()} is not supported.")
+        };
+
+    public static object? Default(TypeSyntax type) =>
+        type switch
+        {
+            PredefinedTypeSyntax pts => pts.Keyword.Kind() switch
+            {
+                // switch tries to find the best match for the type, so if all types are integers of different sizes => long will be used
+                // but if at least one branch returns object => all branches will return object
+                SyntaxKind.ByteKeyword => default(byte),
+                SyntaxKind.SByteKeyword => default(sbyte),
+                SyntaxKind.ShortKeyword => default(short),
+                SyntaxKind.UShortKeyword => default(ushort),
+                SyntaxKind.IntKeyword => default(int),
+                SyntaxKind.UIntKeyword => default(uint),
+                SyntaxKind.LongKeyword => default(long),
+                SyntaxKind.ULongKeyword => default(ulong),
+
+                SyntaxKind.FloatKeyword => default(float),
+                SyntaxKind.DoubleKeyword => default(double),
+
+                SyntaxKind.BoolKeyword => default(bool),
+                SyntaxKind.CharKeyword => default(char),
+                SyntaxKind.ObjectKeyword => default(object),
+                SyntaxKind.StringKeyword => default(string),
+
+                _ => throw new NotSupportedException($"TypeDB.Default: {pts.Keyword} is not supported.")
+            },
+            IdentifierNameSyntax id => id.Identifier.ValueText switch
+            {
+                "nint" => (object)default(nint),
+                "nuint" => default(nuint),
+                "Guid" => Guid.Empty,
+                _ => throw new NotSupportedException($"TypeDB.Default: Identifier '{id.Identifier.ValueText}' is not supported.")
+            },
+            _ => throw new NotSupportedException($"TypeDB.Default: {type} is not supported.")
+        };
 }
 

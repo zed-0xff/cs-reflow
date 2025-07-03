@@ -28,6 +28,21 @@ public partial class VarProcessor
         return false;
     }
 
+    public class AddressOf
+    {
+        public object Value { get; }
+
+        public AddressOf(object value)
+        {
+            Value = value;
+        }
+
+        public override string ToString()
+        {
+            return $"&{Value}";
+        }
+    }
+
     public class Expression
     {
         CSharpSyntaxNode node;
@@ -402,28 +417,8 @@ public partial class VarProcessor
                         return result;
                     }
 
-                case DefaultExpressionSyntax defaultExpr:
-                    // Handle default expressions (e.g., default(uint))
-                    return defaultExpr.ToString() switch
-                    {
-                        // Handle default values for common types
-                        "default(bool)" => default(bool),
-                        "default(char)" => default(char),
-                        "default(byte)" => default(byte),
-                        "default(double)" => default(double),
-                        "default(float)" => default(float),
-                        "default(int)" => default(int),
-                        "default(long)" => default(long),
-                        "default(nint)" => default(nint),   // zero for both 32/64
-                        "default(nuint)" => default(nuint), // zero for both 32/64
-                        "default(object)" => default(object),
-                        "default(sbyte)" => default(sbyte),
-                        "default(string)" => default(string),
-                        "default(uint)" => default(uint),
-                        "default(ulong)" => default(ulong),
-                        "default(ushort)" => default(ushort),
-                        _ => throw new NotSupportedException($"Default expression '{defaultExpr.ToString()}' is not supported.")
-                    };
+                case DefaultExpressionSyntax defaultExpr: // "default(uint)"
+                    return TypeDB.Default(defaultExpr.Type);
 
                 case IdentifierNameSyntax id:
                     // If the expression is an identifier, fetch its value from the dictionary
@@ -454,25 +449,7 @@ public partial class VarProcessor
                     return EvaluatePostfixExpression(postfixExpr);
 
                 case SizeOfExpressionSyntax sizeOfExpr:
-                    return sizeOfExpr.ToString() switch
-                    {
-                        "sizeof(bool)" => sizeof(bool),
-                        "sizeof(byte)" => sizeof(byte),
-                        "sizeof(char)" => sizeof(char),
-                        "sizeof(double)" => sizeof(double),
-                        "sizeof(float)" => sizeof(float),
-                        "sizeof(int)" => sizeof(int),
-                        "sizeof(long)" => sizeof(long),
-                        "sizeof(nint)" => TypeDB.NInt.ByteSize,
-                        "sizeof(nuint)" => TypeDB.NUInt.ByteSize,
-                        "sizeof(sbyte)" => sizeof(sbyte),
-                        "sizeof(short)" => sizeof(short),
-                        "sizeof(uint)" => sizeof(uint),
-                        "sizeof(ulong)" => sizeof(ulong),
-                        "sizeof(ushort)" => sizeof(ushort),
-                        "sizeof(Guid)" => 0x10, // same for 32/64 bit hosts
-                        _ => throw new NotSupportedException($"SizeOf expression '{sizeOfExpr.ToString()}' is not supported.")
-                    };
+                    return TypeDB.SizeOf(sizeOfExpr.Type);
 
                 default:
                     throw new NotSupportedException($"{expression.Kind()} is not supported.");
@@ -783,7 +760,8 @@ public partial class VarProcessor
             return false;
         }
 
-        bool IsPromotionRequired<TL, TR>(TL l, TR r)
+        // TODO: check performance
+        bool IsPromotionRequired_fast<TL, TR>(TL l, TR r)
             where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
             where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
         {
@@ -805,18 +783,38 @@ public partial class VarProcessor
             return typeof(TL) != typeof(TR);
         }
 
+        // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
+        bool IsPromotionRequired(object l, object r)
+        {
+            // promote & materialize IntConstExprs, if any
+            if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
+                return true;
+
+            if (ReferenceEquals(l.GetType(), r.GetType()))
+            {
+                if (l is int or uint or long or ulong)
+                    return false; // fast path, same type and >= 4 bytes
+            }
+
+            int sizeL = TypeDB.SizeOf(l);
+            if (sizeL < 4)
+                return true;
+
+            int sizeR = TypeDB.SizeOf(r);
+            if (sizeR < 4)
+                return true;
+
+            if (sizeL != sizeR)
+                return true;
+
+            return l.GetType() != r.GetType();
+        }
+
         object eval_binary<TL, TR>(TL l, SyntaxKind kind, TR r)
             where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
             where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
         {
             _logger.debug(() => $"[d] eval_binary: ({l.GetType()}) {l} {kind} ({r.GetType()}) {r}");
-
-            // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
-            if (IsPromotionRequired(l, r))
-            {
-                var (lp, rp) = VarProcessor.PromoteInts(l, r);
-                return eval_binary((dynamic)lp, kind, (dynamic)rp);
-            }
 
             return kind switch
             {
@@ -953,6 +951,12 @@ public partial class VarProcessor
 
             if (rValue is UnknownValueBase ruv)
                 return ruv.InverseBinaryOp(op, lValue);
+
+            if (IsPromotionRequired(lValue, rValue))
+            {
+                var (lp, rp) = VarProcessor.PromoteInts(lValue, rValue);
+                return eval_binary((dynamic)lp, binaryExpr.Kind(), (dynamic)rp);
+            }
 
             return eval_binary((dynamic)lValue, binaryExpr.Kind(), (dynamic)rValue);
         }
