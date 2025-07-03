@@ -66,9 +66,24 @@ public class VarDB
         return v;
     }
 
+    public Variable AddConst(string name, string typeName, object? value)
+    {
+        int id = _var_id++;
+        var v = new Variable(id, name, typeName, value);
+        _ann2vars[v.Annotation] = v;
+        _vars[id] = v;
+        _name2vars[v.Name] = v;
+        _logger.debug(() => $"{v}: ({typeName}) {name}");
+        return v;
+    }
+
+    public Variable Add(IFieldSymbol field) => field.IsConst ?
+            AddConst(field.Name, field.Type.ToString()!, field.ConstantValue) :
+            Add(field.Name, field.Type.ToString()!);
+
     public void SetLoopVar(int id) => _vars[id].Flags |= Variable.FLAG_LOOP;
 
-    // same as Roslyn's ReadInside(), handles ++/-- differently
+    // same as Roslyn's ReadInside(), but handles ++/-- differently
     public (HashSet<int>, HashSet<int>, HashSet<int>) CollectVars(SyntaxNode rootNode)
     {
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()

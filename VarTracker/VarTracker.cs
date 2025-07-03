@@ -18,9 +18,9 @@ public partial class VarTracker
 
     public string NextStmtID() => (++_stmt_id).ToString("X4");
 
-    public SyntaxNode? Track(SyntaxNode rootNode)
+    public SyntaxNode? Track(SyntaxNode rootNode, IEnumerable<SyntaxTree>? trees = null)
     {
-        var ctx = new SemanticContext(rootNode);
+        var ctx = new SemanticContext(rootNode, trees);
         return IndexSymbols(rootNode, ctx.Model);
     }
 

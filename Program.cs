@@ -36,12 +36,12 @@ class Program
         int verbosity,
         string? dumpIntermediateLogs,
         string? expr,
-        string? filename
+        List<string> filenames
     );
 
-    static ControlFlowUnflattener createUnflattener(string code, Options opts, HintsDictionary hints, bool dummyClassWrap)
+    static ControlFlowUnflattener createUnflattener(OrderedDictionary<string, string> codes, Options opts, HintsDictionary hints, bool dummyClassWrap)
     {
-        return new ControlFlowUnflattener(code, verbosity: opts.verbosity, flowHints: hints, dummyClassWrap: dummyClassWrap)
+        return new ControlFlowUnflattener(codes, verbosity: opts.verbosity, flowHints: hints, dummyClassWrap: dummyClassWrap)
         {
             AddComments = opts.addComments,
             ShowAnnotations = opts.showAnnotations,
@@ -75,9 +75,13 @@ class Program
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
 
         // --- Define arguments and options ---
-        var filenameArg = new Argument<string?>("filename", description: "Input .cs file (optional).") { Arity = ArgumentArity.ZeroOrOne };
+        var filenamesArg = new Argument<List<string>>("filenames", description: "Input .cs files (optional).") { Arity = ArgumentArity.ZeroOrMore };
 
-        var methodsArg = new Argument<List<string>>("methods", description: "Method names to process.") { Arity = ArgumentArity.ZeroOrMore };
+        var methodsOpt = new Option<List<string>>(
+            aliases: new[] { "--method", "-m" },
+            description: "process only specified method(s) (by name or line number)",
+            parseArgument: result => result.Tokens.Select(t => t.Value).ToList()
+        );
 
         var hintOpt = new Option<List<string>>(
             name: "--hint",
@@ -242,11 +246,11 @@ class Program
             dumpFlowInfosOpt,
             dumpIntermediateLogsOpt,
             exprArg,
-            filenameArg,
+            filenamesArg,
             hintOpt,
             keepVarsOpt,
             listMethodsOpt,
-            methodsArg,
+            methodsOpt,
             moveDeclarationsOpt,
             postProcessOpt,
             preProcessOpt,
@@ -273,11 +277,11 @@ class Program
                 dumpFlowInfos: context.ParseResult.GetValueForOption(dumpFlowInfosOpt),
                 dumpIntermediateLogs: context.ParseResult.GetValueForOption(dumpIntermediateLogsOpt),
                 expr: context.ParseResult.GetValueForOption(exprArg),
-                filename: context.ParseResult.GetValueForArgument(filenameArg),
+                filenames: context.ParseResult.GetValueForArgument(filenamesArg),
                 hintList: context.ParseResult.GetValueForOption(hintOpt) ?? new(),
                 keepVars: context.ParseResult.GetValueForOption(keepVarsOpt) ?? new(),
                 listMethods: context.ParseResult.GetValueForOption(listMethodsOpt),
-                methods: context.ParseResult.GetValueForArgument(methodsArg),
+                methods: context.ParseResult.GetValueForOption(methodsOpt) ?? new(),
                 moveDeclarations: context.ParseResult.GetValueForOption(moveDeclarationsOpt),
                 postProcess: context.ParseResult.GetValueForOption(postProcessOpt),
                 preProcess: context.ParseResult.GetValueForOption(preProcessOpt),
@@ -308,38 +312,41 @@ class Program
                 }
             }
 
-            string code;
+            var codes = new OrderedDictionary<string, string>();
 
             if (!string.IsNullOrEmpty(opts.expr))
             {
                 ProcessCmdLineExpr(opts);
                 return;
             }
-            else if (string.IsNullOrEmpty(opts.filename))
+            else if (opts.filenames.Count == 0)
             {
                 if (!Console.IsInputRedirected)
                 {
                     Console.WriteLine("No input file nor pipe nor expr is specified. Run with --help for more information.");
                     return;
                 }
-                code = Console.In.ReadToEnd();
+                codes["stdin"] = Console.In.ReadToEnd();
             }
             else
             {
-                if (!File.Exists(opts.filename))
+                foreach (var filename in opts.filenames)
                 {
-                    Console.Error.WriteLine($"[error] File not found: {opts.filename}");
-                    return;
+                    if (!File.Exists(filename))
+                    {
+                        Console.Error.WriteLine($"[error] File not found: {filename}");
+                        return;
+                    }
+                    codes[filename] = File.ReadAllText(filename);
                 }
-                code = File.ReadAllText(opts.filename);
             }
 
-            var unflattener = createUnflattener(code, opts, hints, false);
+            var unflattener = createUnflattener(codes, opts, hints, false);
             var methodDict = unflattener.Methods;
 
             if (methodDict.Count == 0)
             {
-                unflattener = createUnflattener(code, opts, hints, true);
+                unflattener = createUnflattener(codes, opts, hints, true);
                 methodDict = unflattener.Methods;
             }
 
@@ -366,7 +373,17 @@ class Program
             }
             else if (opts.printTree)
             {
-                var printer = new SyntaxTreePrinter(code);
+                var trees = codes.Select(kv => CSharpSyntaxTree.ParseText(kv.Value, path: kv.Key)).ToList();
+                var tree = trees.Last();
+                trees.Remove(tree);
+
+                if (opts.showAnnotations)
+                {
+                    var tracker = new VarTracker(new());
+                    var trackedRoot = tracker.Track(tree.GetRoot(), trees);
+                    tree = trackedRoot!.SyntaxTree;
+                }
+                var printer = new SyntaxTreePrinter(tree);
                 printer.Verbosity = opts.verbosity;
                 printer.ShowAnnotations = opts.showAnnotations;
 

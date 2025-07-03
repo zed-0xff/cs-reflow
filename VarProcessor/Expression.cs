@@ -11,38 +11,6 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 public partial class VarProcessor
 {
-    public static bool TryGetConstValue(ExpressionSyntax expr, out object? value)
-    {
-        string key = expr.ToString();
-        if (Constants.TryGetValue(key, out value))
-            return true;
-
-        if (expr is MemberAccessExpressionSyntax memberAccess)
-        {
-            // (Type.EmptyTypes).LongLength
-            key = $"{memberAccess.Expression.StripParentheses()}.{memberAccess.Name}";
-            if (Constants.TryGetValue(key, out value))
-                return true;
-        }
-
-        return false;
-    }
-
-    public class AddressOf
-    {
-        public object Value { get; }
-
-        public AddressOf(object value)
-        {
-            Value = value;
-        }
-
-        public override string ToString()
-        {
-            return $"&{Value}";
-        }
-    }
-
     public class Expression
     {
         CSharpSyntaxNode node;
@@ -390,6 +358,29 @@ public partial class VarProcessor
                 _varDict.ResetVar(idLeft);
                 throw;
             }
+        }
+
+        public bool TryGetConstValue(ExpressionSyntax expr, out object? value)
+        {
+            string key = expr.ToString();
+            if (Constants.TryGetValue(key, out value))
+                return true;
+
+            if (expr is MemberAccessExpressionSyntax memberAccess)
+            {
+                // (Type.EmptyTypes).LongLength
+                key = $"{memberAccess.Expression.StripParentheses()}.{memberAccess.Name}";
+                if (Constants.TryGetValue(key, out value))
+                    return true;
+
+                if (_varDict._varDB.TryGetValue(memberAccess.Name.Identifier, out var V) && V!.IsConst)
+                {
+                    value = V.ConstValue;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         object? EvaluateExpression_(ExpressionSyntax expression)

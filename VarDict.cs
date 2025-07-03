@@ -11,7 +11,6 @@ public class VarDict
 
     public const int UNKNOWN_VAR_ID = -1;
 
-    DefaultDict<int, int> _flags = new();
     Dictionary<int, object?> _values = new();
     public readonly VarDB _varDB;
 
@@ -25,8 +24,12 @@ public class VarDict
     public object? DefaultValue(SyntaxToken token) => _varDB.TryGetValue(token, out var V) ? DefaultValue(V!.id) : UnknownValue.Create();
     public object? DefaultValue(int id)
     {
-        var result = UnknownValue.Create(_varDB[id].IntType);
-        _logger.debug(() => $"{_varDB[id]} => {result}");
+        var V = _varDB[id];
+        if (V.IsConst)
+            return V.ConstValue;
+
+        var result = UnknownValue.Create(V.IntType);
+        _logger.debug(() => $"{V} => {result}");
         return result;
     }
 
@@ -73,6 +76,10 @@ public class VarDict
     void setVar(Variable V, object? value)
     {
         _logger.debug(() => $"setVar: {V} = ({value?.GetType()}) {value}");
+
+        if (V.IsConst)
+            throw new InvalidOperationException($"Cannot set value for constant {V}");
+
         if (value is UnknownTypedValue ut && V.IntType != null && ut.type != V.IntType)
             value = ut.Cast(V.IntType);
 
@@ -94,7 +101,7 @@ public class VarDict
         }
     }
 
-    public void Remove(int key) => _values.Remove(key); // XXX _flags?
+    public void Remove(int key) => _values.Remove(key);
 
     public int Set(int id, object? value, [CallerMemberName] string caller = "")
     {
@@ -123,7 +130,6 @@ public class VarDict
     public VarDict ShallowClone()
     {
         var clonedDict = new VarDict(_varDB);
-        clonedDict._flags = _flags; // XXX byRef!
 
         foreach (var entry in this._values)
             clonedDict._values[entry.Key] = entry.Value;
@@ -134,7 +140,6 @@ public class VarDict
     public VarDict Clone()
     {
         var clonedDict = new VarDict(_varDB);
-        clonedDict._flags = _flags; // XXX byRef!
 
         // Deep copy the dictionary
         foreach (var entry in this._values)
@@ -198,7 +203,6 @@ public class VarDict
         foreach (var key in keysToRemove)
         {
             this.Remove(key);
-            _flags.Remove(key);
         }
 
         MergeExisting(other);

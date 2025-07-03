@@ -8,6 +8,8 @@ public class Variable
     public readonly string Name;
     public readonly string TypeName;
     public readonly string VarID;
+    public readonly bool IsConst = false;
+    public readonly object? ConstValue = null;
 
     public readonly SyntaxAnnotation Annotation;
     public readonly TypeDB.IntType? IntType;
@@ -22,6 +24,13 @@ public class Variable
         this.Annotation = new SyntaxAnnotation("VarID", VarID);
         this.IntType = TypeDB.TryFind(typeName);
         this.TypeName = typeName;
+    }
+
+    // add const
+    public Variable(int id, string name, string typeName, object? value) : this(id, name, typeName)
+    {
+        this.IsConst = true;
+        this.ConstValue = value;
     }
 
     public bool IsLoopVar => (Flags & FLAG_LOOP) != 0;

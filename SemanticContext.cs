@@ -10,7 +10,7 @@ class SemanticContext
 
     static int _aidx = 0;
 
-    public SemanticContext(SyntaxNode rootNode)
+    public SemanticContext(SyntaxNode rootNode, IEnumerable<SyntaxTree>? trees = null)
     {
         _tree = rootNode.SyntaxTree;
         _compilation = CSharpCompilation.Create($"MyAnalysis{_aidx++}")
@@ -18,6 +18,8 @@ class SemanticContext
                     MetadataReference.CreateFromFile(typeof(object).Assembly.Location)
                     )
             .AddSyntaxTrees(_tree);
+        if (trees != null)
+            _compilation = _compilation.AddSyntaxTrees(trees);
         Model = _compilation.GetSemanticModel(_tree);
     }
 

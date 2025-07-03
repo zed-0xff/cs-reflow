@@ -262,6 +262,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _traceLog;
     }
 
+    public ControlFlowUnflattener(OrderedDictionary<string, string> codes, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false) : base(codes, verbosity, dummyClassWrap)
+    {
+        string code = codes.Last().Value;
+        _fmt = new(code); // needs to be initialized without dummy class wrap
+
+        if (flowHints != null)
+            _flowHints = new(flowHints);
+
+        _varProcessor = new(_varDB);
+    }
+
     public ControlFlowUnflattener(string code, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false) : base(code, verbosity, dummyClassWrap)
     {
         _fmt = new(code); // needs to be initialized without dummy class wrap
@@ -1865,7 +1876,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         // collect all declarations from body prior to any processing
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
         var tracker = new VarTracker(_varDB);
-        var trackedMethod = tracker.Track(methodNode); // tracker has to be run on method itself (not only body) to capture method arguments
+        var trackedMethod = tracker.Track(methodNode, _trees); // tracker has to be run on method itself (not only body) to capture method arguments
         methodNode = methodNode.ReplaceWith(trackedMethod!);
 
         BlockSyntax body = GetMethodBody(methodNode);
@@ -1880,7 +1891,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             update_progress("pre-processing");
             // remove unused vars _before_ main processing
-            var body_ = new UnusedLocalsRemover(_varDB, Verbosity, _keepVars).Process(body) as BlockSyntax;
+            var body_ = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(body) as BlockSyntax;
             if (body_.IsEquivalentTo(body))
             {
                 break;
@@ -1914,7 +1925,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         while (PostProcess)
         {
             update_progress("post-processing");
-            var body2 = new UnusedLocalsRemover(_varDB, Verbosity, _keepVars).Process(body) as BlockSyntax;
+            var body2 = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varDB);
             var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
             if (body3.IsEquivalentTo(body))

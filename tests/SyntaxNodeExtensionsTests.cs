@@ -77,4 +77,12 @@ public class SyntaxNodeExtensionsTests
         var expr = SyntaxFactory.ParseExpression(expr_str);
         Assert.True(expr.IsIdempotent());
     }
+
+    [Fact]
+    public void IsIdempotent_ReturnsFalse_ForCall()
+    {
+        string expr_str = "string text = get_str(16834, 22560, 98)";
+        var expr = SyntaxFactory.ParseExpression(expr_str);
+        Assert.False(expr.IsIdempotent());
+    }
 }

@@ -34,28 +34,12 @@ public partial class VarTracker
             {
                 if (!_sym2ann.ContainsKey(field))
                 {
-                    var decls = field.DeclaringSyntaxReferences;
-                    if (decls.Length == 0)
+                    if (VarProcessor.Constants.ContainsKey(field.ToString()!))
                     {
-                        if (VarProcessor.Constants.ContainsKey(field.ToString()!))
-                        {
-                            _logger.debug($"Field {field} is a known constant");
-                            continue;
-                        }
-                        _logger.warn($"Field {field} has no declaring syntax references");
+                        _logger.debug($"Field {field} is a known constant");
                         continue;
                     }
-                    if (decls.Length > 1)
-                    {
-                        _logger.warn($"Field {field.Name} has multiple declaring syntax references, using the first one");
-                    }
-                    var declNode = decls[0].GetSyntax() as VariableDeclaratorSyntax;
-                    if (declNode == null)
-                    {
-                        _logger.warn($"Field {field.Name} has a non-variable declarator syntax reference");
-                        continue;
-                    }
-                    _sym2ann[field] = _varDB.Add(declNode, field.Type.ToString()!).Annotation;
+                    _sym2ann[field] = _varDB.Add(field).Annotation;
                 }
             }
         }

@@ -1,0 +1,14 @@
+void fun()
+{
+    if (X == 1)
+    {
+        maybe_called();
+    }
+
+    always_called();
+}
+
+void fun2()
+{
+    always_called();
+}

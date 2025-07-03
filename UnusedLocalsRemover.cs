@@ -13,12 +13,14 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     Context? _mainCtx = null;
     readonly HashSet<int> _keepVars;
     readonly VarDB _varDB;
+    readonly IEnumerable<SyntaxTree> _trees;
 
     bool _needRetry;
 
-    public UnusedLocalsRemover(VarDB varDB, int verbosity = 0, HashSet<string>? keepVars = null)
+    public UnusedLocalsRemover(VarDB varDB, IEnumerable<SyntaxTree> trees, int verbosity = 0, HashSet<string>? keepVars = null)
     {
         _varDB = varDB;
+        _trees = trees;
         Verbosity = verbosity;
         _keepVars = new();
         if (keepVars != null)
@@ -37,7 +39,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         HashSet<int> _unusedLocals = new();
         public readonly VarDB _varDB;
 
-        public Context(SyntaxNode rootNode, VarDB varDB) : base(rootNode)
+        public Context(SyntaxNode rootNode, IEnumerable<SyntaxTree> trees, VarDB varDB) : base(rootNode, trees)
         {
             _varDB = varDB;
         }
@@ -419,7 +421,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     public BlockSyntax Process(BlockSyntax node)
     {
         int i;
-        _mainCtx = new Context(node, _varDB);
+        _mainCtx = new Context(node, _trees, _varDB);
         for (i = 0; i < 1000; i++)
         {
             _logger.debug($"\niteration #{i}");

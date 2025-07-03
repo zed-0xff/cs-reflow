@@ -9,6 +9,7 @@ public class SyntaxTreeProcessor
 {
     // shared
     protected SyntaxTree _tree = null!; // I know _tree is non-nullable, but I will assign it later, trust me.
+    protected List<SyntaxTree> _trees = new();
 
     // configuration
     const int DEFAULT_VERBOSITY = 0;
@@ -23,6 +24,26 @@ public class SyntaxTreeProcessor
 
     // for cloning
     protected SyntaxTreeProcessor() { }
+
+    protected SyntaxTreeProcessor(OrderedDictionary<string, string> codes, int verbosity = DEFAULT_VERBOSITY, bool dummyClassWrap = false)
+    {
+        Verbosity = verbosity;
+
+        update_progress("parsing codes");
+        foreach (var kv in codes)
+        {
+            var code = kv.Value;
+            if (dummyClassWrap)
+            {
+                // without the dummy class methods are defined as LocalFunctions, and SemanticModel leaks variables from one method to another
+                // not adding newlines to keep original line numbers
+                code = "class DummyClass { " + code + " }";
+            }
+            _tree = CSharpSyntaxTree.ParseText(code);
+            _trees.Add(_tree);
+        }
+        _trees.Remove(_tree); // remove last tree bc it will be modified
+    }
 
     protected SyntaxTreeProcessor(string code, int verbosity = DEFAULT_VERBOSITY, bool dummyClassWrap = false)
     {
