@@ -83,12 +83,6 @@ public class TraceLog
 
     bool eq_stmt(StatementSyntax stmt1, StatementSyntax stmt2)
     {
-        if (stmt1.IsSameStmt(stmt2))
-            return true;
-
-        if (stmt1.Equals(stmt2))
-            return true;
-
         // converted blocks like try{}
         if (stmt1.IsEquivalentTo(stmt2))
             return true;

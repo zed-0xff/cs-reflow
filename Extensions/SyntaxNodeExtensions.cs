@@ -130,7 +130,7 @@ public static class SyntaxNodeExtensions
         var ann2 = node2.GetAnnotations("StmtID").FirstOrDefault();
 
         return ann1 != null && ann2 != null && ann1.Data == ann2.Data
-            && node1.ToString() == node2.ToString(); // StmtID may be the same, but 'if' block contents may differ
+            && node1.IsEquivalentTo(node2); // StmtID may be the same, but 'if' block contents may differ
     }
 
     public static string? AnnotationsAsString(this SyntaxNode node)
