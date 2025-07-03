@@ -1078,7 +1078,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         else
                             value = EvaluateHintedBoolExpression(ifStmt.Condition);
 
-                        comment = value?.ToString() ?? "<null>";
+                        comment = value?.ToString() ?? "";
                         if (_flowHints.ContainsKey(lineno))
                             comment += " (hint)";
                         else
@@ -1097,7 +1097,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         // }
                         ex = EvaluateExpressionEx(stmt);
                         value = ex.Result;
-                        string valueStr = value?.ToString() ?? "<null>";
+                        string valueStr = value?.ToString() ?? "";
                         if (value is Boolean)
                             valueStr = valueStr.ToLower();
                         comment = valueStr;
@@ -1106,13 +1106,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     case SwitchStatementSyntax sw:
                         ex = EvaluateExpressionEx(sw.Expression);
                         value = ex.Result;
-                        comment = value?.ToString() ?? "<null>";
+                        comment = value?.ToString() ?? "";
                         skip = true; // skip only if value is known
                         break;
 
                     case WhileStatementSyntax whileStmt:
                         value = EvaluateHintedBoolExpression(whileStmt.Condition);
-                        comment = value?.ToString() ?? "<null>";
+                        comment = value?.ToString() ?? "";
                         switch (value)
                         {
                             case true:
