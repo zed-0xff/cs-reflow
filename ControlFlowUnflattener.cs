@@ -931,7 +931,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (Verbosity <= 0)
             return;
 
-        string line = prefix + NodeTitle(stmt) + suffix;
+        string line = prefix + stmt.Title() + suffix;
         int nVisited = _visitedLines[stmt.LineNo()];
         if (nVisited > 1)
         {
@@ -1055,7 +1055,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             int lineno = stmt.LineNo();
 
             if (Verbosity > 2)
-                Console.WriteLine($"[d] {stmt.LineNo().ToString().PadLeft(6)}: {NodeTitle(stmt)}");
+                Console.WriteLine($"[d] {stmt.LineNo().ToString().PadLeft(6)}: {stmt.Title()}");
 
             try
             {
@@ -1065,7 +1065,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     case IfStatementSyntax ifStmt:
                         _condStates.TryAdd(lineno, new List<State>());
                         _condStates[lineno].Add(new State(lineno, _varProcessor.VariableValues()));
-                        if (NodeTitle(ifStmt).Contains("calli with instance method signature not support") && !_flowHints.ContainsKey(lineno))
+                        if (ifStmt.Title().Contains("calli with instance method signature not support") && !_flowHints.ContainsKey(lineno))
                             value = UnknownValue.Create();
                         else
                             value = EvaluateHintedBoolExpression(ifStmt.Condition);

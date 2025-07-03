@@ -10,15 +10,19 @@ public class EmptiesRemover : CSharpSyntaxRewriter
     // remove empty finally block
     public override SyntaxNode VisitTryStatement(TryStatementSyntax node)
     {
+        node = (TryStatementSyntax)base.VisitTryStatement(node)!;
+
         if (node.Finally != null && node.Finally.Block.Statements.Count == 0)
             node = node.WithFinally(null);
 
-        return base.VisitTryStatement(node);
+        return node;
     }
 
     // remove all EmptyStatementSyntax
-    public override SyntaxNode VisitBlock(BlockSyntax node)
+    public override SyntaxNode? VisitBlock(BlockSyntax node)
     {
+        node = (BlockSyntax)base.VisitBlock(node)!;
+
         var newStatements = node.Statements
             .Where(stmt => !(stmt is EmptyStatementSyntax)) // remove empty statements
             .ToList();
@@ -35,7 +39,7 @@ public class EmptiesRemover : CSharpSyntaxRewriter
 
         if (newStatements.Count != node.Statements.Count)
             node = node.WithStatements(SyntaxFactory.List(newStatements));
-        return base.VisitBlock(node);
+        return node;
     }
 }
 

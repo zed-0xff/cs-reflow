@@ -31,23 +31,13 @@ public class PostProcessor
         );
     }
 
-    public SyntaxNode ProcessFunction(SyntaxNode root)
+    public SyntaxNode PostProcessAll(SyntaxNode block)
     {
-        return root switch
-        {
-            BaseMethodDeclarationSyntax method => method.WithBody(PostProcessAll(method.Body)),
-            LocalFunctionStatementSyntax func => func.WithBody(PostProcessAll(func.Body)),
-            _ => throw new InvalidOperationException($"Unsupported function type: {root.Kind()}")
-        };
-    }
-
-    public BlockSyntax PostProcessAll(BlockSyntax block)
-    {
-        block = new EmptiesRemover().Visit(block) as BlockSyntax;
-        block = new DuplicateDeclarationRemover().Visit(block) as BlockSyntax;
-        block = new DeclarationAssignmentMerger().Visit(block) as BlockSyntax;
-        block = new IfRewriter(_varDB).Visit(block) as BlockSyntax; // should be after EmptiesRemover
-        block = new TernaryRewriter(_varDB).Visit(block) as BlockSyntax;
+        block = new EmptiesRemover().Visit(block);
+        block = new DuplicateDeclarationRemover().Visit(block);
+        block = new DeclarationAssignmentMerger().Visit(block);
+        block = new IfRewriter(_varDB).Visit(block); // should be after EmptiesRemover
+        block = new TernaryRewriter(_varDB).Visit(block);
         return block;
     }
 

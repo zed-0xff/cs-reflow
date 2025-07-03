@@ -191,7 +191,7 @@ public class IntConstExpr :
             result = new IntConstExpr(intValue);
             return true;
         }
-        result = default;
+        result = Zero;
         return false;
     }
 
@@ -202,7 +202,7 @@ public class IntConstExpr :
             result = new IntConstExpr(intValue);
             return true;
         }
-        result = default;
+        result = Zero;
         return false;
     }
 
@@ -213,7 +213,7 @@ public class IntConstExpr :
             result = new IntConstExpr(intValue);
             return true;
         }
-        result = default;
+        result = Zero;
         return false;
     }
 
@@ -221,7 +221,7 @@ public class IntConstExpr :
     {
         if (s is null)
         {
-            result = default;
+            result = Zero;
             return false;
         }
         return TryParse(s.AsSpan(), provider, out result);

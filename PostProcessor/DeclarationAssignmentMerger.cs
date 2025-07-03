@@ -49,6 +49,6 @@ public class DeclarationAssignmentMerger : CSharpSyntaxRewriter
             }
         }
 
-        return base.VisitBlock(was ? node.WithStatements(SyntaxFactory.List(newStatements)) : node);
+        return base.VisitBlock(was ? node.WithStatements(SyntaxFactory.List(newStatements)) : node)!;
     }
 }

@@ -76,6 +76,12 @@ public partial class VarTracker
             if (symbol == null || _sym2ann.ContainsKey(symbol))
                 return;
 
+            if (node.Type == null)
+            {
+                _logger.warn($"Parameter \"{node}\" has no type information");
+                return;
+            }
+
             var typeSymbol = _semanticModel.GetTypeInfo(node.Type).Type;
             if (typeSymbol == null)
             {

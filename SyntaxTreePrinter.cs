@@ -33,7 +33,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
     {
         // Add indentation based on the level
         string indent_str = new string(' ', indent * 2);  // 2 spaces per level of indentation
-        string line = NodeTitle(node);
+        string line = node.Title();
 
         var lineSpan = node.GetLocation().GetLineSpan();
         int lineNumber = lineSpan.StartLinePosition.Line + 1;

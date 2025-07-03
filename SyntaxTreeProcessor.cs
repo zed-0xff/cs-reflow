@@ -6,7 +6,8 @@ using System.Diagnostics;
 
 public class SyntaxTreeProcessor
 {
-    protected SyntaxTree _tree; // shared
+    // shared
+    protected SyntaxTree _tree = null!; // I know _tree is non-nullable, but I will assign it later, trust me.
 
     // configuration
     const int DEFAULT_VERBOSITY = 0;
@@ -32,11 +33,6 @@ public class SyntaxTreeProcessor
         }
         update_progress("parsing code");
         _tree = CSharpSyntaxTree.ParseText(code);
-    }
-
-    protected string NodeTitle(SyntaxNode node)
-    {
-        return node.ToString().Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
     }
 
     public string ElapsedTime()
