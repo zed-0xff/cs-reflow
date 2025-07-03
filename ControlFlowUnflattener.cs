@@ -92,9 +92,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool PostProcess = true;
     public bool PreProcess = true;
     public bool Reflow = true;
-    public bool ShowAnnotations = false;
     public bool isClone = false;
-    public int commentPadding = 100;
     public string? dumpIntermediateLogs;
 
     public void Reset()

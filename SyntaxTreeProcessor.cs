@@ -15,6 +15,8 @@ public class SyntaxTreeProcessor
 
     public int Verbosity = DEFAULT_VERBOSITY;
     public bool ShowProgress = true;
+    public bool ShowAnnotations = false;
+    public int commentPadding = 100;
 
     // local
     protected Stopwatch _stopWatch = Stopwatch.StartNew();

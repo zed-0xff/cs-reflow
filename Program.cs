@@ -368,6 +368,7 @@ class Program
             {
                 var printer = new SyntaxTreePrinter(code);
                 printer.Verbosity = opts.verbosity;
+                printer.ShowAnnotations = opts.showAnnotations;
 
                 if (printAll)
                     printer.Print();
@@ -445,8 +446,17 @@ class Program
         if (opts.printTree)
         {
             var tree = CSharpSyntaxTree.ParseText(opts.expr!);
+
+            if (opts.showAnnotations)
+            {
+                var tracker = new VarTracker(new());
+                var trackedRoot = tracker.Track(tree.GetRoot());
+                tree = trackedRoot!.SyntaxTree;
+            }
+
             var printer = new SyntaxTreePrinter(tree);
             printer.Verbosity = opts.verbosity;
+            printer.ShowAnnotations = opts.showAnnotations;
             printer.Print();
         }
         else

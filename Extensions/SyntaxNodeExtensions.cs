@@ -136,10 +136,17 @@ public static class SyntaxNodeExtensions
 
     public static string? AnnotationsAsString(this SyntaxNode node)
     {
-        List<string> annotations = new List<string>();
+        HashSet<string> annotations = new();
         foreach (var ann in node.GetAnnotations(ANNOTATION_KINDS))
         {
             annotations.Add($"{ann.Kind}:{ann.Data}");
+        }
+        foreach (var token in node.ChildTokens().Where(t => t.HasAnnotations(ANNOTATION_KINDS)))
+        {
+            foreach (var ann in token.GetAnnotations(ANNOTATION_KINDS))
+            {
+                annotations.Add($"{ann.Kind}:{ann.Data}");
+            }
         }
         return annotations.Count > 0 ? string.Join(", ", annotations) : null;
     }

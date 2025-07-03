@@ -64,14 +64,24 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
         // Print the node type and its text representation
         if (color != null)
-        {
             Console.Write(color);
-        }
-        Console.WriteLine($"{lineNumber.ToString().PadRight(8)}{indent_str}{node.GetType().Name}: {line}");
+
+        line = $"{lineNumber.ToString().PadRight(8)}{indent_str}{node.GetType().Name}: {line}";
+        Console.Write(line);
+
         if (color != null)
-        {
             Console.Write(ANSI.COLOR_RESET);
+
+        if (ShowAnnotations)
+        {
+            var ann_str = node.AnnotationsAsString();
+            if (ann_str != null)
+            {
+                string pad = new string(' ', Math.Max(0, commentPadding - line.Length));
+                Console.Write(pad + $"// {ann_str}".Gray());
+            }
         }
+        Console.WriteLine();
 
         if (node is ExpressionStatementSyntax && Verbosity < 1)
             return; // Skip printing child nodes for expression statements if verbosity is low
