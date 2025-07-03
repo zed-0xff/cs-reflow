@@ -171,7 +171,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
-    class GotoCaseException : FlowException
+    class GotoCaseExceptionBase : FlowException
+    {
+        public GotoCaseExceptionBase(int lineno, string message) : base(lineno, message)
+        {
+        }
+    }
+
+    class GotoCaseException : GotoCaseExceptionBase
     {
         public readonly object? value;
         public GotoCaseException(int lineno, object? value) : base(lineno, $"goto case {value}")
@@ -180,7 +187,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
     }
 
-    class GotoDefaultCaseException : FlowException
+    class GotoDefaultCaseException : GotoCaseExceptionBase
     {
         public GotoDefaultCaseException(int lineno) : base(lineno, "goto default case")
         {
@@ -478,6 +485,19 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     SwitchStatementSyntax convert_switch(SwitchStatementSyntax switchStmt)
     {
+        _flowDict[switchStmt].keep = true;
+        foreach (var gotoStmt in switchStmt.DescendantNodes().OfType<GotoStatementSyntax>())
+        {
+            switch (gotoStmt.CaseOrDefaultKeyword.Kind())
+            {
+                case SyntaxKind.CaseKeyword:
+                case SyntaxKind.DefaultKeyword:
+                    if (gotoStmt.Ancestors().OfType<SwitchStatementSyntax>().FirstOrDefault() == switchStmt)
+                        _flowDict[gotoStmt].keep = true;
+                    break;
+            }
+        }
+
         // convert switch statement to a new one with reflowed sections
         var newSections = switchStmt.Sections.Select(s =>
         {
@@ -1448,6 +1468,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     if (Verbosity > 0)
                         Console.WriteLine($"<<< continue at line {contExc.lineno}\n");
                 }
+                catch (GotoCaseExceptionBase gotoCaseExc)
+                {
+                    logs.Add(clone._traceLog);
+                    if (Verbosity > 0)
+                        Console.WriteLine($"<<< {gotoCaseExc} from line {gotoCaseExc.lineno}\n");
+                }
                 catch (GotoException gotoExc) // goto to outer block
                 {
                     flowInfo.hasOutGoto = true;
@@ -1529,6 +1555,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         _varDB.SetLoopVar(loopVar);
                     }
                     continue;
+                }
+                catch (FlowException e)
+                {
+                    Console.Error.WriteLine($"[!] uncatched {e.GetType()} at line {lineno}: {e.Message}".Red());
+                    Console.Error.WriteLine(e.StackTrace);
+                    throw new TaggedException("ControlFlowUnflattener", $"Uncatched FlowException at line {lineno}: {e.Message}");
                 }
 
                 break;
