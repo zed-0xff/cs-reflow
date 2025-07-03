@@ -408,7 +408,7 @@ class Program
                     }
                     catch
                     {
-                        Console.Error.WriteLine($"[!] Failed to reflow method: {method.TitleWithLineNo()}".Red());
+                        Console.Error.WriteLine($"[!] Failed to reflow method: {method?.TitleWithLineNo()}".Red());
                         throw;
                     }
 

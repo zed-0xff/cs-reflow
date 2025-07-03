@@ -1,8 +1,9 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis;
-using System;
 using System.Diagnostics;
+using System;
 
 public class SyntaxTreeProcessor
 {
@@ -55,13 +56,15 @@ public class SyntaxTreeProcessor
     public Dictionary<int, string> Methods => _tree.GetRoot().DescendantNodes()
         .Where(n => n is BaseMethodDeclarationSyntax /*|| n is LocalFunctionStatementSyntax*/)
         .ToDictionary(
-                n => n.SpanStart,
-                n => n is MethodDeclarationSyntax m ? m.Identifier.Text :
-                n is ConstructorDeclarationSyntax c ? c.Identifier.Text :
-                n is DestructorDeclarationSyntax d ? d.Identifier.Text :
-                n is LocalFunctionStatementSyntax l ? l.Identifier.Text :
-                "<unknown>"
-                );
+                n => _tree.GetLineSpan(new TextSpan(n.SpanStart, 0)).StartLinePosition.Line + 1,  // 1-based line number
+                n => n switch
+                {
+                    MethodDeclarationSyntax m => m.Identifier.Text,
+                    ConstructorDeclarationSyntax c => c.Identifier.Text,
+                    DestructorDeclarationSyntax d => d.Identifier.Text,
+                    LocalFunctionStatementSyntax l => l.Identifier.Text,
+                    _ => "<unknown>"
+                });
 
     public SyntaxNode GetMethod(string methodName)
     {
@@ -89,12 +92,15 @@ public class SyntaxTreeProcessor
 
     public SyntaxNode GetMethod(int lineno)
     {
-        return _tree
-            .GetRoot()
+        var linePosition = _tree.GetText().Lines[lineno].Start;
+        var result = _tree.GetRoot()
             .DescendantNodes()
-            .Where(n =>
-                    (n is BaseMethodDeclarationSyntax b && b.SpanStart <= lineno && b.Span.End > lineno)
-                  )
-            .First();
+            .OfType<BaseMethodDeclarationSyntax>()
+            .FirstOrDefault(b => b.SpanStart <= linePosition && b.Span.End > linePosition);
+
+        if (result == null)
+            throw new ArgumentException($"Method at line {lineno} not found.");
+
+        return result;
     }
 }
