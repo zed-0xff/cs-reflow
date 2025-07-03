@@ -126,7 +126,7 @@ public class IfRewriter : RewriterBase
         return null;
     }
 
-    public override SyntaxNode VisitIfStatement(IfStatementSyntax node0)
+    public override SyntaxNode? VisitIfStatement(IfStatementSyntax node0)
     {
         var newNode = base.VisitIfStatement(node0);
         if (newNode is not IfStatementSyntax ifStmt)

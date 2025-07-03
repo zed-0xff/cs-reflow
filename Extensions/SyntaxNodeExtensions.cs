@@ -22,7 +22,8 @@ public static class SyntaxNodeExtensions
 
     public static string Title(this SyntaxNode node)
     {
-        return node.ToString().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault().Trim();
+        var firstLine = node.ToString().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        return firstLine?.Trim() ?? string.Empty;
     }
 
     public static string TitleWithLineNo(this SyntaxNode node)

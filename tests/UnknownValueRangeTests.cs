@@ -422,7 +422,7 @@ public class UnknownValueRangeTests
         {
             var shifted = range.BinaryOp(">>", i) as UnknownTypedValue;
             var b0_ = b0 >> i;
-            Assert.Equal(b0_.GetType(), shifted.type.Type);
+            Assert.Equal(b0_.GetType(), shifted!.type.Type);
             Assert.Equal(b0_, shifted.Min());
             Assert.Equal(b1 >> i, shifted.Max());
         }
@@ -457,7 +457,7 @@ public class UnknownValueRangeTests
 
         var shifted = range.BinaryOp(">>>", 0) as UnknownTypedValue;
         var b0_ = b0 >>> 0;
-        Assert.Equal(b0_.GetType(), shifted.type.Type);
+        Assert.Equal(b0_.GetType(), shifted!.type.Type);
         Assert.Equal(b0_, shifted.Min());
         Assert.Equal(b1 >>> 0, shifted.Max());
 
@@ -465,7 +465,7 @@ public class UnknownValueRangeTests
         {
             shifted = range.BinaryOp(">>>", i) as UnknownTypedValue;
             b0_ = b0 >>> i;
-            Assert.Equal(b0_.GetType(), shifted.type.Type);
+            Assert.Equal(b0_.GetType(), shifted!.type.Type);
             Assert.True(shifted.Contains(b0_));
             Assert.True(shifted.Contains(b1 >>> i));
             Assert.Equal(m1 >>> i, shifted.Max());

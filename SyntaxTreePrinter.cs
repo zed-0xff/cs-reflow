@@ -9,8 +9,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 {
     VarProcessor variableProcessor = new VarProcessor(new VarDB()); // XXX empty vardb
 
-    public int Verbosity;
-
     class ReturnException : Exception
     {
         public object result;
@@ -85,11 +83,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
     }
 
     private Dictionary<string, LabeledStatementSyntax> _labels = new();
-
-    public List<string> Methods => _tree.GetRoot().DescendantNodes()
-        .OfType<MethodDeclarationSyntax>()
-        .Select(m => m.Identifier.Text)
-        .ToList();
 
     public void PrintMethod(string methodName)
     {

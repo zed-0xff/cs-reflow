@@ -230,16 +230,16 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
                             // "goto case XXX"
                             // "goto default" handled below
                             var switchStmt = node.FindParent(SyntaxKind.SwitchStatement);
-                            if (!object.Equals(parentTry, switchStmt.FindParent(SyntaxKind.TryStatement)))
+                            if (!Equals(parentTry, switchStmt!.FindParent(SyntaxKind.TryStatement)))
                             {
                                 node.keep = true;
-                                switchStmt.keep = true;
+                                switchStmt!.keep = true;
                             }
                             break;
 
                         default:
                             // "goto labelXXX"
-                            var labelNode = _labels[gotoStmt.Expression.ToString()];
+                            var labelNode = _labels[gotoStmt.Expression!.ToString()];
                             if (!object.Equals(parentTry, labelNode.FindParent(SyntaxKind.TryStatement)))
                             {
                                 node.keep = true;

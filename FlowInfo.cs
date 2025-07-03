@@ -14,7 +14,7 @@ public class FlowInfo
     public bool hasOutGoto = false;
     public bool hasInterCaseGoto = false; // goto from one case into a middle of another
     public HashSet<int> loopVars = new();
-    public HashSet<object> values = new();
+    public HashSet<object?> values = new();
 
     public FlowInfo() { }
 

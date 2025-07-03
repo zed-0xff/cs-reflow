@@ -67,14 +67,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     // shared
     ControlFlowNode? _flowRoot;
-    FlowDictionary _flowDict;
+    FlowDictionary _flowDict = null!;
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
     VarDB _varDB = new();
 
     // local
     FlowDictionary _localFlowDict = new();
-    VarProcessor _varProcessor;
+    VarProcessor _varProcessor = null!;
     HintsDictionary _flowHints = new();
     TraceLog _traceLog = new();
     Dictionary<State, int> _states = new();
@@ -82,7 +82,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     DefaultDict<int, int> _visitedLines = new();
     ReturnsDictionary _parentReturns = new();
     ControlFlowUnflattener? _parent = null;
-    string _status;
+    string _status = "";
 
     // configuration
     const int DEFAULT_VERBOSITY = 0;
@@ -237,13 +237,18 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     public BlockSyntax GetMethodBody(string methodName)
     {
-        return GetMethod(methodName) switch
+        var body = GetMethod(methodName) switch
         {
             BaseMethodDeclarationSyntax baseMethod => baseMethod.Body,
             LocalFunctionStatementSyntax localFunc => localFunc.Body,
             null => throw new ArgumentNullException(nameof(methodName), "Method name cannot be null."),
             _ => throw new ArgumentException($"Unsupported method node type: {methodName.GetType()}", nameof(methodName))
         };
+
+        if (body is not BlockSyntax block)
+            throw new InvalidOperationException($"Method '{methodName}' body is not a block: {body?.GetType()}");
+
+        return block;
     }
 
     public TraceLog TraceMethod(string methodName)
@@ -337,7 +342,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         while (true)
         {
-            object value;
+            object? value;
             if (_flowHints.TryGetValue(loop_id, out EHint hintValue))
             {
                 value = hintValue switch
@@ -402,7 +407,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_do(DoStatementSyntax doStmt)
     {
-        var body = doStmt.Statement as BlockSyntax; // TODO: single-statement body
+        var body = doStmt.Statement is BlockSyntax block ? block.Statements : SingletonList<StatementSyntax>(doStmt.Statement);
         var condition = doStmt.Condition;
         int lastCount = _traceLog.entries.Count;
         TraceEntry? lastEntry = lastCount > 0 ? _traceLog.entries[lastCount - 1] : null;
@@ -435,7 +440,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
 
             var value = EvaluateBoolExpression(condition);
-            log_stmt(condition, value.ToString(), skip: true, prefix: "while ( ", suffix: " )");
+            log_stmt(condition, value?.ToString(), skip: true, prefix: "while ( ", suffix: " )");
             update_flow_info(doStmt, value);
             switch (value)
             {
@@ -530,7 +535,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             return;
         }
 
-        SwitchLabelSyntax swLabel = null, defaultLabel = null;
+        SwitchLabelSyntax? swLabel = null, defaultLabel = null;
 
         if (value is GotoDefaultCaseException)
         {
@@ -548,8 +553,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     if (l is CaseSwitchLabelSyntax caseLabel)
                     {
                         var caseValue = EvaluateExpression(caseLabel.Value);
-                        if (caseValue.GetType() != value.GetType())
-                            throw new NotSupportedException($"Switch case value type mismatch: case {caseValue.GetType()} vs actual {value.GetType()}: {caseLabel.TitleWithLineNo()}");
+                        if (caseValue?.GetType() != value.GetType())
+                            throw new NotSupportedException($"Switch case value type mismatch: case {caseValue?.GetType()} vs actual {value.GetType()}: {caseLabel.TitleWithLineNo()}");
                         if (caseValue.Equals(value))
                         {
                             swLabel = caseLabel;
@@ -573,7 +578,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             return;
 
         //        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
-        SwitchSectionSyntax section = swLabel.Parent as SwitchSectionSyntax;
+        SwitchSectionSyntax? section = swLabel.Parent as SwitchSectionSyntax;
+        if (section == null)
+            throw new InvalidOperationException($"Switch label {swLabel.TitleWithLineNo()} is not a part of a switch section");
+
         int start_idx = 0;
 
         while (true)
@@ -760,7 +768,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     //  b) null if the 'while' should be inlined
     WhileStatementSyntax? maybe_convert_while(WhileStatementSyntax whileStmt, ReturnsDictionary retLabels)
     {
-        if (_localFlowDict.TryGetValue(whileStmt, out ControlFlowNode flowNode) && flowNode.forceInline)
+        if (_localFlowDict.TryGetValue(whileStmt, out ControlFlowNode? flowNode) && flowNode.forceInline)
         {
             Logger.info($"{whileStmt.TitleWithLineNo()} => null  [local forceInline]");
             return null;
@@ -859,7 +867,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public VarProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression) =>
         _varProcessor.EvaluateExpressionEx(expression);
 
-    public object EvaluateBoolExpression(ExpressionSyntax expression)
+    public object? EvaluateBoolExpression(ExpressionSyntax expression)
     {
         var value = _varProcessor.EvaluateExpression(expression);
         switch (value)
@@ -884,7 +892,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return value;
     }
 
-    public object EvaluateHintedBoolExpression(ExpressionSyntax expression)
+    public object? EvaluateHintedBoolExpression(ExpressionSyntax expression)
     {
         if (expression is AssignmentExpressionSyntax assignExpr)
         {
@@ -994,8 +1002,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         {
             bool keep = stmt switch
             {
-                ContinueStatementSyntax _ => flowNode.FindParent(n => n.IsContinuable()).keep,
-                BreakStatementSyntax _ => flowNode.FindParent(n => n.IsBreakable()).keep,
+                ContinueStatementSyntax _ => flowNode.FindParent(n => n.IsContinuable())!.keep,
+                BreakStatementSyntax _ => flowNode.FindParent(n => n.IsBreakable())!.keep,
                 _ => false
             };
 
@@ -1035,8 +1043,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             bool skip = false;
             bool trace = true;
 
-            ControlFlowNode flowNode = new();
-            _flowDict.TryGetValue(stmt, out flowNode);
+            _flowDict.TryGetValue(stmt, out var flowNode);
+            flowNode ??= new();
 
             if (stmt is LabeledStatementSyntax l0)
             {
@@ -1070,7 +1078,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         else
                             value = EvaluateHintedBoolExpression(ifStmt.Condition);
 
-                        comment = value.ToString();
+                        comment = value?.ToString() ?? "<null>";
                         if (_flowHints.ContainsKey(lineno))
                             comment += " (hint)";
                         else
@@ -1089,7 +1097,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         // }
                         ex = EvaluateExpressionEx(stmt);
                         value = ex.Result;
-                        string valueStr = value?.ToString();
+                        string valueStr = value?.ToString() ?? "<null>";
                         if (value is Boolean)
                             valueStr = valueStr.ToLower();
                         comment = valueStr;
@@ -1098,13 +1106,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     case SwitchStatementSyntax sw:
                         ex = EvaluateExpressionEx(sw.Expression);
                         value = ex.Result;
-                        comment = value.ToString();
+                        comment = value?.ToString() ?? "<null>";
                         skip = true; // skip only if value is known
                         break;
 
                     case WhileStatementSyntax whileStmt:
                         value = EvaluateHintedBoolExpression(whileStmt.Condition);
-                        comment = value.ToString();
+                        comment = value?.ToString() ?? "<null>";
                         switch (value)
                         {
                             case true:
@@ -1221,7 +1229,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         switch (gotoStmt.CaseOrDefaultKeyword.Kind())
                         {
                             case SyntaxKind.CaseKeyword:
-                                throw new GotoCaseException(gotoStmt.LineNo(), EvaluateExpression(gotoStmt.Expression));
+                                throw new GotoCaseException(gotoStmt.LineNo(), EvaluateExpression(gotoStmt.Expression!));
 
                             case SyntaxKind.DefaultKeyword:
                                 throw new GotoDefaultCaseException(gotoStmt.LineNo());
@@ -1395,10 +1403,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         ControlFlowUnflattener? processor = this;
         while (processor != null)
         {
-            if (processor._status != null)
-            {
+            if (!string.IsNullOrEmpty(processor._status))
                 statuses.Add(processor._status);
-            }
             processor = processor._parent;
         }
         statuses.Reverse();
@@ -1862,12 +1868,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         // bc ReflowBlock() definitely may remove code blocks containing var initial declaration
         var tracker = new VarTracker(_varDB);
         var trackedMethod = tracker.Track(methodNode); // tracker has to be run on method itself (not only body) to capture method arguments
-        methodNode = methodNode.ReplaceWith(trackedMethod);
+        methodNode = methodNode.ReplaceWith(trackedMethod!);
 
         BlockSyntax body = GetMethodBody(methodNode);
 
         // annotate body with original line numbers
-        body = body.ReplaceWith(new OriginalLineNoAnnotator().Visit(body) as BlockSyntax);
+        body = body.ReplaceWith((BlockSyntax)new OriginalLineNoAnnotator().Visit(body)!);
 
         if (_fmt == null)
             throw new InvalidOperationException("Formatter is not set.");
@@ -1934,7 +1940,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (ShowAnnotations)
         {
             var body_ = new VarTracker.ShowAnnotationsRewriter().Visit(body);
-            body = body.ReplaceWith(body_);
+            body = body.ReplaceWith(body_!);
         }
 
         SyntaxNode? newMethodNode = body;
