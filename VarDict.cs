@@ -92,13 +92,22 @@ public class VarDict
         };
     }
 
+    void reset_var(Variable V)
+    {
+        _logger.debug($"Resetting variable {V}");
+        setVar(V, DefaultValue(V.id));
+    }
+
+    public void ResetVars(IEnumerable<int> ids)
+    {
+        foreach (var id in ids)
+            reset_var(_varDB[id]);
+    }
+
     public void ResetVar(SyntaxToken token)
     {
         if (_varDB.TryGetValue(token, out var V))
-        {
-            _logger.debug($"Resetting variable {V}");
-            setVar(V!, DefaultValue(V!.id));
-        }
+            reset_var(V!);
     }
 
     public void Remove(int key) => _values.Remove(key);
@@ -157,6 +166,20 @@ public class VarDict
         return clonedDict;
     }
 
+    public static bool EqualsEx(object? a, object? b)
+    {
+        if (Equals(a, b))
+            return true;
+
+        if (a is Array arrA && b is Array arrB)
+            return Enumerable.SequenceEqual(
+                    arrA.Cast<object>(),
+                    arrB.Cast<object>(),
+                    EqualityComparer<object>.Default);
+
+        return false;
+    }
+
     public void UpdateExisting(VarDict other)
     {
         foreach (var other_kvp in other.ReadOnlyDict)
@@ -164,7 +187,7 @@ public class VarDict
             if (!this.TryGetValue(other_kvp.Key, out var thisValue))
                 continue;
 
-            if (object.Equals(thisValue, other_kvp.Value))
+            if (EqualsEx(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
             UpdateVar(other_kvp.Key, other_kvp.Value);
@@ -186,7 +209,7 @@ public class VarDict
             if (!this.TryGetValue(other_kvp.Key, out var thisValue))
                 continue;
 
-            if (Equals(thisValue, other_kvp.Value))
+            if (EqualsEx(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
             if (thisValue != null && other_kvp.Value != null)
@@ -227,10 +250,26 @@ public class VarDict
             if (_varDB[kvp.Key].IsLoopVar)
                 continue; // Skip loop variables
 
-            if (!other.TryGetValue(kvp.Key, out var value) || !Equals(kvp.Value, value))
+            if (!other.TryGetValue(kvp.Key, out var value) || !EqualsEx(kvp.Value, value))
                 return false;
         }
         return true;
+    }
+
+    public static int HashAny(object? value)
+    {
+        if (value is null)
+            return 0;
+
+        return value switch
+        {
+            UnknownValueBase unk => unk.GetHashCode(),
+            IntConstExpr ice => ice.GetHashCode(),
+            string s => s.GetHashCode(),
+            Array arr => arr.Cast<object?>().Aggregate(11, (hash, item) => hash * 31 + HashAny(item)),
+            _ when value.GetType().IsValueType => value.GetHashCode(),
+            _ => throw new ArgumentException($"Unsupported value type for hashing: {value.GetType()}", nameof(value))
+        };
     }
 
     public override int GetHashCode()
@@ -242,7 +281,7 @@ public class VarDict
                 continue; // Skip loop variables
 
             hash = hash * 31 + kvp.Key.GetHashCode();
-            hash = hash * 31 + (kvp.Value?.GetHashCode() ?? 0);
+            hash = hash * 31 + HashAny(kvp.Value);
         }
         return hash;
     }

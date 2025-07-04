@@ -7088,7 +7088,7 @@
 						{
 							break;
 						}
-						array2[num16 + 143] = (byte)String.get_Chars(text2, num16);
+						// array2[num16 + 143] = (byte)String.get_Chars(text2, num16);
 						num16++;
 					}
 					Strings_a392.e5423f3a91b74a72a3a3c68b7a36ef3a = Strings_a392.strings_a994[3477];

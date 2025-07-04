@@ -12,20 +12,4 @@ public static class ExpressionSyntaxExtensions
         return expression;
     }
 
-    public static List<SyntaxToken> CollectTokens(this ExpressionSyntax expr)
-    {
-        var tokens = new List<SyntaxToken>();
-        expr = expr.StripParentheses();
-        switch (expr)
-        {
-            case IdentifierNameSyntax id:
-                tokens.Add(id.Identifier);
-                break;
-            case TupleExpressionSyntax tuple:
-                foreach (var item in tuple.Arguments)
-                    tokens.AddRange(CollectTokens(item.Expression));
-                break;
-        }
-        return tokens;
-    }
 }

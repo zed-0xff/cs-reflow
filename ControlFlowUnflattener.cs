@@ -95,6 +95,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool isClone = false;
     public string? dumpIntermediateLogs;
 
+    static TaggedLogger _logger = new("ControlFlowUnflattener");
+
     public void Reset()
     {
         _varProcessor = new(_varDB);
@@ -342,6 +344,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_while(WhileStatementSyntax whileStmt)
     {
+        _logger.debug(() => $"[{_visitedLines[whileStmt.LineNo()]}] {whileStmt.TitleWithLineNo()}");
+
         int loop_id = whileStmt.LineNo();
         var condition = whileStmt.Condition;
         var body = whileStmt.Statement;
@@ -1697,7 +1701,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     // updates _varProcessor.VariableValues
     public BlockSyntax ReflowBlock(BlockSyntax block, TraceLog? log = null, bool isMethod = false)
     {
-        Logger.info(block.TitleWithLineNo());
+        _logger.debug(() => $"[{_visitedLines[block.LineNo()]}] {block.TitleWithLineNo()}");
 
         if (block.Statements.Count == 0) // i.e. empty catch {}
             return block;
@@ -1887,22 +1891,23 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (_fmt == null)
             throw new InvalidOperationException("Formatter is not set.");
 
-        while (PreProcess)
-        {
-            update_progress("pre-processing");
-            // remove unused vars _before_ main processing
-            var body_ = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(body) as BlockSyntax;
-            if (body_.IsEquivalentTo(body))
+        if (PreProcess)
+            for (int i = 0; i < 100; i++)
             {
-                break;
+                update_progress("pre-processing" + new string('.', i));
+                // remove unused vars _before_ main processing
+                var body_ = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(body) as BlockSyntax;
+                if (body_.IsEquivalentTo(body))
+                {
+                    break;
+                }
+                else
+                {
+                    body = body.ReplaceWith(
+                            body_.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true)
+                            );
+                }
             }
-            else
-            {
-                body = body.ReplaceWith(
-                        body_.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true)
-                        );
-            }
-        }
 
         var collector = new ControlFlowTreeCollector();
         collector.Process(body!);

@@ -151,35 +151,46 @@ public static class SyntaxNodeExtensions
         return annotations.Count > 0 ? string.Join(", ", annotations) : null;
     }
 
-    public static string? NestedAnnotationsAsString(this SyntaxNode node, SyntaxNode? addNode = null)
+    public static List<SyntaxAnnotation>? NestedAnnotations(this SyntaxNode node, SyntaxNode? addNode = null, string[]? ann_kinds = null)
     {
-        var stuff = node.GetAnnotatedNodesAndTokens(ANNOTATION_KINDS);
+        ann_kinds ??= ANNOTATION_KINDS;
+
+        var stuff = node.GetAnnotatedNodesAndTokens(ann_kinds);
         if (stuff.Count() == 0)
             return null;
 
-        HashSet<string> annotations = new();
+        HashSet<SyntaxAnnotation> annotations = new();
         if (addNode != null)
-        {
-            foreach (var ann in addNode.GetAnnotations(ANNOTATION_KINDS))
-            {
-                annotations.Add($"{ann.Kind}:{ann.Data}");
-            }
-        }
+            foreach (var ann in addNode.GetAnnotations(ann_kinds))
+                annotations.Add(ann);
 
         foreach (var item in stuff)
         {
             if (item.IsNode)
             {
-                foreach (var ann in item.AsNode()!.GetAnnotations(ANNOTATION_KINDS))
-                    annotations.Add($"{ann.Kind}:{ann.Data}");
+                foreach (var ann in item.AsNode()!.GetAnnotations(ann_kinds))
+                    annotations.Add(ann);
             }
             else
             {
-                foreach (var ann in item.AsToken().GetAnnotations(ANNOTATION_KINDS))
-                    annotations.Add($"{ann.Kind}:{ann.Data}");
+                foreach (var ann in item.AsToken().GetAnnotations(ann_kinds))
+                    annotations.Add(ann);
             }
         }
-        return annotations.Count > 0 ? string.Join(", ", annotations) : null;
+        return annotations.Count > 0 ? annotations.ToList() : null;
+    }
+
+    public static string? NestedAnnotationsAsString(this SyntaxNode node, SyntaxNode? addNode = null)
+    {
+        var annotations = node.NestedAnnotations(addNode);
+        if (annotations == null || annotations.Count == 0)
+            return null;
+
+        HashSet<string> ann_strings = new();
+        foreach (var ann in annotations)
+            ann_strings.Add($"{ann.Kind}:{ann.Data}");
+
+        return string.Join(", ", ann_strings);
     }
 
     public static string EscapeNonPrintable(string input)
@@ -244,4 +255,12 @@ public static class SyntaxNodeExtensions
     }
 
     public static SyntaxAnnotation? VarID(this VariableDeclaratorSyntax node) => node.Identifier.VarID();
+
+    public static HashSet<string> CollectVarIDs(this SyntaxNode node)
+    {
+        var varIDs = new HashSet<string>();
+        foreach (var ann in node.NestedAnnotations(ann_kinds: new[] { "VarID" }) ?? Enumerable.Empty<SyntaxAnnotation>())
+            varIDs.Add(ann.Data!);
+        return varIDs;
+    }
 }

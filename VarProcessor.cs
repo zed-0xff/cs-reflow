@@ -186,8 +186,20 @@ public partial class VarProcessor : ICloneable
         var trackedRoot = tracker.Track(tree.GetRoot());
 
         object? result = null;
-        foreach (var stmt in trackedRoot!.DescendantNodes().OfType<GlobalStatementSyntax>())
+        var stmts = trackedRoot!.DescendantNodes().OfType<GlobalStatementSyntax>();
+        foreach (var stmt in stmts)
         {
+            if (stmt.Statement is LocalDeclarationStatementSyntax decl
+                    && decl.Declaration.Variables.Count == 1
+                    && decl.Declaration.Variables[0].Initializer is null
+                    && decl.Declaration.Variables[0].Identifier.IsMissing
+                    && stmt == stmts.Last())
+            {
+                // it's last statement like 'x', means just return var value, gets parsed wrong as a declaration
+                string varName = decl.Declaration.Type.ToString();
+                var V = _varDict._varDB.FindByName(varName);
+                return V == null ? null : _varDict[V.id];
+            }
             result = EvaluateExpression(stmt.Statement);
         }
         return result;
@@ -253,7 +265,7 @@ public partial class VarProcessor : ICloneable
         if (value2 is UnknownValueBase && value1 is not UnknownValueBase)
             return MergeVar(key, value2, value1); // Ensure UnknownValueBase is always first
 
-        // _logger.debug(() => $" {key,-10} ({value1?.GetType()}) {value1,-20} ({value2?.GetType()}) {value2,-20}");
+        _logger.debug(() => $" {key,-10} ({value1?.GetType()}) {value1,-20} ({value2?.GetType()}) {value2,-20}");
 
         object result = value1 switch
         {

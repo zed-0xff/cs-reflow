@@ -297,6 +297,7 @@ public static partial class TypeDB
 
                 _ => throw new NotSupportedException($"TypeDB.Default: {pts.Keyword} is not supported.")
             },
+            ArrayTypeSyntax => null,
             IdentifierNameSyntax id => id.Identifier.ValueText switch
             {
                 "nint" => (object)UnknownTypedValue.Zero(NInt),

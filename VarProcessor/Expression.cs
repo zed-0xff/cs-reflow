@@ -196,12 +196,12 @@ public partial class VarProcessor
         [ThreadStatic]
         static int _evalDepth;
 
-        object EvaluateExpression(ExpressionSyntax expr)
+        object EvaluateExpression(ExpressionSyntax expr, bool resolveIdentifier = true)
         {
             _evalDepth++;
             try
             {
-                var result = EvaluateExpression_(expr);
+                var result = EvaluateExpression_(expr, resolveIdentifier);
                 if (Verbosity > 0 || Logger.HasTag("Expression.EvaluateExpression"))
                 {
                     Console.Error.WriteColor($"[.] ", ConsoleColor.DarkGray);
@@ -286,6 +286,74 @@ public partial class VarProcessor
             }
         }
 
+        // calculate the result of an assignment expression, i.e. '+=', '-=', '*=', etc. (simple '=' too)
+        object? calc_assignment_result(ExpressionSyntax left, SyntaxKind kind, ExpressionSyntax right)
+        {
+            switch (kind)
+            {
+                case SyntaxKind.SimpleAssignmentExpression:
+                    return EvaluateExpression(right);
+
+                default:
+                    // +=, -=, etc
+                    SyntaxKind binaryOperatorKind = kind switch
+                    {
+                        SyntaxKind.AddAssignmentExpression => SyntaxKind.AddExpression,
+                        SyntaxKind.SubtractAssignmentExpression => SyntaxKind.SubtractExpression,
+                        SyntaxKind.MultiplyAssignmentExpression => SyntaxKind.MultiplyExpression,
+                        SyntaxKind.DivideAssignmentExpression => SyntaxKind.DivideExpression,
+                        SyntaxKind.ModuloAssignmentExpression => SyntaxKind.ModuloExpression,
+                        SyntaxKind.AndAssignmentExpression => SyntaxKind.BitwiseAndExpression,
+                        SyntaxKind.OrAssignmentExpression => SyntaxKind.BitwiseOrExpression,
+                        SyntaxKind.ExclusiveOrAssignmentExpression => SyntaxKind.ExclusiveOrExpression,
+                        SyntaxKind.LeftShiftAssignmentExpression => SyntaxKind.LeftShiftExpression,
+                        SyntaxKind.RightShiftAssignmentExpression => SyntaxKind.RightShiftExpression,
+                        _ => throw new InvalidOperationException("Unsupported compound assignment operator")
+                    };
+                    return EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right));
+            }
+        }
+
+        void reset_var(ExpressionSyntax expr)
+        {
+            switch (expr)
+            {
+                case IdentifierNameSyntax idName:
+                    _varDict.ResetVar(idName.Identifier);
+                    return;
+
+                case TupleExpressionSyntax tupleExpr:
+                    reset_tuple_vars(tupleExpr);
+                    return;
+            }
+        }
+
+        object? var_set(IdentifierNameSyntax idNameLeft, SyntaxKind kind, ExpressionSyntax right)
+        {
+            SyntaxToken idLeft = idNameLeft.Identifier;
+            // VarsWritten.Add(idLeft);
+
+            try
+            {
+                var result = calc_assignment_result(idNameLeft, kind, right);
+                setVar(idLeft, result);
+                return _varDict[idLeft];
+            }
+            catch (Exception ex)
+            {
+                _logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
+                reset_var(idNameLeft);
+                throw;
+            }
+        }
+
+        object? arr_elem_set(ElementAccessExpressionSyntax elAccLeft, SyntaxKind kind, ExpressionSyntax right)
+        {
+            var accessor = element_access(elAccLeft);
+            var result = calc_assignment_result(elAccLeft, kind, right);
+            return accessor.SetValue(result);
+        }
+
         // Handle assignment expressions (e.g., num3 = (num4 = (uint)(num2 ^ 0x76ED016F)))
         object? EvaluateAssignment(ExpressionSyntax left, SyntaxKind kind, ExpressionSyntax right)
         {
@@ -314,50 +382,12 @@ public partial class VarProcessor
                 return UnknownValue.Create(); // TODO: return tuple?
             }
 
-            if (!(left is IdentifierNameSyntax idNameLeft))
-                throw new NotSupportedException($"Assignment to '{left.Kind()}' is not supported");
-            SyntaxToken idLeft = idNameLeft.Identifier;
-
-            // string varName = left.ToString(); // XXX arrays?
-            // VarsWritten.Add(varName);
-
-            // Evaluate the right-hand side expression
-            try
+            return left switch
             {
-                var rValue = EvaluateExpression(right);
-                switch (kind)
-                {
-                    case SyntaxKind.SimpleAssignmentExpression:
-                        setVar(idLeft, rValue);
-                        break;
-
-                    default:
-                        // +=, -=, etc
-                        SyntaxKind binaryOperatorKind = kind switch
-                        {
-                            SyntaxKind.AddAssignmentExpression => SyntaxKind.AddExpression,
-                            SyntaxKind.SubtractAssignmentExpression => SyntaxKind.SubtractExpression,
-                            SyntaxKind.MultiplyAssignmentExpression => SyntaxKind.MultiplyExpression,
-                            SyntaxKind.DivideAssignmentExpression => SyntaxKind.DivideExpression,
-                            SyntaxKind.ModuloAssignmentExpression => SyntaxKind.ModuloExpression,
-                            SyntaxKind.AndAssignmentExpression => SyntaxKind.BitwiseAndExpression,
-                            SyntaxKind.OrAssignmentExpression => SyntaxKind.BitwiseOrExpression,
-                            SyntaxKind.ExclusiveOrAssignmentExpression => SyntaxKind.ExclusiveOrExpression,
-                            SyntaxKind.LeftShiftAssignmentExpression => SyntaxKind.LeftShiftExpression,
-                            SyntaxKind.RightShiftAssignmentExpression => SyntaxKind.RightShiftExpression,
-                            _ => throw new InvalidOperationException("Unsupported compound assignment operator")
-                        };
-                        setVar(idLeft, EvaluateBinaryExpression(BinaryExpression(binaryOperatorKind, left, right)));
-                        break;
-                }
-                return _varDict[idLeft];
-            }
-            catch (Exception ex)
-            {
-                _logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
-                _varDict.ResetVar(idLeft);
-                throw;
-            }
+                ElementAccessExpressionSyntax elAccLeft => arr_elem_set(elAccLeft, kind, right),
+                IdentifierNameSyntax idNameLeft => var_set(idNameLeft, kind, right),
+                _ => throw new NotSupportedException($"Assignment to '{left.Kind()}' is not supported")
+            };
         }
 
         public bool TryGetConstValue(ExpressionSyntax expr, out object? value)
@@ -383,12 +413,136 @@ public partial class VarProcessor
             return false;
         }
 
-        object? EvaluateExpression_(ExpressionSyntax expression)
+        object create_array(ArrayCreationExpressionSyntax expr)
+        {
+            var rankSpecifier = expr.Type.RankSpecifiers.FirstOrDefault();
+            var sizeExpr = rankSpecifier?.Sizes.FirstOrDefault();
+            _logger.debug(() => $"rankSpecifier: {rankSpecifier}, sizeExpr: {sizeExpr}, initializer: {expr.Initializer}");
+
+            var elType = TypeDB.ToSystemType(expr.Type.ElementType) ?? typeof(UnknownValue);
+
+            // new int[3]
+            if (sizeExpr is LiteralExpressionSyntax literalExpr)
+            {
+                int size = Convert.ToInt32(literalExpr.Token.Value);
+                return Array.CreateInstance(elType, size);
+            }
+
+            // new int[]{ 1, 2, 3 }
+            if (expr.Initializer is not null)
+            {
+                int size = expr.Initializer.Expressions.Count;
+                var arr = Array.CreateInstance(elType, size);
+                for (int i = 0; i < size; i++)
+                {
+                    var value = EvaluateExpression(expr.Initializer.Expressions[i]);
+                    if (value is IntConstExpr ice)
+                        value = ice.Materialize();
+                    arr.SetValue(value, i);
+                }
+                return arr;
+            }
+
+            return UnknownValue.Create();
+        }
+
+        object? member_access(MemberAccessExpressionSyntax expr)
+        {
+            _logger.debug(() => $"member_access: {expr}");
+
+            if (expr.Name is IdentifierNameSyntax idName)
+            {
+                switch (idName.Identifier.ValueText)
+                {
+                    case "Length":
+                        var value = EvaluateExpression(expr.Expression);
+                        if (value is Array arr)
+                            return arr.Length;
+                        break;
+                }
+            }
+
+            if (TryGetConstValue(expr, out var constantValue))
+                return constantValue;
+            else
+                throw new NotSupportedException($"MemberAccessExpression is not supported for {expr}");
+        }
+
+        class ElementAccessor
+        {
+            public readonly Array Array;
+            public readonly int Index;
+
+            public ElementAccessor(Array array, int index)
+            {
+                Array = array;
+                Index = index;
+            }
+
+            public object? GetValue() => Array.GetValue(Index);
+            public object? SetValue(object? value)
+            {
+                Logger.debug(() => $"Array={Array.GetType()}, Index={Index}, Value=({value?.GetType()}) {value}", "ElementAccessor.SetValue");
+
+                var elType = Array.GetType().GetElementType();
+                if (elType != null)
+                {
+                    var intType = TypeDB.TryFind(elType);
+                    if (intType != null)
+                        value = value switch
+                        {
+                            IntConstExpr ice => ice.Materialize(intType),
+                            _ => value
+                        };
+                }
+
+                value = value switch
+                {
+                    IntConstExpr ice => ice.Materialize(),
+                    _ => value
+                };
+
+                Array.SetValue(value, Index);
+                return GetValue();
+            }
+        }
+
+        // performs checks and returns ElementAccessor if all is ok, throws otherwise
+        ElementAccessor element_access(ElementAccessExpressionSyntax expr)
+        {
+            _logger.debug(() => $"element_access: {expr}");
+
+            var array = EvaluateExpression(expr.Expression);
+            if (array is Array arr)
+            {
+                // Evaluate the index expression
+                var indexExpr = expr.ArgumentList.Arguments.FirstOrDefault()?.Expression;
+                if (indexExpr != null)
+                {
+                    int index = TypeDB.ToInt32(EvaluateExpression(indexExpr));
+                    return new ElementAccessor(arr, index);
+                }
+                throw new NotSupportedException($"ElementAccessExpression requires an index: {expr}");
+            }
+
+            throw new NotSupportedException($"ElementAccessExpression is not supported for {expr}");
+        }
+
+        object? EvaluateExpression_(ExpressionSyntax expression, bool resolveIdentifier = true)
         {
             switch (expression)
             {
                 case AssignmentExpressionSyntax assignmentExpr:
-                    return EvaluateAssignment(assignmentExpr.Left, assignmentExpr.Kind(), assignmentExpr.Right);
+                    try
+                    {
+                        return EvaluateAssignment(assignmentExpr.Left, assignmentExpr.Kind(), assignmentExpr.Right);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.debug($"\"{assignmentExpr}\" => {e.Message}");
+                        _varDict.ResetVars(_varDict._varDB.CollectVars(assignmentExpr).written);
+                        throw;
+                    }
 
                 case BinaryExpressionSyntax binaryExpr:
                     return EvaluateBinaryExpression(binaryExpr);
@@ -422,18 +576,18 @@ public partial class VarProcessor
                 case IdentifierNameSyntax id:
                     // If the expression is an identifier, fetch its value from the dictionary
                     // VarsRead.Add(id.Identifier);
-                    return _varDict[id.Identifier];
+                    return resolveIdentifier ? _varDict[id.Identifier] : id.Identifier;
 
                 case LiteralExpressionSyntax literal:
                     if (literal.Token.Value is int i)
                         return new IntConstExpr(i);
                     return literal.Token.Value;
 
-                case MemberAccessExpressionSyntax:
-                    if (TryGetConstValue(expression, out var constantValue))
-                        return constantValue;
-                    else
-                        throw new NotSupportedException($"MemberAccessExpression is not supported for {expression}");
+                case MemberAccessExpressionSyntax memberAccessExpr:
+                    return member_access(memberAccessExpr);
+
+                case ElementAccessExpressionSyntax elementAccessExpr:
+                    return element_access(elementAccessExpr).GetValue();
 
                 case ParenthesizedExpressionSyntax parenExpr:
                     return EvaluateExpression(parenExpr.Expression);
@@ -449,6 +603,9 @@ public partial class VarProcessor
 
                 case SizeOfExpressionSyntax sizeOfExpr:
                     return TypeDB.SizeOf(sizeOfExpr.Type);
+
+                case ArrayCreationExpressionSyntax arrayCreationExpr:
+                    return create_array(arrayCreationExpr);
 
                 default:
                     throw new NotSupportedException($"{expression.Kind()} is not supported.");
@@ -777,27 +934,27 @@ public partial class VarProcessor
         }
 
         // TODO: check performance
-        bool IsPromotionRequired_fast<TL, TR>(TL l, TR r)
-            where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
-            where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
-        {
-            // promote & materialize IntConstExprs, if any
-            if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
-                return true;
-
-            int sizeL = Unsafe.SizeOf<TL>();
-            if (sizeL < 4)
-                return true;
-
-            int sizeR = Unsafe.SizeOf<TR>();
-            if (sizeR < 4)
-                return true;
-
-            if (sizeL != sizeR)
-                return true;
-
-            return typeof(TL) != typeof(TR);
-        }
+        // bool IsPromotionRequired_fast<TL, TR>(TL l, TR r)
+        //     where TL : INumber<TL>, IBitwiseOperators<TL, TL, TL>
+        //     where TR : INumber<TR>, IBitwiseOperators<TR, TR, TR>
+        // {
+        //     // promote & materialize IntConstExprs, if any
+        //     if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
+        //         return true;
+        // 
+        //     int sizeL = Unsafe.SizeOf<TL>();
+        //     if (sizeL < 4)
+        //         return true;
+        // 
+        //     int sizeR = Unsafe.SizeOf<TR>();
+        //     if (sizeR < 4)
+        //         return true;
+        // 
+        //     if (sizeL != sizeR)
+        //         return true;
+        // 
+        //     return typeof(TL) != typeof(TR);
+        // }
 
         // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#12473-binary-numeric-promotions
         bool IsPromotionRequired(object l, object r)

@@ -50,6 +50,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         }
 
         int ann2id(SyntaxAnnotation ann) => _varDB[ann].id;
+        int ann2id(string var_id) => int.Parse(var_id, System.Globalization.NumberStyles.HexNumber);
 
         public bool IsSafeToRemove(ExpressionSyntax node)
         {
@@ -86,6 +87,8 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             var ann = node.VarID();
             return ann != null && _unusedLocals.Contains(ann2id(ann));
         }
+
+        public bool IsUnusedLocal(string var_id) => _unusedLocals.Contains(ann2id(var_id));
 
         // TODO
         public bool IsUnusedLocal(ISymbol symbol)
@@ -129,8 +132,8 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             base.VisitAssignmentExpression(node);
         }
 
-        bool AllTokensUnused(ExpressionSyntax expr) => AllTokensUnused(expr.CollectTokens());
-        bool AllTokensUnused(List<SyntaxToken> tokens) => tokens.Any() && tokens.All(t => _ctx.IsUnusedLocal(t));
+        bool AllTokensUnused(ExpressionSyntax expr) => AllTokensUnused(expr.CollectVarIDs());
+        bool AllTokensUnused(IEnumerable<string> tokens) => tokens.Any() && tokens.All(t => _ctx.IsUnusedLocal(t));
 
         public override void VisitExpressionStatement(ExpressionStatementSyntax node)
         {
@@ -138,8 +141,8 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             {
                 // stand-alone assignment: "b = 333;" => delete
                 case AssignmentExpressionSyntax assignment:
-                    var tokens = assignment.Left.CollectTokens();
-                    if (AllTokensUnused(tokens))
+                    var left_ids = assignment.Left.CollectVarIDs();
+                    if (AllTokensUnused(left_ids))
                     {
                         if (_ctx.IsSafeToRemove(assignment.Right))
                         {
@@ -150,7 +153,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                         {
                             // If the right side is not a literal, we keep the local variable
                             keepLocals.UnionWith(
-                                    tokens
+                                    left_ids
                                     .Select(t => _ctx._varDB.TryGetValue(t, out var v) ? v!.id : -1)
                                     .Where(id => id != -1)
                                     );

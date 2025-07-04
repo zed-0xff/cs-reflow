@@ -1,7 +1,7 @@
-	public static string a51ee1556c0e4b359ae4b9687427924c(int int_0nk, int int_1nl, int int_2nm, int int_3nn)
+	public static string a51ee1556c0e4b359ae4b9687427924c(int len1, int len2, int len3, int len4)
 	{
 		int num = 507;
-		object obj = new char[int_0nk];
+		object obj = new char[len1];
 		object obj2 = default(object);
 		object obj3 = default(object);
 		int num6 = default(int);
@@ -104,7 +104,7 @@
 						case 37u:
 							goto IL_03a8;
 						case 29u:
-							((Array)obj2).CopyTo((Array)obj3, int_0nk);
+							((Array)obj2).CopyTo((Array)obj3, len1);
 							if (((((uint)num6 / 1838537459u) | (num2 << 14)) ^ 0x18A4) == 0)
 							{
 								goto default;
@@ -158,7 +158,7 @@
 					num3 = ((int)num5 * -1892591915) ^ -615417959;
 					continue;
 					IL_04c5:
-					obj5 = new char[int_2nm];
+					obj5 = new char[len3];
 					num3 = (int)(num5 * 1002335565) ^ -678713635;
 					continue;
 					IL_04ad:
@@ -170,12 +170,12 @@
 					num3 = (int)(num5 * 532717421) ^ -1640952322;
 					continue;
 					IL_0477:
-					((Array)obj5).CopyTo((Array)obj3, int_0nk + int_1nl);
+					((Array)obj5).CopyTo((Array)obj3, len1 + len2);
 					num3 = (int)((num5 * 762959913) ^ 0x72192CBB);
 					continue;
 					IL_0456:
 					int num9;
-					if (num6 < int_0nk)
+					if (num6 < len1)
 					{
 						num3 = 1249171081;
 						num9 = 1249171081;
@@ -214,7 +214,7 @@
 					continue;
 					IL_03a8:
 					int num11;
-					if (num10 >= int_1nl)
+					if (num10 >= len2)
 					{
 						num3 = -1454231484;
 						num11 = -1454231484;
@@ -266,7 +266,7 @@
 					continue;
 					IL_027b:
 					int num13;
-					if (num12 < int_3nn)
+					if (num12 < len4)
 					{
 						num3 = 2040417356;
 						num13 = 2040417356;
@@ -286,7 +286,7 @@
 					num3 = (int)((num5 * 1180826493) ^ 0x435D5EAB);
 					continue;
 					IL_025b:
-					((Array)obj6).CopyTo((Array)obj3, int_0nk + int_1nl + int_2nm);
+					((Array)obj6).CopyTo((Array)obj3, len1 + len2 + len3);
 					num3 = ((int)num5 * -1812783754) ^ -112764836;
 					continue;
 					IL_0249:
@@ -297,7 +297,7 @@
 					continue;
 					IL_0216:
 					int num14;
-					if (num8 < int_2nm)
+					if (num8 < len3)
 					{
 						num3 = 337184056;
 						num14 = 337184056;
@@ -309,11 +309,11 @@
 					num14 = 1450355500;
 					continue;
 					IL_00ef:
-					obj6 = new char[int_3nn];
+					obj6 = new char[len4];
 					num3 = ((int)num5 * -568827897) ^ 0x243D13F9;
 					continue;
 					IL_01f6:
-					obj3 = new char[int_0nk + int_1nl + int_2nm + int_3nn];
+					obj3 = new char[len1 + len2 + len3 + len4];
 					num3 = (int)((num5 * 1686330154) ^ 0x6FBDF064);
 					continue;
 					IL_01e1:
@@ -321,7 +321,7 @@
 					num3 = (int)((num5 * 1754889234) ^ 0x30C4A6D5);
 					continue;
 					IL_01c7:
-					obj2 = new char[int_1nl];
+					obj2 = new char[len2];
 					num3 = (int)(num5 * 1220470105) ^ -1048158991;
 				}
 				continue;

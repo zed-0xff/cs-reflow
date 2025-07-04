@@ -68,7 +68,7 @@ public class SyntaxTreeProcessor
     {
         if (Verbosity >= 0 && ShowProgress)
         {
-            msg = $"[{ElapsedTime()}] {msg} ..";
+            msg = $"[{ElapsedTime()}] {msg}..";
             if (Verbosity == 0)
                 Console.Error.Write(msg + ANSI.ERASE_TILL_EOL + "\r");
             else

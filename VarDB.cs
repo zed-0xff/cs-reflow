@@ -84,7 +84,7 @@ public class VarDB
     public void SetLoopVar(int id) => _vars[id].Flags |= Variable.FLAG_LOOP;
 
     // same as Roslyn's ReadInside(), but handles ++/-- differently
-    public (HashSet<int>, HashSet<int>, HashSet<int>) CollectVars(SyntaxNode rootNode)
+    public (HashSet<int> declared, HashSet<int> read, HashSet<int> written) CollectVars(SyntaxNode rootNode)
     {
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(s => s.Declaration.Variables)
@@ -135,8 +135,8 @@ public class VarDB
             AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
             if (assExpr != null)
             {
-                var tokens = assExpr.Left.CollectTokens();
-                if (tokens.Any(t => t.IsSameVar(ann)))
+                var ids = assExpr.Left.CollectVarIDs();
+                if (ids.Contains(ann.Data!))
                 {
                     _logger.debug(() => $"WRITE {ann.Data}");
                     written.Add(id); // intentionally do not interpret self-read as 'read'

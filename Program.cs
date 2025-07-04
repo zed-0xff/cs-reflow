@@ -363,7 +363,6 @@ class Program
                     methods.Add(unflattener.GetMethod(methodNameOrLineNo));
             }
 
-            // define lambda
             if (opts.listMethods)
             {
                 if (methodDict.Count != 0)
