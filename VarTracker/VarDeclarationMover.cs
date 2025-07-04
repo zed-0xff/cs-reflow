@@ -17,7 +17,7 @@ public partial class VarTracker
 
         static bool IsSafeToRemove(LocalDeclarationStatementSyntax decl)
         {
-            return decl.Declaration.Variables.Count == 1; // && decl.Declaration.Variables[0].Initializer == null;
+            return decl.Declaration.Variables.Count == 1; // && decl.Declaration.Variables[0].Initializer is null;
         }
 
         void enqueue_removal(LocalDeclarationStatementSyntax decl)
@@ -93,7 +93,7 @@ public partial class VarTracker
                         }
                     }
 
-                    if (closestDecl != null)
+                    if (closestDecl is not null)
                     {
                         usageToDecl[usageBlk] = closestDecl;
                         if (!declToUsage.TryGetValue(closestDecl, out var usages))
@@ -130,7 +130,7 @@ public partial class VarTracker
                 .OfType<BlockSyntax>()
                 .FirstOrDefault(b => b.DescendantNodes().OfType<LocalDeclarationStatementSyntax>().Any(ld => ld.IsSameVar(V)));
 
-            if (targetBlk == null)
+            if (targetBlk is null)
                 throw new TaggedException(LOG_TAG, $"{V}: No parent block found for orphaned usage block {usageBlk.TitleWithLineNo()}");
 
             // targetBlk itself won't have the declaration of interest, but some of its children do
@@ -145,7 +145,7 @@ public partial class VarTracker
                 if (existingTarget != targetBlk)
                 {
                     var commonAncestor = FindCommonAncestor(new[] { existingTarget, targetBlk });
-                    if (commonAncestor == null)
+                    if (commonAncestor is null)
                         throw new TaggedException(LOG_TAG, $"{V}: No common ancestor found for {existingTarget.TitleWithLineNo()} and {targetBlk.TitleWithLineNo()}");
                     _targetBlocks[V.id] = commonAncestor;
                 }
@@ -159,10 +159,10 @@ public partial class VarTracker
         {
             // naive approach: pick first block and climb its parents until all blocks contain that parent
             var first = blocks.FirstOrDefault();
-            if (first == null) return null;
+            if (first is null) return null;
 
             SyntaxNode? current = first;
-            while (current != null)
+            while (current is not null)
             {
                 if (current is BlockSyntax blk && blocks.All(b => b.AncestorsAndSelf().Contains(current)))
                 {
@@ -229,7 +229,7 @@ public partial class VarTracker
 
             // Replace removed declaration with assignment statement
             var variable = node.Declaration.Variables[0];
-            if (variable.Initializer == null)
+            if (variable.Initializer is null)
             {
                 // no initializer, safe to remove declaration completely
                 return node.ToEmptyStmt();

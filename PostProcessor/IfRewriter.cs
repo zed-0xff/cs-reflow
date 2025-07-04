@@ -101,7 +101,7 @@ public class IfRewriter : RewriterBase
     // }
     BlockSyntax? merge_returns(IfStatementSyntax ifStmt)
     {
-        if (ifStmt.Else != null
+        if (ifStmt.Else is not null
                 && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 0
                 && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 0
                 && thenBlk.Statements[^1] is ReturnStatementSyntax returnStmt
@@ -140,7 +140,7 @@ public class IfRewriter : RewriterBase
 
         // remove empty then
         {
-            if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else != null)
+            if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 0 && ifStmt.Else is not null)
                 ifStmt = ifStmt
                     .WithCondition(invert_condition(ifStmt.Condition))
                     .WithStatement(ifStmt.Else.Statement)
@@ -150,7 +150,7 @@ public class IfRewriter : RewriterBase
         // if (…) {} else { if (…) {} } =>
         // if (…) {} else if (…) {}
         {
-            if (ifStmt.Else != null
+            if (ifStmt.Else is not null
                     && ifStmt.Else.Statement is BlockSyntax block
                     && block.Statements.Count == 1
                     && block.Statements[0] is IfStatementSyntax)
@@ -166,7 +166,7 @@ public class IfRewriter : RewriterBase
         // if (x) return …;
         // …
         {
-            if (ifStmt.Else != null
+            if (ifStmt.Else is not null
                     && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count == 1 && thenBlk.Statements[0] is ReturnStatementSyntax returnStmt
                     && ifStmt.Else.Statement is BlockSyntax elseBlk)
             {
@@ -193,7 +193,7 @@ public class IfRewriter : RewriterBase
 
         {
             var blk = merge_returns(ifStmt);
-            if (blk != null)
+            if (blk is not null)
                 return blk;
         }
 
@@ -202,7 +202,7 @@ public class IfRewriter : RewriterBase
         // if (!x) return …;
         // …
         {
-            if (ifStmt.Else != null
+            if (ifStmt.Else is not null
                     && ifStmt.Statement is BlockSyntax thenBlk && (thenBlk.Statements.Count > 1 || (thenBlk.Statements.Count == 1 && condIsNot))
                     && ifStmt.Else.Statement is BlockSyntax elseBlk
                     && elseBlk.Statements.Count == 1 && elseBlk.Statements[0] is ReturnStatementSyntax returnStmt)
@@ -288,7 +288,7 @@ public class IfRewriter : RewriterBase
         // same as the next one, but label is on a Block (after the 'if' statements rewrite)
         {
             if (node.Statement is BlockSyntax block && block.Statements.Count > 1 && block.Statements[0] is IfStatementSyntax ifStmt0
-                    && ifStmt0.Else == null
+                    && ifStmt0.Else is null
                     && !block.DescendantNodes().OfType<BreakStatementSyntax>().Any()
                     && !block.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
                     && block.Statements[^1] is GotoStatementSyntax gotoStmt1 && gotoStmt1.Expression is IdentifierNameSyntax gotoId1
@@ -321,7 +321,7 @@ public class IfRewriter : RewriterBase
         {
             if (
                     // TODO: check if it's the only goto to this label
-                    ifStmt.Else != null
+                    ifStmt.Else is not null
                     && ifStmt.Statement is BlockSyntax thenBlk && thenBlk.Statements.Count > 1
                     && !thenBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
                     && !thenBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()
@@ -352,7 +352,7 @@ public class IfRewriter : RewriterBase
         //    }
         {
             if (
-                    ifStmt.Else != null
+                    ifStmt.Else is not null
                     && ifStmt.Else.Statement is BlockSyntax elseBlk && elseBlk.Statements.Count > 1
                     && !elseBlk.DescendantNodes().OfType<BreakStatementSyntax>().Any()
                     && !elseBlk.DescendantNodes().OfType<ContinueStatementSyntax>().Any()

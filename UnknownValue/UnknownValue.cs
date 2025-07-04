@@ -15,9 +15,9 @@ public class UnknownValue : UnknownValueBase
         return UnknownTypedValue.Create(TypeDB.Find(type));
     }
 
-    public static UnknownValueBase Create(Type? type) => (type == null) ? Create() : Create(type.ToString());
+    public static UnknownValueBase Create(Type? type) => (type is null) ? Create() : Create(type.ToString());
     public static UnknownValueBase Create(Microsoft.CodeAnalysis.CSharp.Syntax.TypeSyntax type) => Create(type.ToString());
-    public static UnknownValueBase Create(TypeDB.IntType? type) => (type == null) ? Create() : UnknownTypedValue.Create(type);
+    public static UnknownValueBase Create(TypeDB.IntType? type) => (type is null) ? Create() : UnknownTypedValue.Create(type);
 
     public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new() { _tags = add_tag(key, value) };
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new() { _var_id = id };

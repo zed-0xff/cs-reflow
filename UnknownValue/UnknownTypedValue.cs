@@ -11,7 +11,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
     public UnknownTypedValue(TypeDB.IntType type) : base()
     {
-        if (type == null)
+        if (type is null)
             throw new ArgumentNullException(nameof(type), "TypeDB.IntType cannot be null");
         this.type = type;
     }
@@ -62,7 +62,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
     public UnknownValueBitsBase ToBits() =>
         (this is UnknownValueBitsBase bits) ? bits :
-        (_var_id == null) ? new UnknownValueBits(type, BitSpan()) : new UnknownValueBitTracker(type, _var_id.Value, BitSpan());
+        (_var_id is null) ? new UnknownValueBits(type, BitSpan()) : new UnknownValueBitTracker(type, _var_id.Value, BitSpan());
 
     public bool CanConvertTo(UnknownTypedValue other)
     {
@@ -168,10 +168,10 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         else
         {
             var (tl, tr) = TypeDB.Promote(this, rValue);
-            if (tl != null || tr != null)
+            if (tl is not null || tr is not null)
             {
                 Logger.debug(() => $"{ToString()}.BinaryOp({kind}, {rValue}): promoting {tl} and {tr}", "UnknownTypedValue.BinaryOp");
-                if (tr != null)
+                if (tr is not null)
                 {
                     rValue = rValue switch
                     {
@@ -179,7 +179,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                         _ => tr.ConvertAny(rValue)
                     };
                 }
-                if (tl != null)
+                if (tl is not null)
                     return Upcast(tl).BinaryOpNoPromote(kind, rValue);
             }
         }

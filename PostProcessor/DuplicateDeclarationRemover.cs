@@ -39,15 +39,15 @@ public class DuplicateDeclarationRemover : CSharpSyntaxRewriter
                     decl1.IsSameVar(decl2)
                 )
             {
-                if (decl1.IsSameStmt(decl2) || (decl1.Declaration.Variables[0].Initializer == null && decl2.Declaration.Variables[0].Initializer == null))
+                if (decl1.IsSameStmt(decl2) || (decl1.Declaration.Variables[0].Initializer is null && decl2.Declaration.Variables[0].Initializer is null))
                 {
                     newStatements.Add(decl1);
                 }
                 else
                 {
-                    if (decl1.Declaration.Variables[0].Initializer != null)
+                    if (decl1.Declaration.Variables[0].Initializer is not null)
                         newStatements.Add(decl1);
-                    if (decl2.Declaration.Variables[0].Initializer != null)
+                    if (decl2.Declaration.Variables[0].Initializer is not null)
                         newStatements.Add(decl2);
                 }
                 was = true;

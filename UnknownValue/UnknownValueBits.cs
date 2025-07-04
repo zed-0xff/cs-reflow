@@ -19,7 +19,7 @@ public class UnknownValueBits : UnknownValueBitsBase
 
     protected static BitSpan bits2span(TypeDB.IntType type, IEnumerable<BitType>? bits)
     {
-        if (bits == null)
+        if (bits is null)
             return type.BitSpan;
 
         ulong min = 0, max = 0;
@@ -74,7 +74,7 @@ public class UnknownValueBits : UnknownValueBitsBase
 
     List<BitType> init(IEnumerable<BitType>? bits)
     {
-        if (bits == null)
+        if (bits is null)
             bits = Enumerable.Repeat<BitType>(ANY, type.nbits);
 
         if (bits.Count() != type.nbits)

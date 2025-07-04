@@ -64,7 +64,7 @@ class Program
             return nv; // verbosity level is the number of -v options
 
         // check if env vars VIMRUNTIME and VIM are set
-        if (Environment.GetEnvironmentVariable("VIMRUNTIME") != null || Environment.GetEnvironmentVariable("VIM") != null)
+        if (Environment.GetEnvironmentVariable("VIMRUNTIME") is not null || Environment.GetEnvironmentVariable("VIM") is not null)
             return -1; // default verbosity when running as filter in vim
 
         return 0; // default verbosity
@@ -352,7 +352,7 @@ class Program
 
             bool printAll = false;
             var methods = new List<SyntaxNode>();
-            if (opts.methods == null || opts.methods.Count == 0)
+            if (opts.methods is null || opts.methods.Count == 0)
             {
                 printAll = true;
                 methods = unflattener.Methods.Keys.Select(k => unflattener.GetMethod(k)).ToList();
@@ -388,7 +388,7 @@ class Program
 
                 if (printAll)
                     printer.Print();
-                else if (opts.methods != null)
+                else if (opts.methods is not null)
                     foreach (var methodName in opts.methods)
                         printer.PrintMethod(methodName);
             }

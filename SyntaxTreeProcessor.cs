@@ -121,7 +121,7 @@ public class SyntaxTreeProcessor
             .OfType<BaseMethodDeclarationSyntax>()
             .FirstOrDefault(b => b.SpanStart <= linePosition && b.Span.End > linePosition);
 
-        if (result == null)
+        if (result is null)
             throw new ArgumentException($"Method at line {lineno} not found.");
 
         return result;

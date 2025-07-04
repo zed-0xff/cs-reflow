@@ -14,7 +14,7 @@ public static class BlockSyntaxExtensions
         for (int i = 0; i < block.Statements.Count; i++)
         {
             var labeledStmt = block.Statements[i] as LabeledStatementSyntax;
-            if (labeledStmt != null && labeledStmt.Statement == stmt)
+            if (labeledStmt is not null && labeledStmt.Statement == stmt)
             {
                 return i;
             }

@@ -109,7 +109,7 @@ public partial class VarProcessor
 
                 var value = _varDict.DefaultValue(varID);
 
-                if (initializerExpression != null)
+                if (initializerExpression is not null)
                 {
                     setVar(varID, value); // set to UnknownValue first, because EvaluateExpression() may throw an exception
                     value = EvaluateExpression(initializerExpression);
@@ -142,7 +142,7 @@ public partial class VarProcessor
                     _logger.debug($"E varID={varID} value={value}");
 
                 // do not overwrite existing variable values if initializerExpression is null
-                if (initializerExpression != null || !_varDict.ContainsKey(varID))
+                if (initializerExpression is not null || !_varDict.ContainsKey(varID))
                 {
                     setVar(varID, value);
                 }
@@ -174,7 +174,7 @@ public partial class VarProcessor
         static object cast_var(object value, TypeSyntax toTypeSyntax)
         {
             var toType = TypeDB.TryFind(toTypeSyntax);
-            if (toType != null)
+            if (toType is not null)
                 return cast_var(value, toType);
 
             if (value is UnknownValueBase uv)
@@ -182,7 +182,7 @@ public partial class VarProcessor
                 if (toTypeSyntax is PointerTypeSyntax pts && uv.IsPointer())
                 {
                     var ptrType = TypeDB.TryFind(pts.ElementType);
-                    if (ptrType != null)
+                    if (ptrType is not null)
                         return uv.WithTag("ptr_cast", ptrType);
                 }
                 return new UnknownValue();
@@ -485,10 +485,10 @@ public partial class VarProcessor
                 Logger.debug(() => $"Array={Array.GetType()}, Index={Index}, Value=({value?.GetType()}) {value}", "ElementAccessor.SetValue");
 
                 var elType = Array.GetType().GetElementType();
-                if (elType != null)
+                if (elType is not null)
                 {
                     var intType = TypeDB.TryFind(elType);
-                    if (intType != null)
+                    if (intType is not null)
                         value = value switch
                         {
                             IntConstExpr ice => ice.Materialize(intType),
@@ -517,7 +517,7 @@ public partial class VarProcessor
             {
                 // Evaluate the index expression
                 var indexExpr = expr.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-                if (indexExpr != null)
+                if (indexExpr is not null)
                 {
                     int index = TypeDB.ToInt32(EvaluateExpression(indexExpr));
                     return new ElementAccessor(arr, index);
@@ -963,7 +963,7 @@ public partial class VarProcessor
             if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
                 return true;
 
-            if (l == null || r == null)
+            if (l is null || r is null)
                 return false; // null is not a number, so no promotion is needed
 
             if (ReferenceEquals(l.GetType(), r.GetType()))
@@ -1103,7 +1103,7 @@ public partial class VarProcessor
             if (kind == SyntaxKind.AddExpression)
             {
                 var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
-                if (factoredExpr != null)
+                if (factoredExpr is not null)
                 {
                     return EvaluateBinaryExpression(factoredExpr);
                 }

@@ -63,19 +63,19 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         }
 
         // Print the node type and its text representation
-        if (color != null)
+        if (color is not null)
             Console.Write(color);
 
         line = $"{lineNumber.ToString().PadRight(8)}{indent_str}{node.GetType().Name}: {line}";
         Console.Write(line);
 
-        if (color != null)
+        if (color is not null)
             Console.Write(ANSI.COLOR_RESET);
 
         if (ShowAnnotations)
         {
             var ann_str = node.AnnotationsAsString();
-            if (ann_str != null)
+            if (ann_str is not null)
             {
                 string pad = new string(' ', Math.Max(0, commentPadding - line.Length));
                 Console.Write(pad + $"// {ann_str}".Gray());
@@ -116,7 +116,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         Console.WriteLine($"{method.Identifier}()");
 
         // Check if the method has a body
-        if (method.Body != null)
+        if (method.Body is not null)
         {
             Print(method.Body, 1);  // Start from indent level 1 for the method body
         }
@@ -131,7 +131,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         Console.WriteLine($"{method.Identifier}()");
 
         // Check if the method has a body
-        if (method.Body != null)
+        if (method.Body is not null)
         {
             Print(method.Body, 1);  // Start from indent level 1 for the method body
         }

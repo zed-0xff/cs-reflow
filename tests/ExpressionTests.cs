@@ -14,7 +14,7 @@ public partial class ExpressionTests
         _varDict = new VarDict(_varDB);
         _processor = new VarProcessor(_varDB, varDict: _varDict);
         var v = Environment.GetEnvironmentVariable("REFLOW_VERBOSITY");
-        if (v != null)
+        if (v is not null)
         {
             _processor.Verbosity = int.Parse(v);
         }
@@ -35,7 +35,7 @@ public partial class ExpressionTests
     {
         var V = _varDB.FindByName(name);
         // XXX should still query the _processor if the variable is not found?
-        return V == null ? UnknownValue.Create() : _processor.VariableValues()[V.id];
+        return V is null ? UnknownValue.Create() : _processor.VariableValues()[V.id];
     }
 
     object? Eval(string expr_str) => _processor.EvaluateString(expr_str);

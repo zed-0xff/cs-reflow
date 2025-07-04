@@ -23,12 +23,12 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         _trees = trees;
         Verbosity = verbosity;
         _keepVars = new();
-        if (keepVars != null)
+        if (keepVars is not null)
         {
             foreach (string varName in keepVars)
             {
                 var V = _varDB.FindByName(varName);
-                if (V != null)
+                if (V is not null)
                     _keepVars.Add(V.id);
             }
         }
@@ -61,7 +61,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 return false;
 
             var dataFlow = Model.AnalyzeDataFlow(node);
-            if (dataFlow == null || !dataFlow.Succeeded)
+            if (dataFlow is null || !dataFlow.Succeeded)
                 return false;
 
             if (dataFlow.WrittenInside.Any(w => !IsUnusedLocal(w)))
@@ -73,19 +73,19 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         public bool IsUnusedLocal(VariableDeclaratorSyntax node)
         {
             var ann = node.VarID();
-            return ann != null && _unusedLocals.Contains(ann2id(ann));
+            return ann is not null && _unusedLocals.Contains(ann2id(ann));
         }
 
         public bool IsUnusedLocal(SyntaxToken token)
         {
             var ann = token.VarID();
-            return ann != null && _unusedLocals.Contains(ann2id(ann));
+            return ann is not null && _unusedLocals.Contains(ann2id(ann));
         }
 
         public bool IsUnusedLocal(IdentifierNameSyntax node)
         {
             var ann = node.VarID();
-            return ann != null && _unusedLocals.Contains(ann2id(ann));
+            return ann is not null && _unusedLocals.Contains(ann2id(ann));
         }
 
         public bool IsUnusedLocal(string var_id) => _unusedLocals.Contains(ann2id(var_id));
@@ -190,10 +190,10 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
                 // Check if initializer is present and not a literal
                 var init = variable.Initializer?.Value;
-                if (init != null && !_ctx.IsSafeToRemove(init) && init is not AssignmentExpressionSyntax)
+                if (init is not null && !_ctx.IsSafeToRemove(init) && init is not AssignmentExpressionSyntax)
                 {
                     var ann = variable.VarID();
-                    if (ann == null)
+                    if (ann is null)
                         throw new InvalidOperationException($"Variable {variable.Identifier.Text} has no 'VarID' annotation.");
                     _logger.debug(() => $"[d] Collector: keeping local variable {ann.Data} because of initializer {init.TitleWithLineNo()}");
                     keepLocals.Add(_ctx._varDB[ann].id);
@@ -239,7 +239,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
                 {
                     toConvert.Add(assEx);
                 }
-                else if (init != null && !_ctx.IsSafeToRemove(init))
+                else if (init is not null && !_ctx.IsSafeToRemove(init))
                 {
                     toKeep.Add(variable); // keep it
                 }
@@ -250,7 +250,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             {
                 // "int a = b = 111;" => "b = 111;"
                 AssignmentExpressionSyntax? assignment = VisitAssignmentExpression(toConvert[0]) as AssignmentExpressionSyntax;
-                return assignment == null ? gen_empty_stmt(node) : SyntaxFactory.ExpressionStatement(assignment);
+                return assignment is null ? gen_empty_stmt(node) : SyntaxFactory.ExpressionStatement(assignment);
             }
 
             if (toConvert.Count == 0)
@@ -297,7 +297,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
         {
             var newStatement = Visit(node.Statement) as StatementSyntax;
 
-            if (newStatement == null)
+            if (newStatement is null)
             {
                 // You CANNOT return a LabeledStatement without a statement
                 return node.WithStatement(SyntaxFactory.EmptyStatement());
@@ -309,7 +309,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
 
     SyntaxNode? RewriteBlock(SyntaxNode block)
     {
-        if (_mainCtx == null)
+        if (_mainCtx is null)
             throw new TaggedException(TAG, "Main context is not set. Call Process().");
 
         if (Verbosity > 2)
@@ -332,7 +332,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
             return block; // return original block
         }
 
-        if (dataFlow == null || !dataFlow.Succeeded)
+        if (dataFlow is null || !dataFlow.Succeeded)
             return block;
 
         if (dataFlow.VariablesDeclared.Count() > 0)
@@ -413,7 +413,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     public override SyntaxNode? VisitBlock(BlockSyntax node)
     {
         var updated = base.VisitBlock(node); // visit children first (x2.2 faster than visiting them afterwards)
-        if (updated == null)
+        if (updated is null)
             return null;
 
         var result = RewriteBlock(updated);

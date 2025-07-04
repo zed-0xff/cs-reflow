@@ -6,13 +6,13 @@ public class UnknownValueSet : UnknownTypedValue
 
     public UnknownValueSet(TypeDB.IntType type, List<long>? values = null) : base(type)
     {
-        if (values != null)
+        if (values is not null)
             _values = ImmutableHashSet.CreateRange(values);
     }
 
     public UnknownValueSet(TypeDB.IntType type, IEnumerable<long> values) : base(type)
     {
-        if (values != null)
+        if (values is not null)
             _values = ImmutableHashSet.CreateRange(values);
     }
 

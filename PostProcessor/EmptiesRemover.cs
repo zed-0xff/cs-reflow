@@ -12,7 +12,7 @@ public class EmptiesRemover : CSharpSyntaxRewriter
     {
         node = (TryStatementSyntax)base.VisitTryStatement(node)!;
 
-        if (node.Finally != null && node.Finally.Block.Statements.Count == 0)
+        if (node.Finally is not null && node.Finally.Block.Statements.Count == 0)
             node = node.WithFinally(null);
 
         return node;

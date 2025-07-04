@@ -20,7 +20,7 @@ public class TraceEntry
     public string Title()
     {
         string result = stmt.Title();
-        if (comment != null && comment.Length > 0)
+        if (comment is not null && comment.Length > 0)
         {
             result += " // " + comment;
         }

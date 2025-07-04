@@ -8,7 +8,7 @@ internal static class StringAssert
 
     internal static void Equal(string expected, string actual)
     {
-        if (expected == null || actual == null)
+        if (expected is null || actual is null)
         {
             Assert.Equal(expected, actual);
             return;

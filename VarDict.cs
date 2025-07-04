@@ -66,7 +66,7 @@ public class VarDict
     {
         _logger.debug($"Registering variable: {decl}");
         var parent = decl.Parent as VariableDeclarationSyntax;
-        if (parent == null)
+        if (parent is null)
             throw new ArgumentException("VariableDeclaratorSyntax must have a parent VariableDeclarationSyntax", nameof(decl));
 
         _varDB.Add(decl, parent.Type.ToString());
@@ -80,12 +80,12 @@ public class VarDict
         if (V.IsConst)
             throw new InvalidOperationException($"Cannot set value for constant {V}");
 
-        if (value is UnknownTypedValue ut && V.IntType != null && ut.type != V.IntType)
+        if (value is UnknownTypedValue ut && V.IntType is not null && ut.type != V.IntType)
             value = ut.Cast(V.IntType);
 
         _values[V.id] = value switch
         {
-            UnknownValue u => V.IntType != null ? UnknownTypedValue.Create(V.IntType).WithVarID(V.id) : u,
+            UnknownValue u => V.IntType is not null ? UnknownTypedValue.Create(V.IntType).WithVarID(V.id) : u,
             UnknownTypedValue ut2 => ut2.WithVarID(V.id),
             IntConstExpr ice => ice.Materialize(V.IntType),
             _ => value
@@ -212,9 +212,9 @@ public class VarDict
             if (EqualsEx(thisValue, other_kvp.Value))
                 continue; // Values are equal, nothing to do
 
-            if (thisValue != null && other_kvp.Value != null)
+            if (thisValue is not null && other_kvp.Value is not null)
                 Set(other_kvp.Key, VarProcessor.MergeVar(_varDB[other_kvp.Key].Name, thisValue, other_kvp.Value)); // TODO: return back var name (display only)
-            else if (thisValue == null && other_kvp.Value != null)
+            else if (thisValue is null && other_kvp.Value is not null)
                 Set(other_kvp.Key, other_kvp.Value);
         }
     }

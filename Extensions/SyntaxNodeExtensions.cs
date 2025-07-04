@@ -11,7 +11,7 @@ public static class SyntaxNodeExtensions
     public static int LineNo(this SyntaxNode node)
     {
         var annotation = node.GetAnnotations("LineNo").FirstOrDefault();
-        if (annotation != null && int.TryParse(annotation.Data, out int originalLine))
+        if (annotation is not null && int.TryParse(annotation.Data, out int originalLine))
             return originalLine;
 
         if (node is LabeledStatementSyntax labeledStatement)
@@ -53,7 +53,7 @@ public static class SyntaxNodeExtensions
 
     public static bool IsIdempotent(this SyntaxNode node)
     {
-        if (node == null)
+        if (node is null)
             return false;
 
         switch (node)
@@ -97,7 +97,7 @@ public static class SyntaxNodeExtensions
         where TBoundary : SyntaxNode
     {
         var current = node;
-        while (current != null && current is not TBoundary)
+        while (current is not null && current is not TBoundary)
         {
             if (current is TTarget match)
                 return match;
@@ -108,9 +108,9 @@ public static class SyntaxNodeExtensions
 
     public static T ReplaceWith<T>(this T oldNode, SyntaxNode newNode) where T : SyntaxNode
     {
-        if (oldNode == null)
+        if (oldNode is null)
             throw new ArgumentNullException(nameof(oldNode));
-        if (newNode == null)
+        if (newNode is null)
             throw new ArgumentNullException(nameof(newNode));
 
         var annotation = new SyntaxAnnotation();
@@ -120,7 +120,7 @@ public static class SyntaxNodeExtensions
         var newRoot = oldRoot.ReplaceNode(oldNode, annotatedNewNode);
 
         var result = newRoot.GetAnnotatedNodes(annotation).OfType<T>().First() as T;
-        if (result == null)
+        if (result is null)
             throw new InvalidOperationException($"Failed to replace node {oldNode} with {newNode}");
         return result;
     }
@@ -130,7 +130,7 @@ public static class SyntaxNodeExtensions
         var ann1 = node1.GetAnnotations("StmtID").FirstOrDefault();
         var ann2 = node2.GetAnnotations("StmtID").FirstOrDefault();
 
-        return ann1 != null && ann2 != null && ann1.Data == ann2.Data
+        return ann1 is not null && ann2 is not null && ann1.Data == ann2.Data
             && node1.IsEquivalentTo(node2); // StmtID may be the same, but 'if' block contents may differ
     }
 
@@ -160,7 +160,7 @@ public static class SyntaxNodeExtensions
             return null;
 
         HashSet<SyntaxAnnotation> annotations = new();
-        if (addNode != null)
+        if (addNode is not null)
             foreach (var ann in addNode.GetAnnotations(ann_kinds))
                 annotations.Add(ann);
 
@@ -183,7 +183,7 @@ public static class SyntaxNodeExtensions
     public static string? NestedAnnotationsAsString(this SyntaxNode node, SyntaxNode? addNode = null)
     {
         var annotations = node.NestedAnnotations(addNode);
-        if (annotations == null || annotations.Count == 0)
+        if (annotations is null || annotations.Count == 0)
             return null;
 
         HashSet<string> ann_strings = new();
@@ -223,7 +223,7 @@ public static class SyntaxNodeExtensions
 
     public static SyntaxNode WithUniqueAnnotation(this SyntaxNode node, SyntaxAnnotation newAnnotation)
     {
-        if (newAnnotation.Kind == null)
+        if (newAnnotation.Kind is null)
             throw new ArgumentException("Annotation kind must not be null", nameof(newAnnotation));
 
         // Remove all annotations of the same kind
@@ -243,7 +243,7 @@ public static class SyntaxNodeExtensions
         var annotations = new List<SyntaxAnnotation>();
 
         var stmtId = node.GetAnnotations("StmtID").FirstOrDefault();
-        if (stmtId != null)
+        if (stmtId is not null)
             annotations.Add(stmtId);
 
         // after StmtID to match other nodes visual output on -A

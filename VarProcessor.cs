@@ -97,7 +97,7 @@ public partial class VarProcessor : ICloneable
 
         public void Dispose()
         {
-            if (_original == null)
+            if (_original is null)
                 return;
 
             foreach (var (key, isUniq) in _resolvedTraceVars)
@@ -198,7 +198,7 @@ public partial class VarProcessor : ICloneable
                 // it's last statement like 'x', means just return var value, gets parsed wrong as a declaration
                 string varName = decl.Declaration.Type.ToString();
                 var V = _varDict._varDB.FindByName(varName);
-                return V == null ? null : _varDict[V.id];
+                return V is null ? null : _varDict[V.id];
             }
             result = EvaluateExpression(stmt.Statement);
         }
@@ -252,10 +252,10 @@ public partial class VarProcessor : ICloneable
     public static (object, object) PromoteInts(object l, object r)
     {
         var (tl, tr) = TypeDB.Promote(l, r);
-        if (tl != null || tr != null)
+        if (tl is not null || tr is not null)
             _logger.debug(() => $"PromoteInts: ({l.GetType()}) {l} and ({r.GetType()}) ({r}) => ({tl}, {tr})");
-        l = l is IntConstExpr iceL ? iceL.Materialize(tl) : tl != null ? tl.ConvertInt(l) : l;
-        r = r is IntConstExpr iceR ? iceR.Materialize(tr) : tr != null ? tr.ConvertInt(r) : r;
+        l = l is IntConstExpr iceL ? iceL.Materialize(tl) : tl is not null ? tl.ConvertInt(l) : l;
+        r = r is IntConstExpr iceR ? iceR.Materialize(tr) : tr is not null ? tr.ConvertInt(r) : r;
         return (l, r);
     }
 

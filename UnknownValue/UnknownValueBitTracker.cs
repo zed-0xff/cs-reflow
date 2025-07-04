@@ -48,7 +48,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
 
     protected static BitSpan bits2span(TypeDB.IntType type, IEnumerable<BitType>? bits)
     {
-        if (bits == null)
+        if (bits is null)
             return type.BitSpan;
 
         ulong min = 0, max = 0;
@@ -94,7 +94,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     // expects that _var_id is already set
     List<BitType> init(IEnumerable<BitType>? bits)
     {
-        if (bits == null)
+        if (bits is null)
         {
             if (_var_id is null)
                 throw new ArgumentException("Cannot initialize bits without var_id set.", nameof(bits));

@@ -24,7 +24,7 @@ public class DeclarationAssignmentMerger : CSharpSyntaxRewriter
             // Try to match pattern: declaration + assignment
             if (i + 1 < stmts.Count &&
                 stmts[i] is LocalDeclarationStatementSyntax declStmt && declStmt.Declaration.Variables.Count == 1 &&
-                declStmt.Declaration.Variables[0].Initializer == null &&
+                declStmt.Declaration.Variables[0].Initializer is null &&
                 stmts[i + 1] is ExpressionStatementSyntax assignStmt &&
                 assignStmt.Expression is AssignmentExpressionSyntax assignExpr &&
                 assignExpr.Left is IdentifierNameSyntax leftId &&

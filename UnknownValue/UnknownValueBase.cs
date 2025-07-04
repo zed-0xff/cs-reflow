@@ -8,11 +8,11 @@ public abstract class UnknownValueBase
 
     protected IReadOnlyDictionary<string, object>? add_tag(string key, object? value)
     {
-        var dict = _tags == null
+        var dict = _tags is null
             ? new Dictionary<string, object>()
             : new Dictionary<string, object>(_tags);
 
-        if (value == null)
+        if (value is null)
         {
             if (dict.ContainsKey(key))
                 dict.Remove(key);
@@ -27,7 +27,7 @@ public abstract class UnknownValueBase
 
     protected string TagStr()
     {
-        if (_tags == null || _tags.Count == 0)
+        if (_tags is null || _tags.Count == 0)
             return string.Empty;
 
         var tags = "{" + string.Join(", ", _tags.Select(kv => $"{kv.Key}={kv.Value}")) + "}";
@@ -36,7 +36,7 @@ public abstract class UnknownValueBase
 
     public bool TryGetTag(string key, out object? value)
     {
-        if (_tags == null || !_tags.TryGetValue(key, out value))
+        if (_tags is null || !_tags.TryGetValue(key, out value))
         {
             value = null;
             return false;
@@ -44,19 +44,19 @@ public abstract class UnknownValueBase
         return true;
     }
 
-    protected bool HasTag(string key) => _tags != null && _tags.ContainsKey(key);
+    protected bool HasTag(string key) => _tags is not null && _tags.ContainsKey(key);
     protected bool HasTag(string key, object? value)
     {
-        if (value == null)
-            return _tags == null || !_tags.ContainsKey(key);
+        if (value is null)
+            return _tags is null || !_tags.ContainsKey(key);
 
-        if (_tags == null)
+        if (_tags is null)
             return false;
 
         if (!_tags.TryGetValue(key, out var tagValue))
             return false;
 
-        return value == null ? tagValue == null : value.Equals(tagValue);
+        return value is null ? tagValue is null : value.Equals(tagValue);
     }
 
     public bool IsPointer() => HasTag("pointee");

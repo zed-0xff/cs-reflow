@@ -18,7 +18,7 @@ class SemanticContext
                     MetadataReference.CreateFromFile(typeof(object).Assembly.Location)
                     )
             .AddSyntaxTrees(_tree);
-        if (trees != null)
+        if (trees is not null)
             _compilation = _compilation.AddSyntaxTrees(trees);
         Model = _compilation.GetSemanticModel(_tree);
     }

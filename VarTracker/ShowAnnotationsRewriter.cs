@@ -30,7 +30,7 @@ public partial class VarTracker
                     break;
             }
 
-            if (ann_str != null)
+            if (ann_str is not null)
             {
                 if (ann_str.Length > 100)
                     ann_str = ann_str.Substring(0, 100) + "…";

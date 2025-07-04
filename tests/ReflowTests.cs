@@ -20,7 +20,7 @@ public class ReflowTests
                     return Directory.GetParent(dataPath)!.Parent!.FullName;
 
                 var parent = Directory.GetParent(basePath);
-                if (parent == null)
+                if (parent is null)
                     break;
 
                 basePath = parent.FullName;
@@ -105,7 +105,7 @@ public class ReflowTests
         bool was = false;
         foreach (var fname in Directory.GetFiles(Path.Combine(DataPath, dirName), "*.cs"))
         {
-            if (filter != null && !fname.Contains(filter))
+            if (filter is not null && !fname.Contains(filter))
                 continue;
 
             yield return new object[] { Path.GetRelativePath(DataPath, fname).PadRight(40) };
@@ -126,7 +126,7 @@ public class real_code
     [MemberData(nameof(GetFiles))]
     public void check(string fname)
     {
-        if (fname != null)
+        if (fname is not null)
             ReflowTests.CheckData(fname);
     }
 }
@@ -139,7 +139,7 @@ public class synthetic
     [MemberData(nameof(GetFiles))]
     public void check(string fname)
     {
-        if (fname != null)
+        if (fname is not null)
             ReflowTests.CheckData(fname);
     }
 }

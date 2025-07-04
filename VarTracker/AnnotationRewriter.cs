@@ -27,15 +27,15 @@ public partial class VarTracker
             if (node.SyntaxTree == _semanticModel.SyntaxTree)
             {
                 var key = _semanticModel.GetDeclaredSymbol(node);
-                if (key != null)
+                if (key is not null)
                     _sym2ann.TryGetValue(key, out annotation);
             }
 
             var newNode = base.VisitVariableDeclarator(node) as VariableDeclaratorSyntax;
-            if (newNode == null)
+            if (newNode is null)
                 return null;
 
-            if (annotation != null)
+            if (annotation is not null)
                 newNode = newNode.WithIdentifier(
                         newNode.Identifier.WithAdditionalAnnotations(annotation)
                         );
@@ -45,11 +45,11 @@ public partial class VarTracker
         public override SyntaxNode? VisitIdentifierName(IdentifierNameSyntax node)
         {
             var newNode = base.VisitIdentifierName(node) as IdentifierNameSyntax;
-            if (newNode == null || newNode.SyntaxTree != _semanticModel.SyntaxTree)
+            if (newNode is null || newNode.SyntaxTree != _semanticModel.SyntaxTree)
                 return newNode;
 
             var symbol = _semanticModel.GetSymbolInfo(newNode).Symbol;
-            if (symbol != null && _sym2ann.TryGetValue(symbol, out var annotation))
+            if (symbol is not null && _sym2ann.TryGetValue(symbol, out var annotation))
                 newNode = newNode.WithIdentifier(
                         newNode.Identifier.WithAdditionalAnnotations(annotation)
                         );

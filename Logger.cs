@@ -14,7 +14,7 @@ public static class Logger
     static Logger()
     {
         var v = Environment.GetEnvironmentVariable("REFLOW_LOG_TAGS");
-        if (v == null)
+        if (v is null)
             return;
 
         var tags = v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
@@ -33,7 +33,7 @@ public static class Logger
 
     public static void warn(string message, [CallerMemberName] string caller = "")
     {
-        if (message != null && message.StartsWith("[?] "))
+        if (message is not null && message.StartsWith("[?] "))
             message = message.Substring(4);
 
         log($"[?] {fmt_tag(caller)} {message}".Yellow());
@@ -62,7 +62,7 @@ public static class Logger
         if (!HasTag(caller))
             return;
 
-        if (message != null && message.StartsWith("[d] "))
+        if (message is not null && message.StartsWith("[d] "))
             message = message.Substring(4); // remove prefix if already present
 
         log($"[d] {fmt_tag(caller)} {message}");

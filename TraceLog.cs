@@ -126,7 +126,7 @@ public class TraceLog
             vars.MergeCommon(entry2.vars);
 
             string? comment = null;
-            if (entry1.comment != null && entry2.comment != null && entry1.comment == entry2.comment)
+            if (entry1.comment is not null && entry2.comment is not null && entry1.comment == entry2.comment)
                 comment = entry1.comment;
 
             entries.Add(new(stmt, value, vars, comment));
@@ -200,7 +200,7 @@ public class TraceLog
                 }
             }
 
-            if (ifStmt == null)
+            if (ifStmt is null)
             {
                 foreach (var entry in ifEntries)
                 {
@@ -213,7 +213,7 @@ public class TraceLog
                 }
             }
 
-            if (ifStmt == null)
+            if (ifStmt is null)
             {
                 Print("A", Math.Max(commonStart - 10, 0), commonStart, full: (verbosity > 1), addEmptyLine: false);
                 Print("A", commonStart, commonStart + 1, title: false, full: (verbosity > 0));
@@ -247,7 +247,7 @@ public class TraceLog
                 .WithStatement(thenBlock1)
                 .WithElse(elseBlock1.Statements.Count > 0 ? ElseClause(elseBlock1) : null);
 
-            if (labelStmt != null)
+            if (labelStmt is not null)
             {
                 newIfStmt = labelStmt
                     .WithStatement(newIfStmt);

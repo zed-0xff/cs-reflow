@@ -88,7 +88,7 @@ public class IntConstExpr :
     public static bool operator !=(IntConstExpr? a, IntConstExpr? b) =>
         !(a == b);
 
-    public bool Equals(IntConstExpr? other) => other != null && Value == other.Value;
+    public bool Equals(IntConstExpr? other) => other is not null && Value == other.Value;
     public override bool Equals(object? obj) =>
         obj switch
         {
@@ -283,7 +283,7 @@ public class IntConstExpr :
     public object TryCast(string toTypeName)
     {
         var type = TypeDB.TryFind(toTypeName);
-        return (type != null && CanCast(type)) ? Cast(type) : this;
+        return (type is not null && CanCast(type)) ? Cast(type) : this;
     }
 }
 

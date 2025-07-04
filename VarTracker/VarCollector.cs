@@ -57,17 +57,17 @@ public partial class VarTracker
         public override void VisitParameter(ParameterSyntax node)
         {
             var symbol = _semanticModel.GetDeclaredSymbol(node);
-            if (symbol == null || _sym2ann.ContainsKey(symbol))
+            if (symbol is null || _sym2ann.ContainsKey(symbol))
                 return;
 
-            if (node.Type == null)
+            if (node.Type is null)
             {
                 _logger.warn($"Parameter \"{node}\" has no type information");
                 return;
             }
 
             var typeSymbol = _semanticModel.GetTypeInfo(node.Type).Type;
-            if (typeSymbol == null)
+            if (typeSymbol is null)
             {
                 _logger.warn($"Parameter \"{node}\" has no type information");
                 return;
@@ -79,7 +79,7 @@ public partial class VarTracker
         public override void VisitVariableDeclarator(VariableDeclaratorSyntax node)
         {
             var symbol = _semanticModel.GetDeclaredSymbol(node);
-            if (symbol == null || _sym2ann.ContainsKey(symbol))
+            if (symbol is null || _sym2ann.ContainsKey(symbol))
                 return;
 
             var typeSymbol = _semanticModel.GetTypeInfo(node).Type;

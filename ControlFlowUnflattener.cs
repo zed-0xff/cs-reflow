@@ -269,7 +269,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         string code = codes.Last().Value;
         _fmt = new(code); // needs to be initialized without dummy class wrap
 
-        if (flowHints != null)
+        if (flowHints is not null)
             _flowHints = new(flowHints);
 
         _varProcessor = new(_varDB);
@@ -279,7 +279,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         _fmt = new(code); // needs to be initialized without dummy class wrap
 
-        if (flowHints != null)
+        if (flowHints is not null)
             _flowHints = new(flowHints);
 
         _varProcessor = new(_varDB);
@@ -537,7 +537,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (value is not GotoDefaultCaseException)
             update_flow_info(switchStmt, value);
 
-        if (value == null)
+        if (value is null)
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
 
         if (value is UnknownValueBase)
@@ -579,20 +579,20 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         defaultLabel = l;
                     }
                 }
-                if (swLabel != null)
+                if (swLabel is not null)
                     break;
             }
         }
 
-        if (swLabel == null)
+        if (swLabel is null)
             swLabel = defaultLabel;
 
-        if (swLabel == null) // no matching case or default label found
+        if (swLabel is null) // no matching case or default label found
             return;
 
         //        Console.WriteLine($"{get_lineno(swLabel).ToString().PadLeft(6)}: {swLabel}");
         SwitchSectionSyntax? section = swLabel.Parent as SwitchSectionSyntax;
-        if (section == null)
+        if (section is null)
             throw new InvalidOperationException($"Switch label {swLabel.TitleWithLineNo()} is not a part of a switch section");
 
         int start_idx = 0;
@@ -717,7 +717,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 {
                     trace_statements_inline(ifStmt.Statement);
                 }
-                else if (ifStmt.Else != null)
+                else if (ifStmt.Else is not null)
                 {
                     trace_statements_inline(ifStmt.Else.Statement);
                 }
@@ -769,7 +769,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             Console.WriteLine($"[d] convert_while: {whileStmt.TitleWithLineNo()}");
 
         var block = whileStmt.Statement as BlockSyntax;
-        if (block == null)
+        if (block is null)
             block = Block(SingletonList(whileStmt.Statement));
 
         return whileStmt
@@ -846,7 +846,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             _varProcessor.MergeExisting(clone._varProcessor);
 
         FinallyClauseSyntax? newFinally = null;
-        if (tryStmt.Finally != null)
+        if (tryStmt.Finally is not null)
         {
             var cloneF = Clone().WithParentReturns(retLabels);
             newFinally = tryStmt.Finally.WithBlock(cloneF.ReflowBlock(tryStmt.Finally.Block));
@@ -1102,7 +1102,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     case LocalDeclarationStatementSyntax:
                         // if (stmt is LocalDeclarationStatementSyntax localDecl
                         //         && _visitedLines[lineno] > 0
-                        //         && localDecl.Declaration.Variables.All(v => v.Initializer == null)
+                        //         && localDecl.Declaration.Variables.All(v => v.Initializer is null)
                         //         && _varProcessor.HasVar(localDecl)
                         //     )
                         // {
@@ -1131,7 +1131,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             case true:
                                 WhileStatementSyntax? newWhile = maybe_convert_while(whileStmt, retLabels);
                                 //Console.WriteLine($"[d] maybe_convert_while: {whileStmt.TitleWithLineNo()} => {newWhile?.TitleWithLineNo()}");
-                                if (newWhile == null)
+                                if (newWhile is null)
                                 {
                                     skip = true;
                                     trace = true; // inline it
@@ -1340,14 +1340,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             {
                 if (diffVars.TryGetValue(kv.Key, out var val))
                 {
-                    if (val == null || kv.Value == null || val.Equals(kv.Value))
+                    if (val is null || kv.Value is null || val.Equals(kv.Value))
                         diffVars.Remove(kv.Key);
                 }
             }
         }
         var emptyObject = default(object);
         foreach (var key in diffVars.ReadOnlyDict
-                .Where(kv => kv.Value == null || kv.Value.Equals(emptyObject))
+                .Where(kv => kv.Value is null || kv.Value.Equals(emptyObject))
                 .Select(kv => kv.Key)
                 .ToList())
         {
@@ -1414,7 +1414,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         List<string> statuses = new();
         ControlFlowUnflattener? processor = this;
-        while (processor != null)
+        while (processor is not null)
         {
             if (!string.IsNullOrEmpty(processor._status))
                 statuses.Add(processor._status);
@@ -1713,7 +1713,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 .SelectMany(ld => ld.Declaration.Variables))
         {
             var key = variable.VarID()?.Data;
-            if (key == null)
+            if (key is null)
                 throw new ArgumentException($"variable '{variable.Identifier}' has no 'VarID' annotation data: {variable.Parent?.TitleWithLineNo()}");
 
             var value = variable.Parent as VariableDeclarationSyntax;
@@ -1772,7 +1772,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         foreach (var label in labels)
         {
             var lastStmt = getLastStmt(statements);
-            if (lastStmt == null || !lastStmt.IsTerminal())
+            if (lastStmt is null || !lastStmt.IsTerminal())
             {
                 log.Print();
                 throw new NotSupportedException($"Labeled statement at line {label.LineNo()} does not end with a terminal statement: {lastStmt}");
@@ -1805,14 +1805,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         foreach (var id in result.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
             var ann = id.VarID();
-            if (ann == null)
+            if (ann is null)
             {
                 if (Verbosity > 1)
                     Logger.once($"[?] Identifier '{id}' has no 'VarID' annotation"); // TODO: check why
                 continue;
             }
             string? key = ann.Data;
-            if (key == null)
+            if (key is null)
                 throw new ArgumentException($"Identifier '{id}' has no 'VarID' annotation data");
 
             if (localDecls1.Contains(key))
@@ -1869,7 +1869,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             _ => throw new ArgumentException($"Unsupported method node type: {methodNode.GetType()}", nameof(methodNode))
         };
 
-        if (body == null)
+        if (body is null)
             throw new InvalidOperationException("Method body cannot be null.");
 
         return body;
@@ -1888,7 +1888,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         // annotate body with original line numbers
         body = body.ReplaceWith((BlockSyntax)new OriginalLineNoAnnotator().Visit(body)!);
 
-        if (_fmt == null)
+        if (_fmt is null)
             throw new InvalidOperationException("Formatter is not set.");
 
         if (PreProcess)
@@ -1943,7 +1943,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             }
         }
 
-        if (body.Statements.Count > 0 && body.Statements.Last() is ReturnStatementSyntax retStmt && retStmt.Expression == null)
+        if (body.Statements.Count > 0 && body.Statements.Last() is ReturnStatementSyntax retStmt && retStmt.Expression is null)
         {
             // remove trailing "return;"
             body = body.ReplaceWith(
@@ -1958,7 +1958,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         }
 
         SyntaxNode? newMethodNode = body;
-        while (newMethodNode != null)
+        while (newMethodNode is not null)
         {
             if (newMethodNode is BaseMethodDeclarationSyntax)
                 break;
@@ -1967,7 +1967,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             newMethodNode = newMethodNode.Parent;
         }
 
-        if (newMethodNode == null)
+        if (newMethodNode is null)
             throw new InvalidOperationException("Could not find method node in the syntax tree.");
 
         newMethodNode = newMethodNode.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true);

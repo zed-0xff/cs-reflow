@@ -180,7 +180,7 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
         {
             case BreakStatementSyntax:
                 wasTry = false;
-                for (var pnode = node.Parent; pnode != null; pnode = pnode.Parent)
+                for (var pnode = node.Parent; pnode is not null; pnode = pnode.Parent)
                 {
                     if (pnode.Statement is TryStatementSyntax)
                         wasTry = true;
@@ -200,7 +200,7 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
 
             case ContinueStatementSyntax:
                 wasTry = false;
-                for (var pnode = node.Parent; pnode != null; pnode = pnode.Parent)
+                for (var pnode = node.Parent; pnode is not null; pnode = pnode.Parent)
                 {
                     if (pnode.Statement is TryStatementSyntax)
                         wasTry = true;
@@ -221,7 +221,7 @@ class ControlFlowTreeCollector : CSharpSyntaxWalker
             case GotoStatementSyntax gotoStmt:
                 // if this goto from 'try' block outside the 'try' block => keep both 'goto' and 'label'
                 var parentTry = node.FindParent(SyntaxKind.TryStatement);
-                if (parentTry != null)
+                if (parentTry is not null)
                 {
                     switch (gotoStmt.CaseOrDefaultKeyword.Kind())
                     {

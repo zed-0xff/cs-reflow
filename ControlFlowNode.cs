@@ -96,7 +96,7 @@ class ControlFlowNode
     public FlowDictionary ToDictionary()
     {
         FlowDictionary dict = new();
-        if (Statement != null)
+        if (Statement is not null)
         {
             dict[Statement] = this;
         }
@@ -112,7 +112,7 @@ class ControlFlowNode
     public ControlFlowNode? FindParent(SyntaxKind kind)
     {
         ControlFlowNode? current = this;
-        while (current != null)
+        while (current is not null)
         {
             if (current.Statement?.Kind() == kind)
                 return current;
@@ -124,7 +124,7 @@ class ControlFlowNode
     public ControlFlowNode? FindParent(Func<ControlFlowNode, bool> predicate)
     {
         ControlFlowNode? current = this.Parent;
-        while (current != null)
+        while (current is not null)
         {
             if (predicate(current))
                 return current;

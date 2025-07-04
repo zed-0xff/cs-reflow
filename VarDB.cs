@@ -22,7 +22,7 @@ public class VarDB
                 return variable;
 
             var data = ann.Data;
-            if (data == null)
+            if (data is null)
                 throw new InvalidOperationException($"Annotation {ann} has no data.");
 
             if (int.TryParse(data, out int id))
@@ -45,7 +45,7 @@ public class VarDB
     public bool TryGetValue(SyntaxToken token, out Variable? variable)
     {
         var ann = token.VarID();
-        if (ann == null)
+        if (ann is null)
         {
             _logger.warn_once($"Variable definition not found for {token}");
             return TryGetValue(token.ToString(), out variable);
@@ -89,7 +89,7 @@ public class VarDB
         var declared = rootNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>()
             .SelectMany(s => s.Declaration.Variables)
             .Select(v => v.VarID())
-            .Where(v => v != null)
+            .Where(v => v is not null)
             .Select(v => this[v!].id)
             .ToHashSet();
 
@@ -99,7 +99,7 @@ public class VarDB
         foreach (var idNode in rootNode.DescendantNodes().OfType<IdentifierNameSyntax>())
         {
             var ann = idNode.VarID();
-            if (ann == null)
+            if (ann is null)
                 continue;
             int id = this[ann].id;
 
@@ -133,7 +133,7 @@ public class VarDB
 
             // =, +=, -=, *=, /=, %=, ...
             AssignmentExpressionSyntax? assExpr = expr.FirstAncestorOrSelfUntil<AssignmentExpressionSyntax, BlockSyntax>();
-            if (assExpr != null)
+            if (assExpr is not null)
             {
                 var ids = assExpr.Left.CollectVarIDs();
                 if (ids.Contains(ann.Data!))
@@ -150,7 +150,7 @@ public class VarDB
             }
 
             LocalDeclarationStatementSyntax? declStmt = expr.FirstAncestorOrSelfUntil<LocalDeclarationStatementSyntax, BlockSyntax>();
-            if (declStmt != null)
+            if (declStmt is not null)
             {
                 // local variable declaration: int x = 123 + [...]
                 if (declStmt.IsSameVar(ann))
@@ -168,7 +168,7 @@ public class VarDB
 
             // foo(x)
             ArgumentSyntax? argExpr = expr.FirstAncestorOrSelfUntil<ArgumentSyntax, BlockSyntax>();
-            if (argExpr != null)
+            if (argExpr is not null)
             {
                 _logger.debug(() => $"READ  {ann.Data}");
                 read.Add(id);

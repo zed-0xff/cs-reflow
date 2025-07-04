@@ -34,7 +34,7 @@ public partial class VarTracker
                 foreach (var v in node.Declaration.Variables)
                 {
                     var annotation = v.VarID();
-                    if (annotation == null)
+                    if (annotation is null)
                         continue;
 
                     var V = _varDB[annotation];
@@ -52,7 +52,7 @@ public partial class VarTracker
         public override void VisitIdentifierName(IdentifierNameSyntax node)
         {
             var annotation = node.VarID();
-            if (annotation != null)
+            if (annotation is not null)
             {
                 if (!_blockStack.Any()) return; // safety
 
