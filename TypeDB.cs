@@ -9,6 +9,7 @@ public static partial class TypeDB
 
     public const SpecialType ST_SByte = SpecialType.System_SByte;
     public const SpecialType ST_Byte = SpecialType.System_Byte;
+    public const SpecialType ST_Char = SpecialType.System_Char;
     public const SpecialType ST_Int16 = SpecialType.System_Int16;
     public const SpecialType ST_UInt16 = SpecialType.System_UInt16;
     public const SpecialType ST_Int32 = SpecialType.System_Int32;
@@ -27,7 +28,9 @@ public static partial class TypeDB
     public static readonly IntType UInt32 = new IntType("uint", 32, false, ST_UInt32);
     public static readonly IntType Int64 = new IntType("long", 64, true, ST_Int64);
     public static readonly IntType UInt64 = new IntType("ulong", 64, false, ST_UInt64);
+
     public static readonly IntType Bool = new IntType("bool", 1, false, ST_Boolean);
+    public static readonly IntType Char = new IntType("char", 16, false, ST_Char);
 
     public static readonly IntType IntPtr32 = new IntType("nint", 32, true, ST_IntPtr);
     public static readonly IntType UIntPtr32 = new IntType("nuint", 32, false, ST_UIntPtr);
@@ -71,6 +74,7 @@ public static partial class TypeDB
             "ulong" => UInt64,
 
             "bool" => Bool,
+            "char" => Char,
 
             "nint" => NInt,
             "nuint" => NUInt,
@@ -93,6 +97,9 @@ public static partial class TypeDB
         {
             "System.Boolean" => "bool",
             "Boolean" => "bool",
+
+            "System.Char" => "char",
+            "Char" => "char",
 
             "System.Byte" => "byte",
             "System.SByte" => "sbyte",
@@ -169,6 +176,43 @@ public static partial class TypeDB
         return (null, null); // no promotion necessary
     }
 
+    public static int ToInt32(object value) => Convert.ToInt32(Int32.ConvertAny(value));
+
+    public static System.Type? ToSystemType(TypeSyntax type) =>
+        type switch
+        {
+            PredefinedTypeSyntax pts => pts.Keyword.Kind() switch
+            {
+                SyntaxKind.ByteKeyword => typeof(byte),
+                SyntaxKind.SByteKeyword => typeof(sbyte),
+                SyntaxKind.ShortKeyword => typeof(short),
+                SyntaxKind.UShortKeyword => typeof(ushort),
+                SyntaxKind.IntKeyword => typeof(int),
+                SyntaxKind.UIntKeyword => typeof(uint),
+                SyntaxKind.LongKeyword => typeof(long),
+                SyntaxKind.ULongKeyword => typeof(ulong),
+
+                SyntaxKind.FloatKeyword => typeof(float),
+                SyntaxKind.DoubleKeyword => typeof(double),
+
+                SyntaxKind.BoolKeyword => typeof(bool),
+                SyntaxKind.CharKeyword => typeof(char),
+
+                SyntaxKind.StringKeyword => typeof(string),
+                SyntaxKind.ObjectKeyword => typeof(object),
+
+                _ => null
+            },
+            IdentifierNameSyntax id => id.Identifier.ValueText switch
+            {
+                // "nint" => typeof(nint), // TODO: host-independent NInt
+                // "nuint" => typeof(nuint), // TODO: host-independent NUInt
+                "Guid" => typeof(Guid),
+                _ => null
+            },
+            _ => null
+        };
+
     public static int SizeOf(TypeSyntax type) =>
         type switch
         {
@@ -220,9 +264,8 @@ public static partial class TypeDB
             float => sizeof(float),
             double => sizeof(double),
 
-            char => sizeof(char),
             bool => sizeof(bool),
-
+            char => sizeof(char),
             Guid => GUID.ByteSize,
 
             _ => throw new NotSupportedException($"TypeDB.GetSize: {obj.GetType()} is not supported.")

@@ -30,7 +30,7 @@ public static partial class TypeDB
             this.id = id;
             Name = name;
             this.nbits = nbits;
-            this.ByteSize = nbits / 8;
+            this.ByteSize = Math.Max(1, nbits / 8);
             this.signed = signed;
             MinValue = signed ? -(1L << (nbits - 1)) : 0;
             MaxSignedValue = (nbits == 64 || signed) ? (1L << (nbits - 1)) - 1 : (1L << nbits) - 1;
@@ -81,6 +81,7 @@ public static partial class TypeDB
                 ST_UInt64 => (ulong)l,
                 ST_Int64 => (long)l,
                 ST_Boolean => Convert.ToBoolean(l),
+                ST_Char => (char)l,
                 ST_IntPtr => Bitness switch
                 {
                     32 => (object)(int)l,
