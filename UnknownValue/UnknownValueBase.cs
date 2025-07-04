@@ -115,8 +115,8 @@ public abstract class UnknownValueBase
     public virtual object Ne(object right) => LogicalNot(Eq(right));
 
     public abstract object UnaryOp(SyntaxKind op);
-    public abstract object BinaryOp(string op, object rValue);
-    public abstract object InverseBinaryOp(string op, object lValue);
+    public abstract object BinaryOp(SyntaxKind kind, object rValue);
+    public abstract object InverseBinaryOp(SyntaxKind kind, object lValue);
 
     public static bool TryConvertToLong(object? obj, out long result)
     {

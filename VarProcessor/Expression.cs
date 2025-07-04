@@ -963,6 +963,9 @@ public partial class VarProcessor
             if ((l is IntConstExpr && r is not IntConstExpr) || (r is IntConstExpr))
                 return true;
 
+            if (l == null || r == null)
+                return false; // null is not a number, so no promotion is needed
+
             if (ReferenceEquals(l.GetType(), r.GetType()))
             {
                 if (l is int or uint or long or ulong)
@@ -1093,11 +1096,11 @@ public partial class VarProcessor
             if (is_always_true(binaryExpr))
                 return true;
 
-            string op = binaryExpr.OperatorToken.Text;
+            var kind = binaryExpr.Kind();
 
             // convert (4 * x + x * 4) => (4 + 4) * x
             // bc its easier then to evaluate when checking unknown values
-            if (op == "+")
+            if (kind == SyntaxKind.AddExpression)
             {
                 var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
                 if (factoredExpr != null)
@@ -1108,11 +1111,11 @@ public partial class VarProcessor
 
             object? lValue = EvaluateExpression(binaryExpr.Left); // always evaluated
 
-            switch (op)
+            switch (kind)
             {
-                case "&&":
+                case SyntaxKind.LogicalAndExpression:
                     return eval_binary_and(binaryExpr, lValue);
-                case "||":
+                case SyntaxKind.LogicalOrExpression:
                     return eval_binary_or(binaryExpr, lValue);
             }
 
@@ -1120,10 +1123,10 @@ public partial class VarProcessor
             var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
 
             if (lValue is UnknownValueBase luv)
-                return luv.BinaryOp(op, rValue);
+                return luv.BinaryOp(kind, rValue);
 
             if (rValue is UnknownValueBase ruv)
-                return ruv.InverseBinaryOp(op, lValue);
+                return ruv.InverseBinaryOp(kind, lValue);
 
             if (IsPromotionRequired(lValue, rValue))
             {

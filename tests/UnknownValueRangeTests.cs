@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
 
 public class UnknownValueRangeTests
@@ -401,7 +402,7 @@ public class UnknownValueRangeTests
 
         for (int i = 0; i < 8; i++)
         {
-            var shifted = range.BinaryOp(">>", i) as UnknownTypedValue;
+            var shifted = range.BinaryOp(SyntaxKind.RightShiftExpression, i) as UnknownTypedValue;
             Assert.NotNull(shifted);
 
             var b0_ = b0 >> i;
@@ -420,7 +421,7 @@ public class UnknownValueRangeTests
 
         for (int i = 0; i < 8; i++)
         {
-            var shifted = range.BinaryOp(">>", i) as UnknownTypedValue;
+            var shifted = range.BinaryOp(SyntaxKind.RightShiftExpression, i) as UnknownTypedValue;
             var b0_ = b0 >> i;
             Assert.Equal(TypeDB.Find(b0_.GetType()), shifted!.type);
             Assert.Equal(b0_, shifted.Min());
@@ -437,7 +438,7 @@ public class UnknownValueRangeTests
 
         for (int i = 0; i < 8; i++)
         {
-            var shifted = range.BinaryOp(">>>", i) as UnknownTypedValue;
+            var shifted = range.BinaryOp(SyntaxKind.UnsignedRightShiftExpression, i) as UnknownTypedValue;
             Assert.NotNull(shifted);
 
             var b0_ = b0 >>> i;
@@ -455,7 +456,7 @@ public class UnknownValueRangeTests
         sbyte b1 = SByte.MaxValue;
         sbyte m1 = -1;
 
-        var shifted = range.BinaryOp(">>>", 0) as UnknownTypedValue;
+        var shifted = range.BinaryOp(SyntaxKind.UnsignedRightShiftExpression, 0) as UnknownTypedValue;
         var b0_ = b0 >>> 0;
         Assert.Equal(TypeDB.Find(b0_.GetType()), shifted!.type);
         Assert.Equal(b0_, shifted.Min());
@@ -463,7 +464,7 @@ public class UnknownValueRangeTests
 
         for (int i = 1; i < 8; i++)
         {
-            shifted = range.BinaryOp(">>>", i) as UnknownTypedValue;
+            shifted = range.BinaryOp(SyntaxKind.UnsignedRightShiftExpression, i) as UnknownTypedValue;
             b0_ = b0 >>> i;
             Assert.Equal(TypeDB.Find(b0_.GetType()), shifted!.type);
             Assert.True(shifted.Contains(b0_));

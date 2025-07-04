@@ -1,3 +1,5 @@
+using Microsoft.CodeAnalysis.CSharp;
+
 public class UnknownValue : UnknownValueBase
 {
     public UnknownValue()
@@ -28,9 +30,9 @@ public class UnknownValue : UnknownValueBase
     public override ulong Cardinality() => throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
     public override IEnumerable<long> Values() => throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
 
-    public override object UnaryOp(Microsoft.CodeAnalysis.CSharp.SyntaxKind op) => new UnknownValue();
-    public override object BinaryOp(string op, object rValue) => new UnknownValue();
-    public override object InverseBinaryOp(string op, object lValue) => new UnknownValue();
+    public override object UnaryOp(SyntaxKind _) => new UnknownValue();
+    public override object BinaryOp(SyntaxKind _, object rValue) => new UnknownValue();
+    public override object InverseBinaryOp(SyntaxKind _, object lValue) => new UnknownValue();
 
     public override UnknownValue Add(object right) => new UnknownValue();
     public override UnknownValue Div(object right) => new UnknownValue();

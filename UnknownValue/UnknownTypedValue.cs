@@ -120,32 +120,32 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             _ => throw new NotImplementedException($"{ToString()}.UnaryOp({op}): not implemented"),
         };
 
-    private object BinaryOpNoPromote(string op, object rValue)
+    private object BinaryOpNoPromote(SyntaxKind kind, object rValue)
     {
-        var result = op switch
+        var result = kind switch
         {
-            "+" => Add(rValue),
-            "-" => Sub(rValue),
-            "*" => Mul(rValue),
-            "/" => Div(rValue),
-            "%" => Mod(rValue),
-            "^" => Xor(rValue),
+            SyntaxKind.AddExpression => Add(rValue),
+            SyntaxKind.SubtractExpression => Sub(rValue),
+            SyntaxKind.MultiplyExpression => Mul(rValue),
+            SyntaxKind.DivideExpression => Div(rValue),
+            SyntaxKind.ModuloExpression => Mod(rValue),
+            SyntaxKind.ExclusiveOrExpression => Xor(rValue),
 
-            "!=" => Ne(rValue),
-            "<" => Lt(rValue),
-            "<=" => Lte(rValue),
-            "==" => Eq(rValue),
-            ">" => Gt(rValue),
-            ">=" => Gte(rValue),
+            SyntaxKind.NotEqualsExpression => Ne(rValue),
+            SyntaxKind.LessThanExpression => Lt(rValue),
+            SyntaxKind.LessThanOrEqualExpression => Lte(rValue),
+            SyntaxKind.EqualsExpression => Eq(rValue),
+            SyntaxKind.GreaterThanExpression => Gt(rValue),
+            SyntaxKind.GreaterThanOrEqualExpression => Gte(rValue),
 
-            "&" => BitwiseAnd(rValue),
-            "|" => BitwiseOr(rValue),
+            SyntaxKind.BitwiseAndExpression => BitwiseAnd(rValue),
+            SyntaxKind.BitwiseOrExpression => BitwiseOr(rValue),
 
-            "<<" => ShiftLeft(rValue),
-            ">>" => SignedShiftRight(rValue),
-            ">>>" => UnsignedShiftRight(rValue),
+            SyntaxKind.LeftShiftExpression => ShiftLeft(rValue),
+            SyntaxKind.RightShiftExpression => SignedShiftRight(rValue),
+            SyntaxKind.UnsignedRightShiftExpression => UnsignedShiftRight(rValue),
 
-            _ => throw new NotImplementedException($"{ToString()}.BinaryOp({op}): not implemented"),
+            _ => throw new NotImplementedException($"{ToString()}.BinaryOp({kind}): not implemented"),
         };
 
         // materialize the UnknownTypedValue if it has only one value
@@ -155,22 +155,22 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         return result;
     }
 
-    public override object BinaryOp(string op, object rValue)
+    public override object BinaryOp(SyntaxKind kind, object rValue)
     {
         if (rValue is UnknownValue)
             return UnknownValue.Create();
 
-        if (op == "<<" || op == ">>" || op == ">>>")
+        if (kind == SyntaxKind.LeftShiftExpression || kind == SyntaxKind.RightShiftExpression || kind == SyntaxKind.UnsignedRightShiftExpression)
         {
             if (type.ByteSize < 4)
-                return Upcast(TypeDB.Int).BinaryOpNoPromote(op, rValue);
+                return Upcast(TypeDB.Int).BinaryOpNoPromote(kind, rValue);
         }
         else
         {
             var (tl, tr) = TypeDB.Promote(this, rValue);
             if (tl != null || tr != null)
             {
-                Logger.debug(() => $"{ToString()}.BinaryOp({op}, {rValue}): promoting {tl} and {tr}", "UnknownTypedValue.BinaryOp");
+                Logger.debug(() => $"{ToString()}.BinaryOp({kind}, {rValue}): promoting {tl} and {tr}", "UnknownTypedValue.BinaryOp");
                 if (tr != null)
                 {
                     rValue = rValue switch
@@ -180,33 +180,33 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                     };
                 }
                 if (tl != null)
-                    return Upcast(tl).BinaryOpNoPromote(op, rValue);
+                    return Upcast(tl).BinaryOpNoPromote(kind, rValue);
             }
         }
 
-        return BinaryOpNoPromote(op, rValue);
+        return BinaryOpNoPromote(kind, rValue);
     }
 
     // swap the left and right operands
     // XXX it is necessary to call BinaryOp() here bc BinaryOp() also handles type promotion
-    public override object InverseBinaryOp(string op, object lValue) =>
-        op switch
+    public override object InverseBinaryOp(SyntaxKind kind, object lValue) =>
+        kind switch
         {
-            "+" => BinaryOp(op, lValue),
-            "-" => Negate().BinaryOp("+", lValue), // N - unk = (-unk) + N
-            "*" => BinaryOp(op, lValue),
-            "^" => BinaryOp(op, lValue),
-            "&" => BinaryOp(op, lValue),
-            "|" => BinaryOp(op, lValue),
-            "!=" => BinaryOp(op, lValue),
-            "==" => BinaryOp(op, lValue),
+            SyntaxKind.AddExpression => BinaryOp(kind, lValue),
+            SyntaxKind.SubtractExpression => Negate().BinaryOp(SyntaxKind.AddExpression, lValue), // N - unk = (-unk) + N
+            SyntaxKind.MultiplyExpression => BinaryOp(kind, lValue),
+            SyntaxKind.ExclusiveOrExpression => BinaryOp(kind, lValue),
+            SyntaxKind.BitwiseAndExpression => BinaryOp(kind, lValue),
+            SyntaxKind.BitwiseOrExpression => BinaryOp(kind, lValue),
+            SyntaxKind.NotEqualsExpression => BinaryOp(kind, lValue),
+            SyntaxKind.EqualsExpression => BinaryOp(kind, lValue),
 
-            "<" => BinaryOp(">=", lValue),
-            "<=" => BinaryOp(">", lValue),
-            ">" => BinaryOp("<=", lValue),
-            ">=" => BinaryOp("<", lValue),
+            SyntaxKind.LessThanExpression => BinaryOp(SyntaxKind.GreaterThanOrEqualExpression, lValue),
+            SyntaxKind.LessThanOrEqualExpression => BinaryOp(SyntaxKind.GreaterThanExpression, lValue),
+            SyntaxKind.GreaterThanExpression => BinaryOp(SyntaxKind.LessThanOrEqualExpression, lValue),
+            SyntaxKind.GreaterThanOrEqualExpression => BinaryOp(SyntaxKind.GreaterThanExpression, lValue),
 
-            _ => throw new NotImplementedException($"{ToString()}.InverseOp(): '{op}' is not implemented"),
+            _ => throw new NotImplementedException($"{ToString()}.InverseBinaryOp(): '{kind}' is not implemented"),
         };
 
     public override object Eq(object other)
