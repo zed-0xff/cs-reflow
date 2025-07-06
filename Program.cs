@@ -360,7 +360,7 @@ class Program
             else
             {
                 foreach (var methodNameOrLineNo in opts.methods)
-                    methods.Add(unflattener.GetMethod(methodNameOrLineNo));
+                    methods.AddRange(unflattener.GetMethods(methodNameOrLineNo));
             }
 
             if (opts.listMethods)

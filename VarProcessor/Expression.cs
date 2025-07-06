@@ -425,20 +425,20 @@ public partial class VarProcessor
             if (sizeExpr is LiteralExpressionSyntax literalExpr)
             {
                 int size = Convert.ToInt32(literalExpr.Token.Value);
-                return Array.CreateInstance(elType, size);
+                return new ArrayWrap(elType, size);
             }
 
             // new int[]{ 1, 2, 3 }
             if (expr.Initializer is not null)
             {
                 int size = expr.Initializer.Expressions.Count;
-                var arr = Array.CreateInstance(elType, size);
+                var arr = new ArrayWrap(elType, size);
                 for (int i = 0; i < size; i++)
                 {
                     var value = EvaluateExpression(expr.Initializer.Expressions[i]);
                     if (value is IntConstExpr ice)
                         value = ice.Materialize();
-                    arr.SetValue(value, i);
+                    arr[i] = value;
                 }
                 return arr;
             }
@@ -456,7 +456,7 @@ public partial class VarProcessor
                 {
                     case "Length":
                         var value = EvaluateExpression(expr.Expression);
-                        if (value is Array arr)
+                        if (value is ArrayWrap arr)
                             return arr.Length;
                         break;
                 }
@@ -470,21 +470,21 @@ public partial class VarProcessor
 
         class ElementAccessor
         {
-            public readonly Array Array;
+            public readonly ArrayWrap Array;
             public readonly int Index;
 
-            public ElementAccessor(Array array, int index)
+            public ElementAccessor(ArrayWrap array, int index)
             {
                 Array = array;
                 Index = index;
             }
 
-            public object? GetValue() => Array.GetValue(Index);
+            public object? GetValue() => Array[Index];
             public object? SetValue(object? value)
             {
                 Logger.debug(() => $"Array={Array.GetType()}, Index={Index}, Value=({value?.GetType()}) {value}", "ElementAccessor.SetValue");
 
-                var elType = Array.GetType().GetElementType();
+                var elType = Array.ValueType;
                 if (elType is not null)
                 {
                     var intType = TypeDB.TryFind(elType);
@@ -502,7 +502,7 @@ public partial class VarProcessor
                     _ => value
                 };
 
-                Array.SetValue(value, Index);
+                Array[Index] = value;
                 return GetValue();
             }
         }
@@ -513,7 +513,7 @@ public partial class VarProcessor
             _logger.debug(() => $"element_access: {expr}");
 
             var array = EvaluateExpression(expr.Expression);
-            if (array is Array arr)
+            if (array is ArrayWrap arr)
             {
                 // Evaluate the index expression
                 var indexExpr = expr.ArgumentList.Arguments.FirstOrDefault()?.Expression;
@@ -1104,9 +1104,7 @@ public partial class VarProcessor
             {
                 var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
                 if (factoredExpr is not null)
-                {
                     return EvaluateBinaryExpression(factoredExpr);
-                }
             }
 
             object? lValue = EvaluateExpression(binaryExpr.Left); // always evaluated
@@ -1120,7 +1118,16 @@ public partial class VarProcessor
             }
 
             // evaluate rValue, handle everything else
-            var rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
+            object? rValue = EvaluateExpression(binaryExpr.Right); // NOT always evaluated
+
+            if (lValue is null || rValue is null)
+            {
+                return kind switch
+                {
+                    SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression => UnknownValue.Create(TypeDB.Bool),
+                    _ => UnknownValue.Create()
+                };
+            }
 
             if (lValue is UnknownValueBase luv)
                 return luv.BinaryOp(kind, rValue);

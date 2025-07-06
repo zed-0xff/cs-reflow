@@ -111,38 +111,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         }
     }
 
-    public void PrintMethod(LocalFunctionStatementSyntax method)
-    {
-        Console.WriteLine($"{method.Identifier}()");
-
-        // Check if the method has a body
-        if (method.Body is not null)
-        {
-            Print(method.Body, 1);  // Start from indent level 1 for the method body
-        }
-        else
-        {
-            Console.WriteLine("This method doesn't have a body (it might be an abstract or interface method).");
-        }
-    }
-
-    public void PrintMethod(MethodDeclarationSyntax method)
-    {
-        Console.WriteLine($"{method.Identifier}()");
-
-        // Check if the method has a body
-        if (method.Body is not null)
-        {
-            Print(method.Body, 1);  // Start from indent level 1 for the method body
-        }
-        else
-        {
-            Console.WriteLine("This method doesn't have a body (it might be an abstract or interface method).");
-        }
-    }
-
-    public void Print()
-    {
-        Print(_tree.GetRoot());
-    }
+    public void PrintMethod(LocalFunctionStatementSyntax method) => Print(method);
+    public void PrintMethod(MethodDeclarationSyntax method) => Print(method);
+    public void Print() => Print(_tree.GetRoot());
 }

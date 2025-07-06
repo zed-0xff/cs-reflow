@@ -1184,6 +1184,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                     case ForStatementSyntax forStmt:
                         stmt = convert_for(forStmt);
                         break;
+
+                    case LocalFunctionStatementSyntax localFunc: // nested function
+                        stmt = localFunc.WithBody(
+                                ReflowBlock(localFunc.Body!, isMethod: true)
+                                );
+                        trace = false;
+                        break;
                 }
             }
             catch (NotSupportedException e)
@@ -1297,7 +1304,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
                     case BreakStatementSyntax: throw new BreakException(stmt);
                     case ContinueStatementSyntax: throw new ContinueException(lineno);
-                    case ReturnStatementSyntax: throw new ReturnException(lineno); // TODO: return value
+                    case ReturnStatementSyntax: throw new ReturnException(lineno); // TODO: return value?
 
                     default:
                         throw new NotImplementedException($"{stmt.LineNo()}: Unhandled statement type: {stmt.GetType().ToString().Replace("Microsoft.CodeAnalysis.CSharp.Syntax.", "")}");

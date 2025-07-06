@@ -82,34 +82,39 @@ public class SyntaxTreeProcessor
                 n => _tree.GetLineSpan(new TextSpan(n.SpanStart, 0)).StartLinePosition.Line + 1,  // 1-based line number
                 n => n switch
                 {
-                    MethodDeclarationSyntax m => m.Identifier.Text,
+                    MethodDeclarationSyntax m => m.FullName(),
                     ConstructorDeclarationSyntax c => c.Identifier.Text,
                     DestructorDeclarationSyntax d => d.Identifier.Text,
                     LocalFunctionStatementSyntax l => l.Identifier.Text,
                     _ => "<unknown>"
                 });
 
-    public SyntaxNode GetMethod(string methodName)
+    public List<SyntaxNode> GetMethods(string methodName)
     {
         if (int.TryParse(methodName, out int lineno))
-            return GetMethod(lineno);
+            return new List<SyntaxNode> { GetMethod(lineno) };
 
-        var methods = _tree.GetRoot().DescendantNodes()
+        return _tree.GetRoot().DescendantNodes()
             .Where(n =>
-                    (n is MethodDeclarationSyntax m && m.Identifier.Text == methodName) ||
+                    (n is MethodDeclarationSyntax m && m.FullName() == methodName) ||
                     //(n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName) ||
                     (n is ConstructorDeclarationSyntax c && c.Identifier.Text == methodName)
                   )
             .ToList();
+    }
+
+    public SyntaxNode GetMethod(string methodNameOrLineNo)
+    {
+        var methods = GetMethods(methodNameOrLineNo);
 
         switch (methods.Count())
         {
             case 0:
-                throw new ArgumentException($"Method '{methodName}' not found.");
+                throw new ArgumentException($"Method '{methodNameOrLineNo}' not found.");
             case 1:
                 return (CSharpSyntaxNode)methods.First();
             default:
-                throw new ArgumentException($"Multiple methods with the name '{methodName}' found.");
+                throw new ArgumentException($"Multiple methods with the name '{methodNameOrLineNo}' found.");
         }
     }
 

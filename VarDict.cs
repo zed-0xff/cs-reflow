@@ -266,7 +266,7 @@ public class VarDict
             UnknownValueBase unk => unk.GetHashCode(),
             IntConstExpr ice => ice.GetHashCode(),
             string s => s.GetHashCode(),
-            Array arr => arr.Cast<object?>().Aggregate(11, (hash, item) => hash * 31 + HashAny(item)),
+            ArrayWrap arr => arr.GetHashCode(),
             _ when value.GetType().IsValueType => value.GetHashCode(),
             _ => throw new ArgumentException($"Unsupported value type for hashing: {value.GetType()}", nameof(value))
         };
