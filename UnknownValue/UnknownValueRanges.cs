@@ -132,7 +132,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
 
     public override UnknownTypedValue TypedShiftLeft(object right)
     {
-        throw new NotImplementedException();
+        throw new NotImplementedException($"{this}.TypedShiftLeft({right}): not implemented.");
     }
 
     public override UnknownValueBase TypedSignedShiftRight(object right) // '>>'
@@ -243,6 +243,14 @@ public class UnknownValueRanges : UnknownValueRangeBase
     public override UnknownValueBase Merge(object other)
     {
         return base.Merge(other);
+    }
+
+    public override UnknownTypedValue Normalize()
+    {
+        if (_rangeSet.Count == 1)
+            return new UnknownValueRange(type, type.Range).Normalize();
+
+        return base.Normalize();
     }
 }
 

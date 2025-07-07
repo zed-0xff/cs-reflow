@@ -417,6 +417,12 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_expr_BitTracker_F()
+    {
+        check_expr("int x; int x; (4233 + (x << 22 >>> 22) != -x)");
+    }
+
+    [Fact]
     public void Test_expr_parenthesis()
     {
         check_expr("int num8; ((((num8) * (99)) + ((num8) * (157))) ^ (0x4CF36D68)) != (0)");

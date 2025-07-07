@@ -148,6 +148,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             _ => throw new NotImplementedException($"{ToString()}.BinaryOp({kind}): not implemented"),
         };
 
+        if (result is UnknownTypedValue ut0)
+            result = ut0.Normalize();
+
         // materialize the UnknownTypedValue if it has only one value
         if (result is UnknownTypedValue ut && ut.Cardinality() == 1)
             return ut.type.ConvertInt(ut.Values().First());
@@ -541,7 +544,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         return result.Normalize();
     }
 
-    public UnknownTypedValue Normalize()
+    public virtual UnknownTypedValue Normalize()
     {
         if (this is UnknownValueBitTracker bt && bt.HasPrivateBits()) // still can be FullRange, but has more intel
             return bt;

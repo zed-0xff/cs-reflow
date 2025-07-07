@@ -236,7 +236,11 @@ public class UnknownValueRange : UnknownValueRangeBase
     public override UnknownValueBase Negate()
     {
         if (IsFullRange())
+        {
+            if (CanConvertTo<UnknownValueBitTracker>())
+                return ConvertTo<UnknownValueBitTracker>().Negate();
             return new UnknownValueRange(type);
+        }
 
         if (type.signed)
         {
