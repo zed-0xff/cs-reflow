@@ -396,7 +396,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
             return add(otherUnk);
         }
 
-        throw new NotImplementedException();
+        throw new NotImplementedException($"{this} Cannot add {right}");
     }
 
     public override UnknownValueBase TypedXor(object right)

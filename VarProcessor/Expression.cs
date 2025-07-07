@@ -749,10 +749,70 @@ public partial class VarProcessor
             return retValue;
         }
 
+        (ExpressionSyntax, ExpressionSyntax) try_reorder_operands(ExpressionSyntax left, ExpressionSyntax right)
+        {
+            bool swapped = false;
+            List<ExpressionSyntax> operands = new(){
+                left.StripParentheses(),
+                right.StripParentheses()
+            };
+
+            for (int i = 0; i < operands.Count; i++)
+            {
+                var op = operands[i].StripParentheses();
+                if (op is BinaryExpressionSyntax be && be.IsKind(SyntaxKind.AddExpression))
+                {
+                    operands[i] = be.Left.StripParentheses();
+                    operands.Insert(i + 1, be.Right.StripParentheses());
+                    i--;
+                }
+            }
+
+            for (int i = 0; i < operands.Count - 2; i++)
+            {
+                var var_idsL = operands[i].CollectVarIDs();
+                if (var_idsL.Count == 0)
+                    continue; // skip if no variables in the left operand
+
+                var var_idsR = operands[i + 1].CollectVarIDs();
+                if (var_idsL.Overlaps(var_idsR))
+                    continue; // skip if left and right operands share variables
+
+                for (int j = i + 2; j < operands.Count; j++)
+                {
+                    var_idsR = operands[j].CollectVarIDs();
+                    if (var_idsL.Overlaps(var_idsR))
+                    {
+                        (operands[i + 1], operands[j]) = (operands[j], operands[i + 1]); // swap
+                        swapped = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!swapped)
+                return (left, right);
+
+            while (operands.Count > 2)
+            {
+                operands[0] = BinaryExpression(
+                    SyntaxKind.AddExpression,
+                    operands[0],
+                    operands[1]
+                );
+                operands.RemoveAt(1);
+            }
+
+            return (operands[0], operands[1]);
+        }
+
+        // assuming op kind is 'Add'
         BinaryExpressionSyntax? extract_common_factors(ExpressionSyntax left, ExpressionSyntax right)
         {
             left = left.StripParentheses();
             right = right.StripParentheses();
+
+            // (a*b) + (c*d)
             {
                 if (
                         left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
@@ -822,6 +882,7 @@ public partial class VarProcessor
                 }
             }
 
+            // (a*b) + x
             {
                 if (
                         left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
@@ -857,6 +918,7 @@ public partial class VarProcessor
                 }
             }
 
+            // x + (a*b)
             {
                 if (
                         left is IdentifierNameSyntax lid &&
@@ -1102,6 +1164,15 @@ public partial class VarProcessor
             // bc its easier then to evaluate when checking unknown values
             if (kind == SyntaxKind.AddExpression)
             {
+                // x*3 + 2896 + x => x*3 + x + 2896
+                if (binaryExpr.Left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.AddExpression) ||
+                        binaryExpr.Right is BinaryExpressionSyntax rb && rb.IsKind(SyntaxKind.AddExpression))
+                {
+                    var (left, right) = try_reorder_operands(binaryExpr.Left, binaryExpr.Right);
+                    if (left != binaryExpr.Left || right != binaryExpr.Right)
+                        return EvaluateBinaryExpression(BinaryExpression(SyntaxKind.AddExpression, left, right));
+                }
+
                 var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
                 if (factoredExpr is not null)
                     return EvaluateBinaryExpression(factoredExpr);

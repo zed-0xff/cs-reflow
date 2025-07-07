@@ -423,6 +423,12 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_expr_reorder()
+    {
+        check_expr("int x; (x * 3 + 2896 + x) == (4*x + 2896)");
+    }
+
+    [Fact]
     public void Test_expr_uint_gt0()
     {
         string expr_str = "uint x; x > 0";
