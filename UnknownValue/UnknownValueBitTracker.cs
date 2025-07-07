@@ -46,6 +46,8 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         _bits = new(span2bits(init(null), bitspan, ZERO, ONE));
     }
 
+    public override UnknownValueBitTracker Create(BitSpan bitspan) => new(this, span2bits(_bits, bitspan, ZERO, ONE));
+
     protected static BitSpan bits2span(TypeDB.IntType type, IEnumerable<BitType>? bits)
     {
         if (bits is null)
@@ -431,11 +433,6 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
         }
 
         return UnknownTypedValue.Create(type);
-    }
-
-    public override UnknownValueBase TypedMod(object right)
-    {
-        throw new NotImplementedException();
     }
 
     public override UnknownValueBase TypedSub(object right)

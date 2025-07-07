@@ -155,6 +155,35 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         return result;
     }
 
+    // NOTE: applicable to all operations, but << / >> / >>>
+    bool MaybePromote(object rValue, out UnknownTypedValue promotedL, out object promotedR)
+    {
+        var (tl, tr) = TypeDB.Promote(this, rValue);
+        if (tl is not null || tr is not null)
+        {
+            Logger.debug(() => $"{ToString()}.MaybePromote({rValue}): promoting {tl} and {tr}", "UnknownTypedValue.MaybePromote");
+            promotedL = (tl is null) ? this : Upcast(tl);
+            if (ReferenceEquals(this, rValue))
+            {
+                promotedR = promotedL;
+            }
+            else
+            {
+                promotedR = (tr is null) ? rValue :
+                    rValue switch
+                    {
+                        UnknownTypedValue rt => rt.Upcast(tr),
+                        _ => tr.ConvertAny(rValue)
+                    };
+            }
+            return true;
+        }
+
+        promotedL = this;
+        promotedR = rValue;
+        return false;
+    }
+
     public override object BinaryOp(SyntaxKind kind, object rValue)
     {
         if (rValue is UnknownValue)
@@ -165,23 +194,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             if (type.ByteSize < 4)
                 return Upcast(TypeDB.Int).BinaryOpNoPromote(kind, rValue);
         }
-        else
+        else if (MaybePromote(rValue, out var promotedL, out var promotedR))
         {
-            var (tl, tr) = TypeDB.Promote(this, rValue);
-            if (tl is not null || tr is not null)
-            {
-                Logger.debug(() => $"{ToString()}.BinaryOp({kind}, {rValue}): promoting {tl} and {tr}", "UnknownTypedValue.BinaryOp");
-                if (tr is not null)
-                {
-                    rValue = rValue switch
-                    {
-                        UnknownTypedValue rt => rt.Upcast(tr),
-                        _ => tr.ConvertAny(rValue)
-                    };
-                }
-                if (tl is not null)
-                    return Upcast(tl).BinaryOpNoPromote(kind, rValue);
-            }
+            return promotedL.BinaryOpNoPromote(kind, promotedR);
         }
 
         return BinaryOpNoPromote(kind, rValue);
@@ -387,12 +402,15 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         return TypedUnsignedShiftRight(right);
     }
 
-    static bool IsPowerOfTwo(long l) => l > 0 && (l & (l - 1)) == 0;
+    static public bool IsPowerOfTwo(long l) => l > 0 && (l & (l - 1)) == 0;
 
     public sealed override UnknownValueBase Mod(object right)
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.Mod(promotedR);
 
         if (TryConvertToLong(right, out long l))
         {
@@ -421,7 +439,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                 return Zero(type);
         }
 
-        return TypedMod(right);
+        return MaybeNormalize(TypedMod(right));
     }
 
     public sealed override UnknownValueBase Div(object right)

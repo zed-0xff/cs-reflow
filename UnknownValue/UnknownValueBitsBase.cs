@@ -1,3 +1,5 @@
+using System.Numerics;
+
 public abstract class UnknownValueBitsBase : UnknownTypedValue
 {
     protected readonly BitSpan _bitspan;
@@ -7,6 +9,8 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
     {
         _bitspan = bitspan & type.Mask;
     }
+
+    public abstract UnknownValueBitsBase Create(BitSpan bitspan);
 
     public override ulong Cardinality() => _bitspan.Cardinality();
     public override bool Contains(long value) => _bitspan.Contains(value);
@@ -20,20 +24,24 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
     public abstract UnknownValueBase TypedBitwiseAnd(object right);
     public abstract UnknownValueBase TypedBitwiseOr(object right);
 
-    protected List<T> span2bits<T>(List<T> bits, BitSpan bitspan, T zero, T one)
+    protected List<T> span2bits<T>(IEnumerable<T> bits, BitSpan bitspan, T zero, T one)
     {
         ulong v = 1;
-        for (int i = 0; i < type.nbits; i++, v <<= 1)
+        int i = 0;
+        var newBits = new List<T>(bits);
+        foreach (var bit in bits)
         {
-            bits[i] = (bitspan.Min & v, bitspan.Max & v) switch
+            newBits[i] = (bitspan.Min & v, bitspan.Max & v) switch
             {
                 (0, 0) => zero,    // both bits are 0
-                (0, _) => bits[i], // any, keep the existing value
+                (0, _) => bit,     // any, keep the existing value
                 (_, 0) => throw new ArgumentException($"Invalid bitwise range: min={bitspan.Min & v}, max={bitspan.Max & v}"),
                 (_, _) => one      // both bits are 1
             };
+            v <<= 1;
+            i++;
         }
-        return bits;
+        return newBits;
     }
 
     public override long Min()
@@ -124,22 +132,84 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
             {
                 newMin |= v; // set bit to one
             }
-            return new UnknownValueBits(type, new BitSpan(newMin, newMax));
+            return Create(new BitSpan(newMin, newMax));
         }
 
         return UnknownTypedValue.Create(type);
     }
 
     // retain top known zeroes
-    public override UnknownValueBitsBase TypedDiv(object right)
+    public override UnknownTypedValue TypedDiv(object right)
     {
-        ulong v = 1UL << (type.nbits - 1);
-        ulong max = type.BitSpan.Max;
-        while ((_bitspan.Min & v) == 0 && (_bitspan.Max & v) == 0)
+        int nz = CountHead(IsZeroBit);
+        if (nz == type.nbits)
+            return Zero(type);
+        if (nz > type.nbits)
+            throw new ArgumentException($"Invalid division by {right} for type {type}");
+
+        return new UnknownValueBits(type, new BitSpan(0, (1UL << (type.nbits - nz) - 1))); // always returns UnknownValueBits bc no known bits are kept
+    }
+
+    // A / B:
+    //  - all top zero bits of (either A or B) remain zero
+    public override UnknownValueBase TypedMod(object right)
+    {
+        if (type.signed && IsAnyBit(type.nbits - 1))
         {
-            v >>= 1;
-            max >>= 1;
+            if (TryConvertToLong(right, out long l0))
+                return new UnknownValueRange(type, -l0 + 1, l0 - 1);
+            return UnknownTypedValue.Create(type); // TODO: narrow
         }
-        return new UnknownValueBits(type, new BitSpan(0, max));
+
+        int nzL = CountHead(IsZeroBit);
+        ulong maskL = (1UL << (type.nbits - nzL)) - 1;
+
+        if (TryConvertToLong(right, out long l))
+        {
+            if (l < 0)
+                l = -l; // in C# always x%y == x % (-y)
+
+            if (IsPowerOfTwo(l))
+                l--;
+
+            int nzR = BitOperations.LeadingZeroCount((ulong)l);
+            ulong maskR = (1UL << (64 - nzR)) - 1;
+            return new UnknownValueBits(type, new BitSpan(0, maskL & maskR));
+        }
+
+        if (right is UnknownValueBitsBase otherBits)
+        {
+            // drop sign of otherBits if it is set
+            if (otherBits.type.signed && !otherBits.IsZeroBit(otherBits.type.nbits - 1))
+            {
+                if (otherBits.IsOneBit(otherBits.type.nbits - 1))
+                    return Mod(otherBits.Negate());
+                else
+                    return UnknownTypedValue.Create(type); // TODO: narrow, i.e. Mod(otherBits.Merge(otherBits.Negate()))
+            }
+
+            int nzR = otherBits.CountHead(otherBits.IsZeroBit);
+            ulong maskR = (1UL << (type.nbits - nzR)) - 1;
+            return new UnknownValueBits(type, new BitSpan(0, maskL & maskR));
+        }
+
+        if (right is UnknownTypedValue typedRight)
+        {
+            return UnknownTypedValue.Create(type);
+        }
+
+        throw new ArgumentException($"Invalid right operand for TypedMod: ({right?.GetType()}) {right}");
+    }
+
+    public override UnknownValueBase Merge(object right)
+    {
+        if (TryConvertToLong(right, out long l))
+        {
+            if (Contains(l))
+                return this; // no change, already contains the value
+            return Create(_bitspan.Merge(l));
+        }
+
+        return base.Merge(right);
     }
 }

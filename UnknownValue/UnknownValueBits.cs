@@ -17,6 +17,8 @@ public class UnknownValueBits : UnknownValueBitsBase
         this(type, bits2span(type, bits))
     { }
 
+    public override UnknownValueBits Create(BitSpan bitspan) => new(this.type, bitspan);
+
     protected static BitSpan bits2span(TypeDB.IntType type, IEnumerable<BitType>? bits)
     {
         if (bits is null)
@@ -325,6 +327,7 @@ public class UnknownValueBits : UnknownValueBitsBase
                     break;
                 case (ZERO, ANY, ZERO):
                 case (ZERO, ONE, ANY):
+                case (ZERO, ANY, ANY):
                     newBits[i] = ANY;
                     // carry is kept, if any
                     break;
@@ -350,18 +353,6 @@ public class UnknownValueBits : UnknownValueBitsBase
             return otherTracker.TypedAdd(this);
 
         return UnknownTypedValue.Create(type);
-    }
-
-    public override UnknownValueBase TypedMod(object right)
-    {
-        if (!TryConvertToLong(right, out long l))
-            return UnknownTypedValue.Create(type);
-
-        if (l <= 0)
-            return UnknownValue.Create();
-
-        // TODO: apply knowledge of known bits
-        return type.signed ? new UnknownValueRange(type, -l + 1, l - 1) : new UnknownValueRange(type, 0, l - 1);
     }
 
     public override UnknownValueBase TypedSub(object right)

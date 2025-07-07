@@ -34,7 +34,7 @@ public static partial class TypeDB
             this.signed = signed;
             MinValue = signed ? -(1L << (nbits - 1)) : 0;
             MaxSignedValue = (nbits == 64 || signed) ? (1L << (nbits - 1)) - 1 : (1L << nbits) - 1;
-            MaxUnsignedValue = (nbits == 64 && !signed) ? unchecked((ulong)(-1L)) : (ulong)MaxSignedValue;
+            MaxUnsignedValue = (nbits == 64 && !signed) ? ulong.MaxValue : (ulong)MaxSignedValue;
 
             Mask = (1L << nbits) - 1;
             SignMask = signed ? (1L << (nbits - 1)) : 0;

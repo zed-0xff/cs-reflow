@@ -22,6 +22,8 @@ public readonly record struct BitSpan
     public ulong Cardinality() => (1UL << BitOperations.PopCount(Max ^ Min));
 
     public BitSpan Merge(BitSpan other) => new(Min & other.Min, Max | other.Max);
+    public BitSpan Merge(ulong l) => new(Min & l, Max | l);
+    public BitSpan Merge(long l) => Merge((ulong)l);
 
     public static BitSpan operator &(BitSpan a, BitSpan b) => new BitSpan(a.Min & b.Min, a.Max & b.Max);
     public static BitSpan operator &(BitSpan a, ulong u) => new BitSpan(a.Min & u, a.Max & u);
