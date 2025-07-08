@@ -25,8 +25,9 @@ public class SyntaxTreeProcessor
     // for cloning
     protected SyntaxTreeProcessor() { }
 
-    protected SyntaxTreeProcessor(OrderedDictionary<string, string> codes, int verbosity = DEFAULT_VERBOSITY, bool dummyClassWrap = false)
+    protected SyntaxTreeProcessor(OrderedDictionary<string, string> codes, int verbosity = DEFAULT_VERBOSITY, bool dummyClassWrap = false, bool showProgress = true)
     {
+        ShowProgress = showProgress;
         Verbosity = verbosity;
 
         update_progress("parsing codes");
@@ -120,11 +121,11 @@ public class SyntaxTreeProcessor
 
     public SyntaxNode GetMethod(int lineno)
     {
-        var linePosition = _tree.GetText().Lines[lineno].Start;
+        var line = _tree.GetText().Lines[lineno - 1];
         var result = _tree.GetRoot()
             .DescendantNodes()
             .OfType<BaseMethodDeclarationSyntax>()
-            .FirstOrDefault(b => b.SpanStart <= linePosition && b.Span.End > linePosition);
+            .FirstOrDefault(m => m.Span.IntersectsWith(line.Span));
 
         if (result is null)
             throw new ArgumentException($"Method at line {lineno} not found.");

@@ -264,7 +264,8 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return _traceLog;
     }
 
-    public ControlFlowUnflattener(OrderedDictionary<string, string> codes, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false) : base(codes, verbosity, dummyClassWrap)
+    public ControlFlowUnflattener(OrderedDictionary<string, string> codes, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false, bool showProgress = true)
+        : base(codes, verbosity, dummyClassWrap, showProgress)
     {
         string code = codes.Last().Value;
         _fmt = new(code); // needs to be initialized without dummy class wrap
@@ -273,16 +274,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             _flowHints = new(flowHints);
 
         _varProcessor = new(_varDB);
-    }
-
-    public ControlFlowUnflattener(string code, int verbosity = DEFAULT_VERBOSITY, HintsDictionary? flowHints = null, bool dummyClassWrap = false) : base(code, verbosity, dummyClassWrap)
-    {
-        _fmt = new(code); // needs to be initialized without dummy class wrap
-
-        if (flowHints is not null)
-            _flowHints = new(flowHints);
-
-        _varProcessor = new(_varDB);
+        _varProcessor.Verbosity = Verbosity;
     }
 
     // private empty constructor for cloning exclusively
@@ -871,14 +863,17 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             .WithStatement(newBlock);
     }
 
-    public object? EvaluateExpression(ExpressionSyntax expression) =>
-        _varProcessor.EvaluateExpression(expression);
+    public object? EvaluateParsedString()
+    {
+        var root = _tree.GetRoot();
+        if (PreProcess)
+            root = PreProcessBlock(root);
+        return _varProcessor.EvaluateParsedString(root);
+    }
 
-    public VarProcessor.Expression EvaluateExpressionEx(StatementSyntax expression) =>
-        _varProcessor.EvaluateExpressionEx(expression);
-
-    public VarProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression) =>
-        _varProcessor.EvaluateExpressionEx(expression);
+    public object? EvaluateExpression(ExpressionSyntax expression) => _varProcessor.EvaluateExpression(expression);
+    public VarProcessor.Expression EvaluateExpressionEx(StatementSyntax expression) => _varProcessor.EvaluateExpressionEx(expression);
+    public VarProcessor.Expression EvaluateExpressionEx(ExpressionSyntax expression) => _varProcessor.EvaluateExpressionEx(expression);
 
     public object? EvaluateBoolExpression(ExpressionSyntax expression)
     {
@@ -1882,6 +1877,26 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         return body;
     }
 
+    SyntaxNode PreProcessBlock(SyntaxNode node)
+    {
+        var node_ = new PureArithmeticsEvaluator().Visit(node);
+        if (!node_!.IsEquivalentTo(node))
+            node = node.ReplaceWith(node_);
+
+        for (int i = 0; i < 100; i++)
+        {
+            update_progress("pre-processing" + new string('.', i));
+            // remove unused vars _before_ main processing
+            node_ = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(node);
+            if (node_.IsEquivalentTo(node))
+                break;
+            else
+                node = node.ReplaceWith(node_);
+        }
+
+        return node;
+    }
+
     public string ReflowMethod(SyntaxNode methodNode)
     {
         // collect all declarations from body prior to any processing
@@ -1899,22 +1914,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             throw new InvalidOperationException("Formatter is not set.");
 
         if (PreProcess)
-            for (int i = 0; i < 100; i++)
-            {
-                update_progress("pre-processing" + new string('.', i));
-                // remove unused vars _before_ main processing
-                var body_ = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(body) as BlockSyntax;
-                if (body_.IsEquivalentTo(body))
-                {
-                    break;
-                }
-                else
-                {
-                    body = body.ReplaceWith(
-                            body_.NormalizeWhitespace(eol: _fmt.EOL, indentation: _fmt.Indentation, elasticTrivia: true)
-                            );
-                }
-            }
+            body = (BlockSyntax)PreProcessBlock(body)!;
 
         var collector = new ControlFlowTreeCollector();
         collector.Process(body!);
@@ -1939,7 +1939,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             update_progress("post-processing");
             var body2 = new UnusedLocalsRemover(_varDB, _trees, Verbosity, _keepVars).Process(body) as BlockSyntax;
             PostProcessor postProcessor = new(_varDB);
-            var body3 = postProcessor.PostProcessAll(body2); // removes empty finally{} after UnusedLocalsRemover removed some locals
+            var body3 = postProcessor.PostProcessAll(body2!); // removes empty finally{} after UnusedLocalsRemover removed some locals
             if (body3.IsEquivalentTo(body))
             {
                 break;

@@ -38,7 +38,12 @@ public partial class ExpressionTests
         return V is null ? UnknownValue.Create() : _processor.VariableValues()[V.id];
     }
 
-    object? Eval(string expr_str) => _processor.EvaluateString(expr_str);
+    object? Eval(string expr_str)
+    {
+        var tree = CSharpSyntaxTree.ParseText(expr_str);
+        var newRoot = new PureArithmeticsEvaluator().Visit(tree.GetRoot());
+        return _processor.EvaluateParsedString(newRoot);
+    }
 
     void check_expr(string expr_str, object? expected_result = null)
     {
@@ -426,6 +431,30 @@ public partial class ExpressionTests
     public void Test_expr_parenthesis()
     {
         check_expr("int num8; ((((num8) * (99)) + ((num8) * (157))) ^ (0x4CF36D68)) != (0)");
+    }
+
+    [Fact]
+    public void Test_expr_sub_neg()
+    {
+        check_expr("int x; x - -x == 2*x");
+    }
+
+    [Fact]
+    public void Test_expr_add_neg_neg()
+    {
+        check_expr("int x; x + (-(-x)) == 2*x");
+    }
+
+    [Fact]
+    public void Test_expr_sub_neg_neg()
+    {
+        check_expr("int x; x - -(-x) == 0");
+    }
+
+    [Fact]
+    public void Test_expr_neg_add()
+    {
+        check_expr("int x; -x + x == 0");
     }
 
     [Fact]

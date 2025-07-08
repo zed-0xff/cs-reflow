@@ -421,7 +421,7 @@ class UnusedLocalsRemover : CSharpSyntaxRewriter
     }
 
     // node is typically 'method body' block, but can be any syntax node
-    public BlockSyntax Process(BlockSyntax node)
+    public SyntaxNode Process(SyntaxNode node)
     {
         int i;
         _mainCtx = new Context(node, _trees, _varDB);

@@ -39,9 +39,9 @@ class Program
         List<string> filenames
     );
 
-    static ControlFlowUnflattener createUnflattener(OrderedDictionary<string, string> codes, Options opts, HintsDictionary hints, bool dummyClassWrap)
+    static ControlFlowUnflattener createUnflattener(OrderedDictionary<string, string> codes, Options opts, HintsDictionary hints, bool dummyClassWrap, bool showProgress)
     {
-        return new ControlFlowUnflattener(codes, verbosity: opts.verbosity, flowHints: hints, dummyClassWrap: dummyClassWrap)
+        return new ControlFlowUnflattener(codes, verbosity: opts.verbosity, flowHints: hints, dummyClassWrap: dummyClassWrap, showProgress: showProgress)
         {
             AddComments = opts.addComments,
             ShowAnnotations = opts.showAnnotations,
@@ -316,8 +316,7 @@ class Program
 
             if (!string.IsNullOrEmpty(opts.expr))
             {
-                ProcessCmdLineExpr(opts);
-                return;
+                codes["expr"] = opts.expr!;
             }
             else if (opts.filenames.Count == 0)
             {
@@ -341,26 +340,19 @@ class Program
                 }
             }
 
-            var unflattener = createUnflattener(codes, opts, hints, false);
+            bool showInitialProgress = opts.showProgress && (codes.Count > 1 || !codes.ContainsKey("expr"));
+            var unflattener = createUnflattener(codes, opts, hints, dummyClassWrap: false, showProgress: showInitialProgress);
             var methodDict = unflattener.Methods;
 
             if (methodDict.Count == 0)
             {
-                unflattener = createUnflattener(codes, opts, hints, true);
-                methodDict = unflattener.Methods;
-            }
-
-            bool printAll = false;
-            var methods = new List<SyntaxNode>();
-            if (opts.methods is null || opts.methods.Count == 0)
-            {
-                printAll = true;
-                methods = unflattener.Methods.Keys.Select(k => unflattener.GetMethod(k)).ToList();
-            }
-            else
-            {
-                foreach (var methodNameOrLineNo in opts.methods)
-                    methods.AddRange(unflattener.GetMethods(methodNameOrLineNo));
+                var unflattener2 = createUnflattener(codes, opts, hints, dummyClassWrap: true, showProgress: showInitialProgress);
+                var methodDict2 = unflattener.Methods;
+                if (methodDict2.Count != 0)
+                {
+                    unflattener = unflattener2;
+                    methodDict = methodDict2;
+                }
             }
 
             if (opts.listMethods)
@@ -369,8 +361,23 @@ class Program
                     Console.WriteLine("methods:\n - " + string.Join("\n - ", methodDict.Select(kv => $"{kv.Key}: {kv.Value}")));
                 else
                     Console.WriteLine("[?] No methods found.");
+                return;
             }
-            else if (opts.printTree)
+
+            bool printAll = false;
+            var methods = new List<SyntaxNode>();
+            if (opts.methods is null || opts.methods.Count == 0)
+            {
+                printAll = true;
+                methods = methodDict.Keys.Select(k => unflattener.GetMethod(k)).ToList();
+            }
+            else
+            {
+                foreach (var methodNameOrLineNo in opts.methods)
+                    methods.AddRange(unflattener.GetMethods(methodNameOrLineNo));
+            }
+
+            if (opts.printTree)
             {
                 var trees = codes.Select(kv => CSharpSyntaxTree.ParseText(kv.Value, path: kv.Key)).ToList();
                 var tree = trees.Last();
@@ -450,38 +457,17 @@ class Program
                         // unflattener._flowRoot.Print();
                     }
                 }
+
+                if (first && codes.ContainsKey("expr"))
+                {
+                    // cmdline expr eval, and it has not been processed
+                    object? result = unflattener.EvaluateParsedString();
+                    Console.WriteLine($"{result}");
+                }
             }
 
         }); // rootCommand.SetHandler
 
         return rootCommand.Invoke(args);
-    }
-
-    static void ProcessCmdLineExpr(Options opts)
-    {
-        if (opts.printTree)
-        {
-            var tree = CSharpSyntaxTree.ParseText(opts.expr!);
-
-            if (opts.showAnnotations)
-            {
-                var tracker = new VarTracker(new());
-                var trackedRoot = tracker.Track(tree.GetRoot());
-                tree = trackedRoot!.SyntaxTree;
-            }
-
-            var printer = new SyntaxTreePrinter(tree);
-            printer.Verbosity = opts.verbosity;
-            printer.ShowAnnotations = opts.showAnnotations;
-            printer.Print();
-        }
-        else
-        {
-            VarDB varDB = new VarDB();
-            VarProcessor processor = new(varDB);
-            processor.Verbosity = opts.verbosity;
-            object? result = processor.EvaluateString(opts.expr!);
-            Console.WriteLine($"{result}");
-        }
     }
 }

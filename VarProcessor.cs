@@ -178,14 +178,11 @@ public partial class VarProcessor : ICloneable
         }
     }
 
-    public object? EvaluateString(string expr)
+    public object? EvaluateParsedString(SyntaxNode root)
     {
-        var tree = CSharpSyntaxTree.ParseText(expr);
-
-        var tracker = new VarTracker(_varDB);
-        var trackedRoot = tracker.Track(tree.GetRoot());
-
         object? result = null;
+        var tracker = new VarTracker(_varDB);
+        var trackedRoot = tracker.Track(root);
         var stmts = trackedRoot!.DescendantNodes().OfType<GlobalStatementSyntax>();
         foreach (var stmt in stmts)
         {

@@ -51,6 +51,35 @@ public static class SyntaxNodeExtensions
                node is GotoStatementSyntax;
     }
 
+    public static bool IsPureArithmetic(this SyntaxNode node)
+    {
+        if (node is null)
+            return false;
+
+        switch (node)
+        {
+            case LiteralExpressionSyntax:
+                return true; // numeric literals are pure
+
+            case ParenthesizedExpressionSyntax paren:
+                return paren.Expression.IsPureArithmetic();
+
+            case PrefixUnaryExpressionSyntax prefix:
+                return prefix.Kind() switch
+                {
+                    SyntaxKind.UnaryMinusExpression or SyntaxKind.UnaryPlusExpression => prefix.Operand.IsPureArithmetic(),
+                    _ => false // e.g., !expr is not arithmetic
+                };
+
+            case BinaryExpressionSyntax binary:
+                return binary.Left.IsPureArithmetic() && binary.Right.IsPureArithmetic();
+
+            default:
+                Logger.debug(() => $"Node {node.GetType()} is not a pure arithmetic expression: {node}", "SyntaxNode.IsPureArithmetic");
+                return false;
+        }
+    }
+
     public static bool IsIdempotent(this SyntaxNode node)
     {
         if (node is null)

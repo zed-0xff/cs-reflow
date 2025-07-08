@@ -76,15 +76,12 @@ public partial class VarProcessor
 
         void ProcessLocalDeclaration(LocalDeclarationStatementSyntax localDeclaration)
         {
+            _logger.debug(() => $"{localDeclaration}");
             if (Verbosity > 2)
             {
-                _logger.debug($"{localDeclaration}");
-                if (Verbosity > 3)
-                {
-                    _logger.debug($".Declaration = {localDeclaration.Declaration}");
-                    _logger.debug($".Declaration.Type = {localDeclaration.Declaration.Type}");
-                    _logger.debug($".Declaration.Variables = {localDeclaration.Declaration.Variables}");
-                }
+                _logger.debug($".Declaration = {localDeclaration.Declaration}");
+                _logger.debug($".Declaration.Type = {localDeclaration.Declaration.Type}");
+                _logger.debug($".Declaration.Variables = {localDeclaration.Declaration.Variables}");
             }
 
             foreach (var variable in localDeclaration.Declaration.Variables)
@@ -95,9 +92,7 @@ public partial class VarProcessor
                 // Get the variable name (e.g., "num3")
                 var varID = variable.Identifier;
                 if (!_varDict.IsVariableRegistered(varID))
-                {
                     _varDict.RegisterVariable(variable);
-                }
 
                 // if (string.IsNullOrEmpty(varName))
                 //     throw new NotSupportedException($"Empty variable name in: {localDeclaration}");
@@ -807,7 +802,7 @@ public partial class VarProcessor
         }
 
         // assuming op kind is 'Add'
-        BinaryExpressionSyntax? extract_common_factors(ExpressionSyntax left, ExpressionSyntax right)
+        object? extract_common_factors(ExpressionSyntax left, ExpressionSyntax right)
         {
             left = left.StripParentheses();
             right = right.StripParentheses();
@@ -825,64 +820,64 @@ public partial class VarProcessor
                     var rbRight = rb.Right.StripParentheses();
 
                     // Case A1: (lit1 * id) + (lit2 * id)
-                    if (lbLeft is LiteralExpressionSyntax lc1 && lbRight is IdentifierNameSyntax lv1 &&
-                            rbLeft is LiteralExpressionSyntax rc1 && rbRight is IdentifierNameSyntax rv1 &&
+                    if (lbLeft.IsPureArithmetic() && lbRight is IdentifierNameSyntax lv1 &&
+                            rbLeft.IsPureArithmetic() && rbRight is IdentifierNameSyntax rv1 &&
                             lv1.IsSameVar(rv1))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 lv1,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, lc1, rc1)
+                                    BinaryExpression(SyntaxKind.AddExpression, lbLeft, rbLeft)
                                     )
                                 );
                     }
 
                     // Case A2: (id * lit1) + (lit2 * id)
-                    if (lbLeft is IdentifierNameSyntax lv2 && lbRight is LiteralExpressionSyntax lc2 &&
-                            rbLeft is LiteralExpressionSyntax rc2 && rbRight is IdentifierNameSyntax rv2 &&
+                    if (lbLeft is IdentifierNameSyntax lv2 && lbRight.IsPureArithmetic() &&
+                            rbLeft.IsPureArithmetic() && rbRight is IdentifierNameSyntax rv2 &&
                             lv2.IsSameVar(rv2))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 lv2,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, lc2, rc2)
+                                    BinaryExpression(SyntaxKind.AddExpression, lbRight, rbLeft)
                                     )
                                 );
                     }
 
                     // Case A3: (lit1 * id) + (id * lit2)
-                    if (lbLeft is LiteralExpressionSyntax lc3 && lbRight is IdentifierNameSyntax lv3 &&
-                            rbLeft is IdentifierNameSyntax rv3 && rbRight is LiteralExpressionSyntax rc3 &&
+                    if (lbLeft.IsPureArithmetic() && lbRight is IdentifierNameSyntax lv3 &&
+                            rbLeft is IdentifierNameSyntax rv3 && rbRight.IsPureArithmetic() &&
                             lv3.IsSameVar(rv3))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 lv3,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, lc3, rc3)
+                                    BinaryExpression(SyntaxKind.AddExpression, lbLeft, rbRight)
                                     )
                                 );
                     }
 
                     // Case A4: (id * lit1) + (id * lit2)
-                    if (lbLeft is IdentifierNameSyntax lv4 && lbRight is LiteralExpressionSyntax lc4 &&
-                            rbLeft is IdentifierNameSyntax rv4 && rbRight is LiteralExpressionSyntax rc4 &&
+                    if (lbLeft is IdentifierNameSyntax lv4 && lbRight.IsPureArithmetic() &&
+                            rbLeft is IdentifierNameSyntax rv4 && rbRight.IsPureArithmetic() &&
                             lv4.IsSameVar(rv4))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 lv4,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, lc4, rc4)
+                                    BinaryExpression(SyntaxKind.AddExpression, lbRight, rbRight)
                                     )
                                 );
                     }
                 }
             }
 
-            // (a*b) + x
+            // (k*x) + x
             {
                 if (
                         left is BinaryExpressionSyntax lb && lb.IsKind(SyntaxKind.MultiplyExpression) &&
@@ -892,33 +887,33 @@ public partial class VarProcessor
                     var lbLeft = lb.Left.StripParentheses();
                     var lbRight = lb.Right.StripParentheses();
 
-                    // Case B1: (lit1 * id) + id
-                    if (lbLeft is LiteralExpressionSyntax lc1 && lbRight is IdentifierNameSyntax lv1 && lv1.IsSameVar(rid))
+                    // (lit1 * id) + id
+                    if (lbLeft.IsPureArithmetic() && lbRight is IdentifierNameSyntax lv1 && lv1.IsSameVar(rid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 lv1,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, lc1, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    BinaryExpression(SyntaxKind.AddExpression, lbLeft, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
                                     )
                                 );
                     }
 
-                    // Case A2: (id * lit1) + id
-                    if (lbLeft is IdentifierNameSyntax lv2 && lbRight is LiteralExpressionSyntax lc2 && lv2.IsSameVar(rid))
+                    // (id * lit1) + id
+                    if (lbLeft is IdentifierNameSyntax lv2 && lbRight.IsPureArithmetic() && lv2.IsSameVar(rid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 lv2,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, lc2, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    BinaryExpression(SyntaxKind.AddExpression, lbRight, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
                                     )
                                 );
                     }
                 }
             }
 
-            // x + (a*b)
+            // x + (k*x)
             {
                 if (
                         left is IdentifierNameSyntax lid &&
@@ -929,28 +924,48 @@ public partial class VarProcessor
                     var rbRight = rb.Right.StripParentheses();
 
                     // Case C1: id + (lit1 * id)
-                    if (rbLeft is LiteralExpressionSyntax rc1 && rbRight is IdentifierNameSyntax rv1 && rv1.IsSameVar(lid))
+                    if (rbLeft.IsPureArithmetic() && rbRight is IdentifierNameSyntax rv1 && rv1.IsSameVar(lid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 rv1,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, rc1, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    BinaryExpression(SyntaxKind.AddExpression, rbLeft, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
                                     )
                                 );
                     }
 
                     // Case C2: id + (id * lit1)
-                    if (rbLeft is IdentifierNameSyntax rv2 && rbRight is LiteralExpressionSyntax rc2 && rv2.IsSameVar(lid))
+                    if (rbLeft is IdentifierNameSyntax rv2 && rbRight.IsPureArithmetic() && rv2.IsSameVar(lid))
                     {
                         return BinaryExpression(
                                 SyntaxKind.MultiplyExpression,
                                 rv2,
                                 ParenthesizedExpression(
-                                    BinaryExpression(SyntaxKind.AddExpression, rc2, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
+                                    BinaryExpression(SyntaxKind.AddExpression, rbRight, LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))
                                     )
                                 );
                     }
+                }
+            }
+
+            // -x + x
+            {
+                if (left is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.UnaryMinusExpression) &&
+                        unaryExpr.Operand is IdentifierNameSyntax lid && right is IdentifierNameSyntax rid &&
+                        lid.IsSameVar(rid))
+                {
+                    return 0;
+                }
+            }
+
+            // x + (-x)
+            {
+                if (right is PrefixUnaryExpressionSyntax unaryExpr && unaryExpr.IsKind(SyntaxKind.UnaryMinusExpression) &&
+                        unaryExpr.Operand is IdentifierNameSyntax rid && left is IdentifierNameSyntax lid &&
+                        lid.IsSameVar(rid))
+                {
+                    return 0;
                 }
             }
 
@@ -1174,8 +1189,15 @@ public partial class VarProcessor
                 }
 
                 var factoredExpr = extract_common_factors(binaryExpr.Left, binaryExpr.Right);
-                if (factoredExpr is not null)
-                    return EvaluateBinaryExpression(factoredExpr);
+                switch (factoredExpr)
+                {
+                    case null:
+                        break;
+                    case BinaryExpressionSyntax be:
+                        return EvaluateBinaryExpression(be);
+                    default: // 0
+                        return factoredExpr;
+                }
             }
 
             object? lValue = EvaluateExpression(binaryExpr.Left); // always evaluated

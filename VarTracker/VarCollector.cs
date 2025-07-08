@@ -79,6 +79,7 @@ public partial class VarTracker
         public override void VisitVariableDeclarator(VariableDeclaratorSyntax node)
         {
             var symbol = _semanticModel.GetDeclaredSymbol(node);
+            _logger.debug(() => $"node={node}, symbol={symbol?.ToDisplayString() ?? "null"}");
             if (symbol is null || _sym2ann.ContainsKey(symbol))
                 return;
 

@@ -63,9 +63,9 @@ public class ReflowTests
         var expectedOutput = File.ReadAllText(expectedPath);
 
         // Act
-        var controlFlowUnflattener = new ControlFlowUnflattener(input, verbosity: -2);
+        var controlFlowUnflattener = new ControlFlowUnflattener(new() { { fname, input } }, verbosity: -2);
         if (controlFlowUnflattener.Methods.Count == 0)
-            controlFlowUnflattener = new ControlFlowUnflattener(input, verbosity: -2, dummyClassWrap: true);
+            controlFlowUnflattener = new ControlFlowUnflattener(new() { { fname, input } }, verbosity: -2, dummyClassWrap: true);
 
         controlFlowUnflattener.AddComments = false;
 
