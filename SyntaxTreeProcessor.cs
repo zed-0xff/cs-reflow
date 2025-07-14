@@ -31,33 +31,21 @@ public class SyntaxTreeProcessor
         Verbosity = verbosity;
 
         update_progress("parsing codes");
-        foreach (var kv in codes)
+        var codesList = codes.ToList();
+        for (int i = 0; i < codesList.Count; i++)
         {
-            var code = kv.Value;
-            if (dummyClassWrap)
+            var code = codesList[i].Value;
+            bool isLast = (i == codesList.Count - 1);
+            if (dummyClassWrap && isLast)
             {
                 // without the dummy class methods are defined as LocalFunctions, and SemanticModel leaks variables from one method to another
                 // not adding newlines to keep original line numbers
                 code = "class DummyClass { " + code + " }";
             }
             _tree = CSharpSyntaxTree.ParseText(code);
-            _trees.Add(_tree);
+            if (!isLast)
+                _trees.Add(_tree);
         }
-        _trees.Remove(_tree); // remove last tree bc it will be modified
-    }
-
-    protected SyntaxTreeProcessor(string code, int verbosity = DEFAULT_VERBOSITY, bool dummyClassWrap = false)
-    {
-        Verbosity = verbosity;
-
-        if (dummyClassWrap)
-        {
-            // without the dummy class methods are defined as LocalFunctions, and SemanticModel leaks variables from one method to another
-            // not adding newlines to keep original line numbers
-            code = "class DummyClass { " + code + " }";
-        }
-        update_progress("parsing code");
-        _tree = CSharpSyntaxTree.ParseText(code);
     }
 
     public string ElapsedTime()

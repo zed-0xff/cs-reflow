@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 {
-    public static readonly ulong MAX_DISCRETE_CARDINALITY = 1_000_000UL;
+    public static readonly CardInfo MAX_DISCRETE_CARDINALITY = new(1_000_000);
     public static readonly Type DEFAULT_TYPE = typeof(UnknownValueRange);
 
     public TypeDB.IntType type { get; }
@@ -18,6 +18,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
     public abstract UnknownTypedValue WithType(TypeDB.IntType type);
 
+    // public abstract double Cardinality();
+    // public abstract ulong ExactCardinality();
+
     public abstract UnknownTypedValue TypedAdd(object right);
     public abstract UnknownValueBase TypedDiv(object right);
     public abstract UnknownValueBase TypedMod(object right);
@@ -27,6 +30,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     public abstract UnknownTypedValue TypedShiftLeft(object right);
     public abstract UnknownValueBase TypedSignedShiftRight(object right);
     public abstract UnknownValueBase TypedUnsignedShiftRight(object right);
+    public abstract object TypedCast(TypeDB.IntType toType);
 
     public static UnknownValueRange Create(TypeDB.IntType type) => new UnknownValueRange(type); // DEFAULT_TYPE
 
@@ -43,6 +47,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
     public bool IsZero() => Equals(Zero(type));
     public bool IsOne() => Equals(One(type));
+    public sealed override bool Contains(long value) => type.CanFit(value) && TypedContains(value);
 
     public bool IsOverflow(long value) => !type.CanFit(value);
     public bool IsPositive(long value) => (value & type.SignMask) == 0;
@@ -54,7 +59,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     public static bool IsTypeSupported(string typeName) => TypeDB.TryFind(typeName) is not null;
 
     public abstract bool IsFullRange();
-    public abstract override bool Contains(long value);
+    public abstract bool TypedContains(long value);
     public abstract bool Typed_IntersectsWith(UnknownTypedValue right);
     public abstract override long Min();
     public abstract override long Max();
@@ -62,7 +67,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
     public UnknownValueBitsBase ToBits() =>
         (this is UnknownValueBitsBase bits) ? bits :
-        (_var_id is null) ? new UnknownValueBits(type, BitSpan()) : new UnknownValueBitTracker(type, _var_id.Value, BitSpan());
+        CanConvertTo<UnknownValueBitTracker>() ? ConvertTo<UnknownValueBitTracker>() : ConvertTo<UnknownValueBits>();
 
     public bool CanConvertTo(UnknownTypedValue other)
     {
@@ -75,18 +80,24 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (other is UnknownValueBits)
             return CanConvertTo<UnknownValueBits>();
 
+        if (other is UnknownValueRange)
+            return CanConvertTo<UnknownValueRange>();
+
         return false;
     }
 
-    public virtual UnknownTypedValue ConvertTo<T>()
+    public virtual T ConvertTo<T>() where T : UnknownTypedValue
     {
         if (typeof(T) == typeof(UnknownValueBitTracker) && _var_id is not null)
-            return new UnknownValueBitTracker(type, _var_id.Value);
+            return (T)(UnknownTypedValue)new UnknownValueBitTracker(this);
+
+        if (typeof(T) == typeof(UnknownValueBits))
+            return (T)(UnknownTypedValue)new UnknownValueBits(type, BitSpan());
 
         throw new NotSupportedException($"Cannot convert {GetType()} to {typeof(T)}");
     }
 
-    public virtual bool CanConvertTo<T>()
+    public virtual bool CanConvertTo<T>() where T : UnknownTypedValue
     {
         if (typeof(T) == typeof(UnknownValueBitTracker))
         {
@@ -113,9 +124,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         {
             SyntaxKind.PostIncrementExpression => Add(1),
             SyntaxKind.PostDecrementExpression => Sub(1),
-            SyntaxKind.BitwiseNotExpression => BitwiseNot(),
-            SyntaxKind.UnaryPlusExpression => this,
-            SyntaxKind.UnaryMinusExpression => Negate(),
+            SyntaxKind.BitwiseNotExpression => UpcastToInt().BitwiseNot(),
+            SyntaxKind.UnaryPlusExpression => UpcastToInt(),
+            SyntaxKind.UnaryMinusExpression => UpcastToSignedInt().Negate(),
             SyntaxKind.LogicalNotExpression => Eq(0),
             _ => throw new NotImplementedException($"{ToString()}.UnaryOp({op}): not implemented"),
         };
@@ -152,7 +163,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             result = ut0.Normalize();
 
         // materialize the UnknownTypedValue if it has only one value
-        if (result is UnknownTypedValue ut && ut.Cardinality() == 1)
+        if (result is UnknownTypedValue ut && ut.Cardinality().IsOne())
             return ut.type.ConvertInt(ut.Values().First());
 
         return result;
@@ -164,7 +175,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         var (tl, tr) = TypeDB.Promote(this, rValue);
         if (tl is not null || tr is not null)
         {
-            Logger.debug(() => $"{ToString()}.MaybePromote({rValue}): promoting {tl} and {tr}", "UnknownTypedValue.MaybePromote");
+            Logger.debug(() => $"{ToString()}.MaybePromote({rValue}): promoting {(tl is null ? "null" : tl.ToString())} and {(tr is null ? "null" : tr.ToString())}", "UnknownTypedValue.MaybePromote");
             promotedL = (tl is null) ? this : Upcast(tl);
             if (ReferenceEquals(this, rValue))
             {
@@ -179,6 +190,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                         _ => tr.ConvertAny(rValue)
                     };
             }
+            // Logger.debug($"{ToString()}.MaybePromote({rValue}): promotedL={promotedL}, promotedR={promotedR}", "UnknownTypedValue.MaybePromote");
             return true;
         }
 
@@ -194,8 +206,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
         if (kind == SyntaxKind.LeftShiftExpression || kind == SyntaxKind.RightShiftExpression || kind == SyntaxKind.UnsignedRightShiftExpression)
         {
-            if (type.ByteSize < 4)
-                return Upcast(TypeDB.Int).BinaryOpNoPromote(kind, rValue);
+            return UpcastToInt().BinaryOpNoPromote(kind, rValue);
         }
         else if (MaybePromote(rValue, out var promotedL, out var promotedR))
         {
@@ -233,7 +244,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         {
             if (Contains(l))
             {
-                if (Cardinality() == 1)
+                if (Cardinality().IsOne())
                     return true;
                 else
                     return UnknownValue.Create(TypeDB.Bool);
@@ -246,7 +257,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
 
         if (other is UnknownTypedValue r)
         {
-            if (Cardinality() == 1 && r.Cardinality() == 1 && Values().First() == r.Values().First())
+            if (Cardinality().IsOne() && r.Cardinality().IsOne() && Values().First() == r.Values().First())
                 return true;
 
             if (!IntersectsWith(r))
@@ -260,11 +271,11 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     {
         var left = this;
         var cardL = left.Cardinality();
-        if (cardL == 0)
+        if (cardL.IsZero())
             return false;
 
         var cardR = right.Cardinality();
-        if (cardR == 0)
+        if (cardR.IsZero())
             return false;
 
         if (left.type == right.type)
@@ -272,10 +283,10 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             if (left.IsFullRange() || right.IsFullRange())
                 return true;
 
-            if (cardL == 1)
+            if (cardL.IsOne())
                 return right.Contains(left.Values().First());
 
-            if (cardR == 1)
+            if (cardR.IsOne())
                 return left.Contains(right.Values().First());
         }
 
@@ -316,7 +327,8 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownValue)
             return UnknownValue.Create();
 
-        var (tl, tr) = TypeDB.Promote(this, right);
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.Add(promotedR);
 
         if (TryConvertToLong(right, out long l) && (l == 0))
             return this;
@@ -332,6 +344,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        if (type.ByteSize < 4)
+            return UpcastToInt().ShiftLeft(right);
 
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero()) // should be before TryConvertToLong (DRY)
             return this;
@@ -351,16 +366,19 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             }
 
             if (CanConvertTo<UnknownValueBitTracker>())
-                return ConvertTo<UnknownValueBitTracker>().TypedShiftLeft(l);
+                return ConvertTo<UnknownValueBitTracker>().TypedShiftLeft(l).Normalize();
         }
 
-        return TypedShiftLeft(right);
+        return TypedShiftLeft(right).Normalize();
     }
 
     public sealed override UnknownValueBase SignedShiftRight(object right)
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        if (type.ByteSize < 4)
+            return UpcastToInt().SignedShiftRight(right);
 
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero()) // should be before TryConvertToLong (DRY)
             return this;
@@ -385,6 +403,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        if (type.ByteSize < 4)
+            return UpcastToInt().UnsignedShiftRight(right);
 
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero()) // should be before TryConvertToLong (DRY)
             return this;
@@ -450,6 +471,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownValue)
             return UnknownValue.Create();
 
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.Div(promotedR);
+
         if (TryConvertToLong(right, out long l))
         {
             if (l == 0)
@@ -481,6 +505,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownValue)
             return UnknownValue.Create();
 
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.Mul(promotedR);
+
         if (right is UnknownTypedValue otherTyped)
         {
             if (otherTyped.IsZero())
@@ -492,7 +519,6 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         }
 
         bool isNumeric = TryConvertToLong(right, out long l);
-
         if (isNumeric)
         {
             if (l == 0) return Zero(type);
@@ -504,7 +530,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         }
 
         if (this is UnknownValueBitsBase bits)
-            return bits.TypedMul(right);
+            return bits.TypedMul(right).Normalize();
 
         var bitsResult = ToBits().TypedMul(right);
         UnknownTypedValue result = bitsResult;
@@ -528,7 +554,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                     foreach (long r in ru.Values())
                     {
                         long maskedValue = MaskWithSign(v * r);
-                        if ((ulong)values.Count >= MAX_DISCRETE_CARDINALITY)
+                        if ((ulong)values.Count >= MAX_DISCRETE_CARDINALITY.ulValue)
                             return bitsResult;
 
                         values.Add(maskedValue);
@@ -552,6 +578,14 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (IsFullRange() && GetType() != DEFAULT_TYPE)
             return UnknownTypedValue.Create(type);
 
+        if (Cardinality().IsOne())
+        {
+            if (Contains(0))
+                return Zero(type);
+            if (Contains(1))
+                return One(type);
+        }
+
         return this;
     }
 
@@ -567,6 +601,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.Xor(promotedR);
 
         if (right == this)
             return Zero(type);
@@ -586,12 +623,27 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             if (otherTyped is UnknownValueBitTracker otherBT)
             {
                 if (CanConvertTo<UnknownValueBitTracker>())
-                    return otherBT.TypedXor(ConvertTo<UnknownValueBitTracker>());
-                return otherBT.TypedXor(this);
+                    return MaybeNormalize(otherBT.TypedXor(ConvertTo<UnknownValueBitTracker>()));
+                return MaybeNormalize(otherBT.TypedXor(this));
             }
         }
 
         return MaybeNormalize(MaybeConvertTo<UnknownValueBitTracker>().TypedXor(right));
+    }
+
+    public UnknownTypedValue UpcastToInt() => (type.ByteSize < 4) ? Upcast(TypeDB.Int) : this;
+    public UnknownTypedValue UpcastToSignedInt()
+    {
+        if (type.ByteSize < 4)
+            return Upcast(TypeDB.Int);
+
+        if (type.signed) // int, long
+            return this;
+
+        if (type == TypeDB.UInt)
+            return Upcast(TypeDB.Long);
+
+        throw new NotSupportedException($"{this}: Cannot upcast to signed int type.");
     }
 
     public virtual UnknownTypedValue Upcast(TypeDB.IntType toType)
@@ -608,11 +660,12 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         throw new NotImplementedException($"{ToString()}.Upcast({toType}): not implemented. (toType.nbits = {toType.nbits}, type.nbits = {type.nbits})");
     }
 
-    public override object Cast(TypeDB.IntType toType)
+    public sealed override object Cast(TypeDB.IntType toType)
     {
+        Logger.debug(() => $"{ToString()}.Cast({toType})", "UnknownTypedValue.Cast");
         if (toType == TypeDB.Bool)
         {
-            switch (Cardinality())
+            switch (Cardinality().ulValue)
             {
                 case 0:
                     return UnknownValue.Create(TypeDB.Bool);
@@ -622,6 +675,10 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
                     return Contains(0) ? ((type == toType) ? this : UnknownValue.Create(TypeDB.Bool)) : true;
             }
         }
+
+        var obj = TypedCast(toType);
+        if (!ReferenceEquals(obj, this))
+            return obj;
 
         if (toType.ByteSize < type.ByteSize)
         {
@@ -642,6 +699,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownValue)
             return UnknownValue.Create(); // can be narrower, but type is unknown
 
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.BitwiseAnd(promotedR);
+
         if (right == this)
             return this;
 
@@ -656,25 +716,25 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
             return Zero(type);
 
-        if (IsFullRange() && right is UnknownValueBitsBase bb)
-            return bb;
+        // if (IsFullRange() && right is UnknownValueBitsBase bb)
+        //     return bb;
 
         if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
-            return otherBT.TypedBitwiseAnd(this);
+            return MaybeNormalize(otherBT.TypedBitwiseAnd(this));
 
         if (CanConvertTo<UnknownValueBitTracker>())
             return ConvertTo<UnknownValueBitTracker>().BitwiseAnd(right);
 
         if (this is UnknownValueBitsBase bits)
-            return bits.TypedBitwiseAnd(right);
+            return MaybeNormalize(bits.TypedBitwiseAnd(right));
 
         if (!TryConvertToLong(right, out long mask))
             return UnknownValue.Create(type);
 
         if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueSet(type, Values().Select(v => v & mask));
+            return new UnknownValueSet(type, Values().Select(v => v & mask)).Normalize();
 
-        return UnknownValueBits.CreateFromAnd(type, mask);
+        return ToBits().BitwiseAnd(right);
     }
 
     public sealed override UnknownValueBase BitwiseOr(object right)
@@ -682,20 +742,24 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (right is UnknownValue)
             return UnknownValue.Create(); // can be narrower, but type is unknown
 
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.BitwiseOr(promotedR);
+
         if (right == this)
             return this;
 
-        if (TryConvertToLong(right, out long l))
-        {
-            if (l == 0)
-                return this;
-        }
-
-        if (right is UnknownTypedValue otherTyped && otherTyped.IsZero())
+        bool isNumeric = TryConvertToLong(right, out long mask);
+        if (isNumeric && mask == 0)
             return this;
 
-        if (right is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
-            return otherBT.TypedBitwiseOr(this);
+        if (right is UnknownTypedValue otherTyped)
+        {
+            if (otherTyped.IsZero())
+                return this;
+
+            if (otherTyped is UnknownValueBitTracker otherBT) // try to use UnknownValueBitTracker first bc it retains more information
+                return otherBT.TypedBitwiseOr(this);
+        }
 
         if (this is UnknownValueBitsBase thisBits)
             return thisBits.TypedBitwiseOr(right);
@@ -703,20 +767,25 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
         if (CanConvertTo<UnknownValueBitsBase>())
             return ToBits().BitwiseOr(right);
 
-        if (!TryConvertToLong(right, out long mask))
-            return UnknownValue.Create(type);
+        if (isNumeric)
+        {
+            if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
+                return new UnknownValueSet(type, Values().Select(v => v | mask));
 
-        if (Cardinality() <= MAX_DISCRETE_CARDINALITY)
-            return new UnknownValueSet(type, Values().Select(v => v | mask));
+            // lossy - BitSpan() for range will mark some extra bits as ANY, bc not all ranges can be represented as a BitSpan
+            return new UnknownValueBits(type, BitSpan() | mask);
+        }
 
-        // lossy - BitSpan() for range will mark some extra bits as ANY, bc not all ranges can be represented as a BitSpan
-        return new UnknownValueBits(type, BitSpan() | mask);
+        return UnknownValue.Create(type);
     }
 
     public sealed override UnknownValueBase Sub(object right)
     {
         if (right is UnknownValue)
             return UnknownValue.Create();
+
+        if (MaybePromote(right, out var promotedL, out var promotedR))
+            return promotedL.Sub(promotedR);
 
         if (right == this)
             return Zero(type);
@@ -738,7 +807,7 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
             if (otherTyped.IsZero())
                 return this;
 
-            float productCardinality = (float)Cardinality() * otherTyped.Cardinality(); // pessimistic
+            var productCardinality = Cardinality() * otherTyped.Cardinality(); // pessimistic
             var typedResult = TypedSub(right);
 
             if (typedResult.Cardinality() < productCardinality)

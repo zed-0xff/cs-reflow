@@ -53,7 +53,8 @@ public class LongRange
         return $"[{Min}..{Max}]";
     }
 
-    public ulong Count => (ulong)(Max - Min + 1); // both Min and Max are inclusive
+    // both Min and Max are inclusive
+    public CardInfo Cardinality() => CardInfo.FromMinMaxInclusive(Min, Max);
 
     public IEnumerable<long> Values()
     {

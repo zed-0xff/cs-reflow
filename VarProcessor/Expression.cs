@@ -208,7 +208,7 @@ public partial class VarProcessor
                             Console.ForegroundColor = ConsoleColor.Red;
                             break;
                         case UnknownTypedValue utv:
-                            Console.ForegroundColor = utv.Cardinality() == 1 ? ConsoleColor.Green : ConsoleColor.Yellow;
+                            Console.ForegroundColor = utv.Cardinality().IsOne() ? ConsoleColor.Green : ConsoleColor.Yellow;
                             break;
                         default:
                             Console.ForegroundColor = ConsoleColor.DarkGreen;

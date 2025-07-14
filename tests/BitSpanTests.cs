@@ -5,13 +5,13 @@ public class BitSpanTests
     [Fact]
     public void Test_Cardinality()
     {
-        Assert.Equal(1UL, new BitSpan().Cardinality());
-        Assert.Equal(2UL, new BitSpan(0, 1).Cardinality());
-        Assert.Equal(2UL, new BitSpan(0, 2).Cardinality());
-        Assert.Equal(4UL, new BitSpan(0b10000, 0b10011).Cardinality());
-        Assert.Equal(4UL, new BitSpan(0b10000, 0b10101).Cardinality());
-        Assert.Equal(4UL, new BitSpan(0b10000, 0b11001).Cardinality());
-        Assert.Equal(256UL, new BitSpan(0, 255).Cardinality());
+        Assert.Equal(1UL, new BitSpan().Cardinality().ulValue);
+        Assert.Equal(2UL, new BitSpan(0, 1).Cardinality().ulValue);
+        Assert.Equal(2UL, new BitSpan(0, 2).Cardinality().ulValue);
+        Assert.Equal(4UL, new BitSpan(0b10000, 0b10011).Cardinality().ulValue);
+        Assert.Equal(4UL, new BitSpan(0b10000, 0b10101).Cardinality().ulValue);
+        Assert.Equal(4UL, new BitSpan(0b10000, 0b11001).Cardinality().ulValue);
+        Assert.Equal(256UL, new BitSpan(0, 255).Cardinality().ulValue);
     }
 
     [Fact]

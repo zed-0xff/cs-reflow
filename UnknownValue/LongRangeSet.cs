@@ -13,14 +13,12 @@ public class LongRangeSet
         Add(ranges);
     }
 
-    public ulong Cardinality()
+    public CardInfo Cardinality()
     {
-        ulong count = 0;
+        CardInfo result = CardInfo.Zero;
         foreach (var range in _ranges)
-        {
-            count += range.Count;
-        }
-        return count;
+            result += range.Cardinality();
+        return result;
     }
 
     public BitSpan BitSpan()

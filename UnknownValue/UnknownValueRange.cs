@@ -9,7 +9,10 @@ public class UnknownValueRange : UnknownValueRangeBase
 
     public UnknownValueRange(TypeDB.IntType type, long min, long max) :
         this(type, new LongRange(min, max))
-    { }
+    {
+        if (!type.CanFit(min) || !type.CanFit(max))
+            throw new ArgumentOutOfRangeException($"Range [{min}, {max}] is out of bounds for type {type}");
+    }
 
     public UnknownValueRange(UnknownTypedValue parent, TypeDB.IntType type, LongRange range) :
         this(type, range)
@@ -17,11 +20,24 @@ public class UnknownValueRange : UnknownValueRangeBase
         _var_id = parent._var_id;
     }
 
-    public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new(type, Range) { _tags = add_tag(key, value) };
-    public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
-    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueRange(type, Range); // TODO: type conversion
+    public override UnknownValueRange WithTag(string key, object? value) => HasTag(key, value) ? this : new(type, Range) { _tags = add_tag(key, value) };
+    public override UnknownValueRange WithVarID(int id) => Equals(_var_id, id) ? this : new(type, Range) { _var_id = id };
 
-    public override bool Equals(object? obj) => (obj is UnknownValueRange r) && type == r.type && Range.Equals(r.Range);
+    // TODO: type conversion?
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueRange(type, Range) { _var_id = _var_id };
+
+    public override bool Equals(object? obj)
+    {
+        switch (obj)
+        {
+            case UnknownValueRange r:
+                return type == r.type && Range.Equals(r.Range);
+            case UnknownValueBits b:
+                return CanConvertTo(b) && b.CanConvertTo(this) && b.BitSpan().Equals(BitSpan());
+            default:
+                return false;
+        }
+    }
 
     public override long Min() => Range.Min;
     public override long Max() => Range.Max;
@@ -33,7 +49,11 @@ public class UnknownValueRange : UnknownValueRangeBase
         if (typeof(UnknownValueBitsBase).IsAssignableFrom(typeof(T)))
         {
             BitSpan bs = BitSpan();
-            if (IsFullRange() || (bs.Min == (ulong)Min() && bs.Max == (ulong)Max()))
+            if (IsFullRange()
+                    || (bs.Min == (ulong)Min() && bs.Max == (ulong)Max())
+                    || (Range.Min == 0 && (Range.Max & (Range.Max + 1)) == 0) // [0, ..fff]
+                    || (type.signed && Range.Max == -(Range.Min + 1))
+               )
             {
                 if (typeof(T) == typeof(UnknownValueBitTracker))
                     return _var_id is not null; // UnknownValueBitTracker requires a variable ID
@@ -44,7 +64,27 @@ public class UnknownValueRange : UnknownValueRangeBase
         return base.CanConvertTo<T>();
     }
 
-    public override object Cast(TypeDB.IntType toType)
+    public int RequiredSignedBits()
+    {
+        if (IsFullRange())
+            return type.nbits;
+
+        for (int bits = 1; bits <= 64; bits++)
+        {
+            long smin = -(1L << (bits - 1));
+            long smax = (1L << (bits - 1)) - 1;
+
+            if (Range.Min >= smin && Range.Max <= smax)
+                return bits;
+        }
+
+        throw new ArgumentOutOfRangeException("Range too large");
+    }
+
+    public int RequiredUnsignedBits() => IsFullRange() ? type.nbits : Math.Max(1, (int)Math.Ceiling(Math.Log2(Range.Max)));
+    public int RequiredBits() => (type.signed && IsNegative(Min())) ? RequiredSignedBits() : RequiredUnsignedBits();
+
+    public override object TypedCast(TypeDB.IntType toType)
     {
         if (toType == TypeDB.ULong)
             throw new NotImplementedException("Cast to ULong is not implemented for UnknownValueRange.");
@@ -71,7 +111,12 @@ public class UnknownValueRange : UnknownValueRangeBase
             return new UnknownValueRange(TypeDB.UInt);
         }
 
-        return base.Cast(toType);
+        if (toType.ByteSize < type.ByteSize && Range.Min >= 0)
+        {
+            return new UnknownValueRange(this, toType, new LongRange(Range.Min & toType.Mask, Range.Max & toType.Mask));
+        }
+
+        return this;
     }
 
     public override UnknownTypedValue TypedDiv(object right) =>
@@ -82,7 +127,12 @@ public class UnknownValueRange : UnknownValueRangeBase
     public override UnknownTypedValue TypedAdd(object right)
     {
         if (IsFullRange())
+        {
+            if (CanConvertTo<UnknownValueBitTracker>())
+                return (UnknownTypedValue)ConvertTo<UnknownValueBitTracker>().Add(right);
+
             return new UnknownValueRange(type);
+        }
 
         if (!TryConvertToLong(right, out long l))
             return new UnknownValueRange(type);
@@ -145,7 +195,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         if (l >= type.nbits)
             throw new ArgumentOutOfRangeException($"Shift left {l} is out of range for {type}");
 
-        ulong shiftedCardinality = 1UL << (type.nbits - (int)l);
+        var shiftedCardinality = CardInfo.FromBits(type.nbits - (int)l);
         if (shiftedCardinality > MAX_DISCRETE_CARDINALITY || _var_id is not null || IsFullRange()) // TODO: compare cardinality with set
             return ToBits().TypedShiftLeft(l);
 
@@ -155,12 +205,13 @@ public class UnknownValueRange : UnknownValueRangeBase
             return new UnknownValueSet(type, Values().Select(v => MaskWithSign(v << iShift)));
         }
 
-        List<long> values = new List<long>((int)shiftedCardinality);
+        int iCardinality = (int)shiftedCardinality.ulValue; // less than MAX_DISCRETE_CARDINALITY
+        List<long> values = new List<long>(iCardinality);
 
         if (type.signed && type.nbits < 64)
         {
             long signMask = 1L << (type.nbits - 1);
-            for (long i = 0; i < (long)shiftedCardinality; i++)
+            for (long i = 0; i < (long)iCardinality; i++)
             {
                 long value = i << (int)l;
                 if ((value & signMask) != 0)
@@ -172,7 +223,7 @@ public class UnknownValueRange : UnknownValueRangeBase
         else
         {
             // TODO: check with signed/unsigned 64bit
-            for (long i = 0; i < (long)shiftedCardinality; i++)
+            for (long i = 0; i < (long)iCardinality; i++)
             {
                 long value = i << (int)l;
                 values.Add(value);
@@ -271,9 +322,9 @@ public class UnknownValueRange : UnknownValueRangeBase
     }
 
     public override IEnumerable<long> Values() => Range.Values();
-    public override ulong Cardinality() => Range.Count;
-    public override bool Contains(long value) => Range.Contains(value);
+    public override CardInfo Cardinality() => Range.Cardinality();
     public override int GetHashCode() => HashCode.Combine(type, Range);
+    public override bool TypedContains(long value) => Range.Contains(value);
 
     public override string ToString() => $"UnknownValue<{type}>" + (IsFullRange() ? "" : Range.ToString()) + TagStr() + VarIDStr();
 

@@ -62,17 +62,11 @@ public class UnknownValueBits : UnknownValueBitsBase
 
     public override UnknownValueBase WithTag(string key, object? value) => HasTag(key, value) ? this : new UnknownValueBits(type, _bitspan) { _tags = add_tag(key, value) };
     public override UnknownValueBase WithVarID(int id) => _var_id == id ? this : new UnknownValueBits(type, _bitspan) { _var_id = id };
-    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueBits(type, _bitspan); // TODO: check
+    public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueBits(type, _bitspan) { _var_id = _var_id };
 
-    public static UnknownValueBits CreateFromAnd(TypeDB.IntType type, long mask)
-    {
-        return new UnknownValueBits(type, type.BitSpan & mask);
-    }
-
-    public static UnknownValueBits CreateFromOr(TypeDB.IntType type, long mask)
-    {
-        return new UnknownValueBits(type, type.BitSpan | mask);
-    }
+    public override CardInfo Cardinality() => _bitspan.Cardinality();
+    public override IEnumerable<long> Values() => type.signed ? _bitspan.Values().Select(SignExtend) : _bitspan.Values();
+    public override bool TypedContains(long value) => _bitspan.Contains(value);
 
     List<BitType> init(IEnumerable<BitType>? bits)
     {
@@ -100,50 +94,34 @@ public class UnknownValueBits : UnknownValueBitsBase
         }
     }
 
-    IEnumerable<BitType> GetReverseBits()
-    {
-        ulong v = 1UL << (type.nbits - 1);
-        for (int i = 0; i < type.nbits; i++, v >>= 1)
-        {
-            yield return (_bitspan & v) switch
-            {
-                (0, 0) => ZERO,
-                (0, _) => ANY,
-                (_, 0) => throw new ArgumentException($"Invalid bitwise range"),
-                (_, _) => ONE
-            };
-        }
-    }
-
     public override string ToString()
     {
-        var sb = new StringBuilder();
-        sb.Append($"UnknownValueBits<{type}>[");
+        string result = $"UnknownValueBits<{type}>[";
+        int start = type.nbits - 1;
 
-        bool seenNonAny = false;
-        bool ellipsisAppeared = false;
-
-        foreach (var bit in GetReverseBits())
+        List<BitType> bits = GetBits().ToList();
+        if (type.nbits > 8 && start > 2 && bits[start] == bits[start - 1] && bits[start] == bits[start - 2])
         {
-            if (bit == ANY)
-            {
-                if (seenNonAny)
-                    sb.Append('_');
-                else if (!ellipsisAppeared)
-                {
-                    sb.Append('…');
-                    ellipsisAppeared = true; // only append '?' once
-                }
-            }
-            else
-            {
-                seenNonAny = true;
-                sb.Append(bit.ToString());
-            }
+            result += "…";
+
+            while (start > 0 && bits[start] == bits[start - 1])
+                start--;
         }
 
-        sb.Append(']');
-        return sb.ToString();
+        for (int i = start; i >= 0; i--)
+        {
+            BitType bit = bits[i];
+            result += bit switch
+            {
+                ANY => "_",
+                ONE => "1",
+                ZERO => "0",
+                _ => throw new ArgumentException($"Invalid BitType value: {bit}")
+            };
+        }
+
+        result += "]";
+        return result;
     }
 
     // returns new UnknownValueBits with the bit at idx set to value
@@ -162,7 +140,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         };
     }
 
-    public override object Cast(TypeDB.IntType toType) => (toType.nbits == type.nbits) ? new UnknownValueBits(toType, _bitspan) : base.Cast(toType);
+    public override object TypedCast(TypeDB.IntType toType) => (toType.nbits == type.nbits) ? new UnknownValueBits(toType, _bitspan) : this;
 
     public override bool Typed_IntersectsWith(UnknownTypedValue other)
     {
@@ -238,7 +216,7 @@ public class UnknownValueBits : UnknownValueBitsBase
         return UnknownTypedValue.Create(type);
     }
 
-    private UnknownValueBase bitwise_op(object right, Func<BitSpan, BitSpan, BitSpan> op, Func<BitSpan, long, BitSpan> opWithLong)
+    private UnknownValueBase bitwise_op(object right, Func<BitSpan, BitSpan, BitSpan> op, Func<BitSpan, long, BitSpan> opWithLong, Func<UnknownValueBase> fallback)
     {
         if (right is UnknownValueBits otherBits && otherBits.type.nbits == type.nbits)
             return new UnknownValueBits(type, op(_bitspan, otherBits._bitspan));
@@ -246,12 +224,12 @@ public class UnknownValueBits : UnknownValueBitsBase
         if (TryConvertToLong(right, out long l))
             return new UnknownValueBits(type, opWithLong(_bitspan, l));
 
-        return UnknownTypedValue.Create(type);
+        return fallback();
     }
 
-    public override UnknownValueBase TypedBitwiseAnd(object right) => bitwise_op(right, (a, b) => a & b, (a, b) => a & b);
-    public override UnknownValueBase TypedBitwiseOr(object right) => bitwise_op(right, (a, b) => a | b, (a, b) => a | b);
-    public override UnknownValueBase TypedXor(object right) => bitwise_op(right, (a, b) => a ^ b, (a, b) => a ^ b);
+    public override UnknownValueBase TypedBitwiseAnd(object right) => bitwise_op(right, (a, b) => a & b, (a, b) => a & b, () => base.TypedBitwiseAnd(right));
+    public override UnknownValueBase TypedBitwiseOr(object right) => bitwise_op(right, (a, b) => a | b, (a, b) => a | b, () => base.TypedBitwiseOr(right));
+    public override UnknownValueBase TypedXor(object right) => bitwise_op(right, (a, b) => a ^ b, (a, b) => a ^ b, () => UnknownTypedValue.Create(type));
 
     public override UnknownValueBits BitwiseNot() => new(type, ~_bitspan);
     public override UnknownValueBase Negate() => BitwiseNot().Add(1);
@@ -370,7 +348,18 @@ public class UnknownValueBits : UnknownValueBitsBase
         return UnknownTypedValue.Create(type);
     }
 
-    public override bool Equals(object? obj) => (obj is UnknownValueBits other) && type.Equals(other.type) && _bitspan.Equals(other._bitspan);
+    public override bool Equals(object? obj)
+    {
+        switch (obj)
+        {
+            case UnknownValueBits b:
+                return type == b.type && _bitspan.Equals(b._bitspan);
+            case UnknownValueRange r:
+                return CanConvertTo(r) && r.CanConvertTo(this) && r.BitSpan().Equals(BitSpan());
+            default:
+                return false;
+        }
+    }
 
     public override UnknownValueBase Merge(object other)
     {

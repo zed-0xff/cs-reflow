@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Globalization;
 using Xunit;
 
 public partial class ExpressionTests
@@ -10,6 +11,7 @@ public partial class ExpressionTests
 
     public ExpressionTests()
     {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
         TypeDB.Bitness = 32;
         _varDict = new VarDict(_varDB);
         _processor = new VarProcessor(_varDB, varDict: _varDict);
@@ -307,12 +309,7 @@ public partial class ExpressionTests
     [Fact]
     public void Test_exprI2()
     {
-        string expr_str = "QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144";
-
-        AddVar("QRR2", UnknownValue.Create("int"));
-        AddVar("QRR3", 0);
-        var result = Eval(expr_str);
-        Assert.Equal(true, result);
+        check_expr("int QRR2; int QRR3=0; QRR3 * 134217728 - 1508900864 != (QRR2 * 22 + 10 * QRR2) * 262144");
     }
 
     [Fact]
@@ -425,6 +422,12 @@ public partial class ExpressionTests
     public void Test_expr_BitTracker_F()
     {
         check_expr("int x; int x; (4233 + (x << 22 >>> 22) != -x)");
+    }
+
+    [Fact]
+    public void Test_expr_BitTracker_G()
+    {
+        check_expr("int x; x + 548405248 != x >>> 7 << 7");
     }
 
     [Fact]

@@ -14,6 +14,8 @@ public class TypeDBTests
         Assert.Equal(int.MinValue, type.MinValue);
         Assert.Equal(int.MaxValue, type.MaxSignedValue);
         Assert.Equal((ulong)int.MaxValue, type.MaxUnsignedValue);
+        Assert.Equal(0xFFFF_FFFF, type.Mask);
+        Assert.Equal(new BitSpan(0, 0xFFFF_FFFF), type.BitSpan);
 
         Assert.True(type.CanFit(209));
         Assert.True(type.CanFit(-209));
@@ -35,6 +37,8 @@ public class TypeDBTests
         Assert.Equal(uint.MinValue, type.MinValue);
         Assert.Equal(uint.MaxValue, type.MaxSignedValue);
         Assert.Equal(uint.MaxValue, type.MaxUnsignedValue);
+        Assert.Equal(0xFFFF_FFFF, type.Mask);
+        Assert.Equal(new BitSpan(0, 0xFFFF_FFFF), type.BitSpan);
 
         Assert.True(type.CanFit(209));
         Assert.False(type.CanFit(-209));
@@ -56,6 +60,8 @@ public class TypeDBTests
         Assert.Equal(long.MinValue, type.MinValue);
         Assert.Equal(long.MaxValue, type.MaxSignedValue);
         Assert.Equal((ulong)long.MaxValue, type.MaxUnsignedValue);
+        Assert.Equal(-1, type.Mask);
+        Assert.Equal(new BitSpan(0, ulong.MaxValue), type.BitSpan);
 
         Assert.True(type.CanFit(long.MaxValue));
         Assert.True(type.CanFit(int.MaxValue));
@@ -75,6 +81,8 @@ public class TypeDBTests
         Assert.Equal(ulong.MinValue, (ulong)type.MinValue);
         Assert.Equal(long.MaxValue, type.MaxSignedValue);
         Assert.Equal(ulong.MaxValue, type.MaxUnsignedValue);
+        Assert.Equal(-1, type.Mask);
+        Assert.Equal(new BitSpan(0, ulong.MaxValue), type.BitSpan);
 
         Assert.True(type.CanFit(ulong.MaxValue));
         Assert.False(type.CanFit(-1));

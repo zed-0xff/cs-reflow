@@ -12,17 +12,16 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
 
     public abstract UnknownValueBitsBase Create(BitSpan bitspan);
 
-    public override ulong Cardinality() => _bitspan.Cardinality();
-    public override bool Contains(long value) => _bitspan.Contains(value);
-    public override IEnumerable<long> Values() => type.signed ? _bitspan.Values().Select(SignExtend) : _bitspan.Values();
-
     public bool IsOneBit(int idx) => (_bitspan.Min & (1UL << idx)) != 0;
     public bool IsZeroBit(int idx) => (_bitspan.Max & (1UL << idx)) == 0;
     public bool IsAnyBit(int idx) => (_bitspan.Min & (1UL << idx)) == 0 && (_bitspan.Max & (1UL << idx)) != 0;
     public override bool IsFullRange() => _bitspan.Equals(type.BitSpan);
 
-    public abstract UnknownValueBase TypedBitwiseAnd(object right);
-    public abstract UnknownValueBase TypedBitwiseOr(object right);
+    // keep only zeroes
+    public virtual UnknownValueBase TypedBitwiseAnd(object right) => new UnknownValueBits(type, new BitSpan(0, _bitspan.Max));
+
+    // keep only ones
+    public virtual UnknownValueBase TypedBitwiseOr(object right) => new UnknownValueBits(type, new BitSpan(_bitspan.Min, type.BitSpan.Max));
 
     protected List<T> span2bits<T>(IEnumerable<T> bits, BitSpan bitspan, T zero, T one)
     {

@@ -16,10 +16,10 @@ public class UnknownValueSetTests
     public void Test_Cardinality()
     {
         UnknownValueSet a = new(TypeDB.UInt);
-        Assert.Equal(0UL, a.Cardinality());
+        Assert.Equal(0UL, a.Cardinality().ulValue);
 
         UnknownValueSet b = new(TypeDB.Int, new List<long> { 1, 2, 3 });
-        Assert.Equal(3UL, b.Cardinality());
+        Assert.Equal(3UL, b.Cardinality().ulValue);
     }
 
     [Fact]

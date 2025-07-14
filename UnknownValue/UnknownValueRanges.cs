@@ -36,7 +36,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
     public override BitSpan BitSpan() => _rangeSet.BitSpan();
 
     // TODO: DRY with UnknownValueRange.Cast()
-    public override object Cast(TypeDB.IntType toType)
+    public override object TypedCast(TypeDB.IntType toType)
     {
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
@@ -59,7 +59,7 @@ public class UnknownValueRanges : UnknownValueRangeBase
                 return new UnknownValueRanges(TypeDB.UInt, _rangeSet.Ranges.Select(r => new LongRange((uint)r.Min, (uint)r.Max)));
             return new UnknownValueRange(TypeDB.UInt);
         }
-        return base.Cast(toType);
+        return this;
     }
 
     public override UnknownValueBase TypedDiv(object right)
@@ -199,9 +199,9 @@ public class UnknownValueRanges : UnknownValueRangeBase
     }
 
     public override IEnumerable<long> Values() => _rangeSet.Values();
-    public override ulong Cardinality() => _rangeSet.Cardinality();
-    public override bool Contains(long value) => _rangeSet.Contains(value);
+    public override CardInfo Cardinality() => _rangeSet.Cardinality();
     public override int GetHashCode() => HashCode.Combine(type, _rangeSet);
+    public override bool TypedContains(long value) => _rangeSet.Contains(value);
 
     public override string ToString()
     {

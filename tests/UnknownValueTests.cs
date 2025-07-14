@@ -81,9 +81,9 @@ public class UnknownValueTests
         b = b.Mod(1949u);
         Assert.Equal("UnknownValue<uint>[0..1948]", b.ToString());
         b = b.Xor(0x70EF1C76);
-        Assert.Equal("UnknownValueSet<uint>[1949]", b.ToString());
+        Assert.Equal("UnknownValueSet<long>[1949]", b.ToString());
         b = b.Mul(2048);
-        Assert.Equal("UnknownValueSet<uint>[1949]", b.ToString());
+        Assert.Equal("UnknownValueSet<long>[1949]", b.ToString());
         b = b.Cast(TypeDB.Int) as UnknownValueBase;
         Assert.Equal("UnknownValueSet<int>[1949]", b.ToString());
         Assert.Equal(2025848832, b.Min());

@@ -20,7 +20,7 @@ public class UnknownValueSet : UnknownTypedValue
     public override UnknownValueBase WithVarID(int id) => Equals(_var_id, id) ? this : new(type, _values) { _var_id = id };
     public override UnknownTypedValue WithType(TypeDB.IntType type) => new UnknownValueSet(type, _values); // TODO: type conversion
 
-    public override bool IsFullRange() => Cardinality() == type.Range.Count && Min() == type.Range.Min && Max() == type.Range.Max;
+    public override bool IsFullRange() => Cardinality() == type.Cardinality && Min() == type.Range.Min && Max() == type.Range.Max;
 
     public override BitSpan BitSpan()
     {
@@ -83,7 +83,7 @@ public class UnknownValueSet : UnknownTypedValue
     public override UnknownValueBase Negate() => new UnknownValueSet(type, _values.Select(v => MaskWithSign(-v)));
     public override UnknownValueBase BitwiseNot() => new UnknownValueSet(type, _values.Select(v => MaskWithSign(~v)));
 
-    public override object Cast(TypeDB.IntType toType)
+    public override object TypedCast(TypeDB.IntType toType)
     {
         if (type == TypeDB.UInt && toType == TypeDB.Int) // uint -> int
         {
@@ -93,7 +93,7 @@ public class UnknownValueSet : UnknownTypedValue
         {
             return new UnknownValueSet(TypeDB.UInt, Values().Select(v => (long)unchecked((uint)v)));
         }
-        return base.Cast(toType);
+        return this;
     }
 
     public override string ToString()
@@ -104,17 +104,13 @@ public class UnknownValueSet : UnknownTypedValue
             return $"UnknownValueSet<{type}>[{_values.Count}]";
     }
 
-    public override ulong Cardinality() => (ulong)_values.Count;
+    public override CardInfo Cardinality() => new(_values.Count);
     public override IEnumerable<long> Values() => _values;
-    public override bool Contains(long value) => _values.Contains(value);
     public override long Min() => _values.Min();
     public override long Max() => _values.Max();
 
-    public override bool Typed_IntersectsWith(UnknownTypedValue other)
-    {
-        return _values.Any(v => other.Contains(v));
-    }
-
+    public override bool TypedContains(long value) => _values.Contains(value);
+    public override bool Typed_IntersectsWith(UnknownTypedValue other) => _values.Any(v => other.Contains(v));
     public override bool Equals(object? obj) => obj is UnknownValueSet other && type == other.type && _values.SequenceEqual(other._values);
 
     public override int GetHashCode()
@@ -128,6 +124,9 @@ public class UnknownValueSet : UnknownTypedValue
 
     public override UnknownValueBase Merge(object other)
     {
+        if (other is IntConstExpr ice)
+            other = ice.Materialize();
+
         return other switch
         {
             UnknownValueSet l => new UnknownValueSet(type, _values.Union(l._values)),

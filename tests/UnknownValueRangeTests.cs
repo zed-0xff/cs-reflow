@@ -11,8 +11,8 @@ public class UnknownValueRangeTests
         Assert.Equal("UnknownValue<uint>", $"{a}");
 
         var b = a.Div(0x100);
-        Assert.Equal("UnknownValue<uint>[0..16777215]", b.ToString());
-        Assert.Equal("UnknownValue<uint>[0..16777215]", $"{b}");
+        Assert.Equal("UnknownValue<long>[0..16777215]", b.ToString());
+        Assert.Equal("UnknownValue<long>[0..16777215]", $"{b}");
 
         UnknownValueRange c = new(TypeDB.Int);
         Assert.Equal("UnknownValue<int>", c.ToString());
@@ -57,7 +57,7 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.UInt, 0, 1194);
         UnknownValueBits b = new(TypeDB.Int, new BitSpan(0, ~0x3ffffff));
-        Assert.Equal(76480UL, a.Sub(b).Cardinality());
+        Assert.Equal(76480UL, a.Sub(b).Cardinality().ulValue);
     }
 
     [Fact]
@@ -193,17 +193,17 @@ public class UnknownValueRangeTests
     public void Test_int_mul_pow2()
     {
         UnknownValueRange a = new(TypeDB.Int);
-        Assert.Equal("UnknownValueBits<int>[…0]", a.Mul(2).ToString());
+        Assert.Equal("UnknownValueBits<int>[…_0]", a.Mul(2).ToString());
         Assert.Equal(a, a.Mul(3));
-        Assert.Equal("UnknownValueBits<int>[…00]", a.Mul(4).ToString());
+        Assert.Equal("UnknownValueBits<int>[…_00]", a.Mul(4).ToString());
         Assert.Equal(a, a.Mul(5));
-        Assert.Equal("UnknownValueBits<int>[…0]", a.Mul(6).ToString());
+        Assert.Equal("UnknownValueBits<int>[…_0]", a.Mul(6).ToString());
         Assert.Equal(a, a.Mul(7));
-        Assert.Equal("UnknownValueBits<int>[…000]", a.Mul(8).ToString());
+        Assert.Equal("UnknownValueBits<int>[…_000]", a.Mul(8).ToString());
         Assert.Equal(a, a.Mul(0x0f));
-        Assert.Equal("UnknownValueBits<int>[…0000]", a.Mul(0x10).ToString());
+        Assert.Equal("UnknownValueBits<int>[…_0000]", a.Mul(0x10).ToString());
         Assert.Equal(a, a.Mul(0x11));
-        Assert.Equal("UnknownValueBits<int>[…0000]", a.Mul(0xab0).ToString());
+        Assert.Equal("UnknownValueBits<int>[…_0000]", a.Mul(0xab0).ToString());
     }
 
     [Fact]
@@ -326,13 +326,13 @@ public class UnknownValueRangeTests
     public void Test_Cardinality()
     {
         UnknownValueRange a = new(TypeDB.UInt);
-        Assert.Equal(4294967296UL, a.Cardinality());
+        Assert.Equal(4294967296UL, a.Cardinality().ulValue);
 
         UnknownValueRange b = new(TypeDB.Int);
-        Assert.Equal(4294967296UL, b.Cardinality());
+        Assert.Equal(4294967296UL, b.Cardinality().ulValue);
 
         UnknownValueRange c = new(TypeDB.Byte);
-        Assert.Equal(256UL, c.Cardinality());
+        Assert.Equal(256UL, c.Cardinality().ulValue);
     }
 
     [Fact]
@@ -340,10 +340,10 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.UInt);
         var b = a.ShiftLeft(1);
-        Assert.Equal("UnknownValueBits<uint>[…0]", b.ToString());
+        Assert.Equal("UnknownValueBits<uint>[…_0]", b.ToString());
 
         b = a.ShiftLeft(30);
-        Assert.Equal(4UL, b.Cardinality());
+        Assert.Equal(4UL, b.Cardinality().ulValue);
         List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 0, 1L << 30, 2L << 30, 3L << 30 }, values);
     }
@@ -353,20 +353,20 @@ public class UnknownValueRangeTests
     {
         UnknownValueRange a = new(TypeDB.Int);
         var b = a.ShiftLeft(1);
-        Assert.Equal("UnknownValueBits<int>[…0]", b.ToString());
+        Assert.Equal("UnknownValueBits<int>[…_0]", b.ToString());
 
         b = a.ShiftLeft(30);
-        Assert.Equal(4UL, b.Cardinality());
+        Assert.Equal(4UL, b.Cardinality().ulValue);
         List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { 2 << 30, 3 << 30, 0, 1073741824 }, values);
     }
 
     [Fact]
-    public void Test_ShiftLeft_sbyte()
+    public void Test_TypedShiftLeft_sbyte()
     {
         UnknownValueRange a = new(TypeDB.SByte);
-        var b = a.ShiftLeft(5);
-        Assert.Equal(8UL, b.Cardinality());
+        var b = a.TypedShiftLeft(5);
+        Assert.Equal(8UL, b.Cardinality().ulValue);
         List<long> values = b.Values().OrderBy(x => x).ToList();
         Assert.Equal(new List<long> { -128, -96, -64, -32, 0, 32, 64, 96 }, values);
     }
@@ -472,5 +472,119 @@ public class UnknownValueRangeTests
             Assert.Equal(m1 >>> i, shifted.Max());
             Assert.Equal(0, shifted.Min());
         }
+    }
+
+    [Fact]
+    public void Test_CanConvert_UnknownValueBitTracker()
+    {
+        // no var_id
+        Assert.False(new UnknownValueRange(TypeDB.Byte).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int).CanConvertTo<UnknownValueBitTracker>());
+
+        // with var_id, full range
+        Assert.True(new UnknownValueRange(TypeDB.Byte).WithVarID(0).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+
+        // with var_id, partial range, lossless conversion possible
+        Assert.True(new UnknownValueRange(TypeDB.Int, 0, 1).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, 0, 63).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, 0, 127).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, 0, 255).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, -2, 1).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, -64, 63).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, -128, 127).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.True(new UnknownValueRange(TypeDB.Int, -256, 255).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+
+        // with var_id, partial range, lossless conversion not possible
+        Assert.False(new UnknownValueRange(TypeDB.Int, 0, 2).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, 0, 126).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, 0, 256).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, -1, 1).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, -3, 1).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, -127, 127).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, -129, 127).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, -255, 255).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+        Assert.False(new UnknownValueRange(TypeDB.Int, -257, 255).WithVarID(1).CanConvertTo<UnknownValueBitTracker>());
+    }
+
+    [Fact]
+    public void Test_ToBits_var_byte()
+    {
+        UnknownValueRange rangeByte = (UnknownValueRange)UnknownValueRange.Create(TypeDB.Byte).WithVarID(0);
+        var bitsByte = rangeByte.ToBits();
+        Assert.Equal(new UnknownValueBitTracker(TypeDB.Byte, 0), bitsByte);
+        var bitsInt = bitsByte.Upcast(TypeDB.Int);
+        Assert.Equal("UnknownValueBitTracker<int>[…0hgfedcba]", bitsInt.ToString());
+        var rangeInt = rangeByte.Upcast(TypeDB.Int);
+        Assert.Equal(new UnknownValueRange(TypeDB.Int, new LongRange(byte.MinValue, byte.MaxValue)), rangeInt);
+        var bitsInt2 = rangeInt.ToBits();
+        Assert.Equal("UnknownValueBitTracker<int>[…0hgfedcba]", bitsInt2.ToString());
+        Assert.Equal(bitsInt, bitsInt2);
+    }
+
+    [Fact]
+    public void Test_ToBits_var_sbyte()
+    {
+        UnknownValueRange rangeByte = (UnknownValueRange)UnknownValueRange.Create(TypeDB.SByte).WithVarID(0);
+        var bitsByte = rangeByte.ToBits();
+        Assert.Equal(new UnknownValueBitTracker(TypeDB.SByte, 0), bitsByte);
+        var bitsInt = bitsByte.Upcast(TypeDB.Int);
+        Assert.Equal("UnknownValueBitTracker<int>[…hgfedcba]", bitsInt.ToString());
+        var rangeInt = rangeByte.Upcast(TypeDB.Int);
+        Assert.Equal(new UnknownValueRange(TypeDB.Int, new LongRange(sbyte.MinValue, sbyte.MaxValue)), rangeInt);
+        Assert.True(rangeInt.CanConvertTo<UnknownValueBitTracker>());
+        var bitsInt2 = rangeInt.ToBits();
+        Assert.Equal("UnknownValueBitTracker<int>[…hgfedcba]", bitsInt2.ToString());
+        Assert.Equal(bitsInt, bitsInt2);
+    }
+
+    [Fact]
+    public void Test_BitSpan()
+    {
+        Assert.Equal(new BitSpan(0, 0), new UnknownValueRange(TypeDB.Int, 0, 0).BitSpan());
+        Assert.Equal(new BitSpan(0, 1), new UnknownValueRange(TypeDB.Int, 0, 1).BitSpan());
+        Assert.Equal(new BitSpan(0, 0x7f), new UnknownValueRange(TypeDB.Int, 0, 127).BitSpan());
+    }
+
+    [Fact]
+    public void Test_RequiredSignedBits()
+    {
+        Assert.Equal(7, new UnknownValueRange(TypeDB.Int, sbyte.MinValue >> 1, sbyte.MaxValue >> 1).RequiredSignedBits());
+        Assert.Equal(8, new UnknownValueRange(TypeDB.Int, sbyte.MinValue, sbyte.MaxValue).RequiredSignedBits());
+        Assert.Equal(9, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue).RequiredSignedBits());
+        Assert.Equal(9, new UnknownValueRange(TypeDB.Int, sbyte.MinValue << 1, sbyte.MaxValue << 1).RequiredSignedBits());
+        Assert.Equal(16, new UnknownValueRange(TypeDB.Int, short.MinValue, short.MaxValue).RequiredSignedBits());
+        Assert.Equal(32, new UnknownValueRange(TypeDB.Int, int.MinValue, int.MaxValue).RequiredSignedBits());
+        Assert.Equal(64, new UnknownValueRange(TypeDB.Long, long.MinValue, long.MaxValue).RequiredSignedBits());
+    }
+
+    [Fact]
+    public void Test_RequiredUnsignedBits()
+    {
+        Assert.Equal(7, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue >> 1).RequiredUnsignedBits());
+        Assert.Equal(8, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue).RequiredUnsignedBits());
+        Assert.Equal(9, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue << 1).RequiredUnsignedBits());
+        Assert.Equal(16, new UnknownValueRange(TypeDB.Int, 0, ushort.MaxValue).RequiredUnsignedBits());
+        Assert.Equal(32, new UnknownValueRange(TypeDB.UInt).RequiredUnsignedBits());
+        Assert.Equal(64, new UnknownValueRange(TypeDB.ULong).RequiredUnsignedBits());
+    }
+
+    [Fact]
+    public void Test_RequiredBits()
+    {
+        Assert.Equal(7, new UnknownValueRange(TypeDB.Int, sbyte.MinValue >> 1, sbyte.MaxValue >> 1).RequiredBits());
+        Assert.Equal(8, new UnknownValueRange(TypeDB.Int, sbyte.MinValue, sbyte.MaxValue).RequiredBits());
+        Assert.Equal(8, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue).RequiredBits());
+        Assert.Equal(9, new UnknownValueRange(TypeDB.Int, sbyte.MinValue << 1, sbyte.MaxValue << 1).RequiredBits());
+        Assert.Equal(16, new UnknownValueRange(TypeDB.Int, short.MinValue, short.MaxValue).RequiredBits());
+        Assert.Equal(32, new UnknownValueRange(TypeDB.Int, int.MinValue, int.MaxValue).RequiredBits());
+        Assert.Equal(64, new UnknownValueRange(TypeDB.Long, long.MinValue, long.MaxValue).RequiredBits());
+
+        Assert.Equal(7, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue >> 1).RequiredBits());
+        Assert.Equal(8, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue).RequiredBits());
+        Assert.Equal(9, new UnknownValueRange(TypeDB.Int, 0, byte.MaxValue << 1).RequiredBits());
+        Assert.Equal(16, new UnknownValueRange(TypeDB.Int, 0, ushort.MaxValue).RequiredBits());
+        Assert.Equal(32, new UnknownValueRange(TypeDB.UInt).RequiredBits());
+        Assert.Equal(64, new UnknownValueRange(TypeDB.ULong).RequiredBits());
     }
 }

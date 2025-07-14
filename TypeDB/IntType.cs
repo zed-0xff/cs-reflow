@@ -25,6 +25,8 @@ public static partial class TypeDB
         public readonly LongRange Range;
         public readonly BitSpan BitSpan;
 
+        public readonly CardInfo Cardinality;
+
         public IntType(string name, int nbits, bool signed, SpecialType id)
         {
             this.id = id;
@@ -36,10 +38,11 @@ public static partial class TypeDB
             MaxSignedValue = (nbits == 64 || signed) ? (1L << (nbits - 1)) - 1 : (1L << nbits) - 1;
             MaxUnsignedValue = (nbits == 64 && !signed) ? ulong.MaxValue : (ulong)MaxSignedValue;
 
-            Mask = (1L << nbits) - 1;
+            Mask = (nbits == 64) ? -1 : ((1L << nbits) - 1);
             SignMask = signed ? (1L << (nbits - 1)) : 0;
             Range = new LongRange(MinValue, MaxSignedValue);
             BitSpan = new BitSpan(0, Mask);
+            Cardinality = CardInfo.FromBits(nbits);
         }
 
         public override string ToString() => Name;

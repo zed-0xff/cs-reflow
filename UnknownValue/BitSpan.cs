@@ -19,7 +19,7 @@ public readonly record struct BitSpan
     public bool Contains(ulong uvalue) => (uvalue & ~Max) == 0 && (uvalue & Min) == Min;
     public bool Contains(long value) => Contains((ulong)value);
 
-    public ulong Cardinality() => (1UL << BitOperations.PopCount(Max ^ Min));
+    public CardInfo Cardinality() => CardInfo.FromBits(BitOperations.PopCount(Max ^ Min));
 
     public BitSpan Merge(BitSpan other) => new(Min & other.Min, Max | other.Max);
     public BitSpan Merge(ulong l) => new(Min & l, Max | l);
@@ -112,7 +112,7 @@ public readonly record struct BitSpan
         int floatingCount = BitOperations.PopCount(floatingMask);
 
         if (floatingCount > 20)
-            throw new InvalidOperationException("Too many values to enumerate.");
+            throw new InvalidOperationException($"{this}.Values(): Too many values to enumerate.");
 
         // Get positions of floating bits
         int[] floatingBitPositions = new int[floatingCount];

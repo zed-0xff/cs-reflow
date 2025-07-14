@@ -27,7 +27,7 @@ public class UnknownValue : UnknownValueBase
     public override string ToString() => "UnknownValue" + TagStr();
 
     public override bool Contains(long value) => throw new NotImplementedException($"{ToString()}.Contains(): not implemented.");
-    public override ulong Cardinality() => throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
+    public override CardInfo Cardinality() => throw new NotImplementedException($"{ToString()}.Cardinality(): not implemented.");
     public override IEnumerable<long> Values() => throw new NotImplementedException($"{ToString()}.Values(): not implemented.");
 
     public override object UnaryOp(SyntaxKind _) => new UnknownValue();

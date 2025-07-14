@@ -347,7 +347,7 @@ class Program
             if (methodDict.Count == 0)
             {
                 var unflattener2 = createUnflattener(codes, opts, hints, dummyClassWrap: true, showProgress: showInitialProgress);
-                var methodDict2 = unflattener.Methods;
+                var methodDict2 = unflattener2.Methods;
                 if (methodDict2.Count != 0)
                 {
                     unflattener = unflattener2;

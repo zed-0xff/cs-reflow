@@ -23,10 +23,6 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
         _tree = tree;
     }
 
-    public SyntaxTreePrinter(string code) : base(code)
-    {
-    }
-
     public void Print(SyntaxNode node, int indent = 0)
     {
         // Add indentation based on the level
