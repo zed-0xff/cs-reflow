@@ -257,6 +257,7 @@ public partial class VarProcessor : ICloneable
     }
 
     // input: value1 != value2 and both of them are not null
+    // key is just for logging
     public static object MergeVar(string key, object value1, object value2, int depth = 0)
     {
         if (value2 is UnknownValueBase && value1 is not UnknownValueBase)

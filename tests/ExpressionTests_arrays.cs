@@ -58,33 +58,38 @@ public partial class ExpressionTests
     }
 
     [Fact]
-    public void Test_arr_set_fail()
+    public void Test_arr_set_unk_idx()
     {
-        try
-        {
-            Eval("var a = new int[3]; a[x] = 4");
-        }
-        catch
-        {
-        }
+        Eval("var a = new int[3]; a[x] = 4");
 
         var V = _varDB.FindByName("a");
-        Assert.Equal(UnknownValue.Create(), _varDict[V!.id]);
+        var arr = _varDict[V!.id] as ArrayWrap;
+        Assert.NotNull(arr);
+        Assert.Equal(3, arr.Length);
+        Assert.Equal(new UnknownValueSet(TypeDB.Int, new() { 0, 4 }), arr[0]);
     }
 
     [Fact]
-    public void Test_arr_set_fail_with_cast()
+    public void Test_arr_set_with_cast_known_idx()
     {
-        try
-        {
-            Eval("var a = new char[10]; int i; ((short[])a)[i] = 123;");
-        }
-        catch
-        {
-        }
+        Eval("var a = new char[10]; int i=4; ((short[])a)[i] = 123;");
 
         var V = _varDB.FindByName("a");
-        Assert.Equal(UnknownValue.Create(), _varDict[V!.id]);
+        var arr = _varDict[V!.id] as ArrayWrap;
+        Assert.NotNull(arr);
+        Assert.Equal((char)123, arr[4]);
+    }
+
+    [Fact]
+    public void Test_arr_set_with_cast_unknown_idx()
+    {
+        Eval("var a = new char[4]; int i; ((short[])a)[i] = 123;");
+
+        var V = _varDB.FindByName("a");
+        var arr = _varDict[V!.id] as ArrayWrap;
+        Assert.NotNull(arr);
+        Assert.Equal(4, arr.Length);
+        Assert.Equal(new UnknownValueSet(TypeDB.Char, new() { 0, 123 }), arr[0]);
     }
 
     [Fact]

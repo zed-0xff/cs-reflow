@@ -171,7 +171,6 @@ public static partial class TypeDB
             default:
                 return (Int, Int);
         }
-        ;
 
         return (null, null); // no promotion necessary
     }
@@ -208,6 +207,7 @@ public static partial class TypeDB
                 // "nint" => typeof(nint), // TODO: host-independent NInt
                 // "nuint" => typeof(nuint), // TODO: host-independent NUInt
                 "Guid" => typeof(Guid),
+                "Type" => typeof(Type),
                 _ => null
             },
             _ => null

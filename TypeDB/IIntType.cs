@@ -11,14 +11,18 @@ public static partial class TypeDB
             obj switch
             {
                 IIntType iit => iit,
-                byte b => new IntInfo(ST.System_Byte, false),
-                sbyte sb => new IntInfo(ST.System_SByte, true),
-                short s => new IntInfo(ST.System_Int16, true),
-                ushort us => new IntInfo(ST.System_UInt16, false),
-                int i => new IntInfo(ST.System_Int32, true),
-                uint ui => new IntInfo(ST.System_UInt32, false),
-                long l => new IntInfo(ST.System_Int64, true),
-                ulong ul => new IntInfo(ST.System_UInt64, false),
+                byte => new IntInfo(ST.System_Byte, false),
+                sbyte => new IntInfo(ST.System_SByte, true),
+                short => new IntInfo(ST.System_Int16, true),
+                ushort => new IntInfo(ST.System_UInt16, false),
+                int => new IntInfo(ST.System_Int32, true),
+                uint => new IntInfo(ST.System_UInt32, false),
+                long => new IntInfo(ST.System_Int64, true),
+                ulong => new IntInfo(ST.System_UInt64, false),
+
+                bool => new IntInfo(ST.System_Boolean, false),
+                char => new IntInfo(ST.System_Char, false),
+
                 _ => throw new ArgumentException($"cannot create IIntType from ({obj.GetType()}) {obj}")
             };
     }

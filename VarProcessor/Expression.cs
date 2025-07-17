@@ -172,17 +172,22 @@ public partial class VarProcessor
             if (toType is not null)
                 return cast_var(value, toType);
 
-            if (value is UnknownValueBase uv)
+            switch (value)
             {
-                if (toTypeSyntax is PointerTypeSyntax pts && uv.IsPointer())
-                {
-                    var ptrType = TypeDB.TryFind(pts.ElementType);
-                    if (ptrType is not null)
-                        return uv.WithTag("ptr_cast", ptrType);
-                }
-                return new UnknownValue();
+                case UnknownValueBase uv:
+                    if (toTypeSyntax is PointerTypeSyntax pts && uv.IsPointer())
+                    {
+                        var ptrType = TypeDB.TryFind(pts.ElementType);
+                        if (ptrType is not null)
+                            return uv.WithTag("ptr_cast", ptrType);
+                    }
+                    return new UnknownValue();
+
+                case ArrayWrap aw: // var a = new char[10]; ((short[])a)[3] = 123;
+                    return aw.Cast(toTypeSyntax);
             }
-            throw new NotSupportedException($"Type '{toTypeSyntax}' is not supported.");
+
+            throw new NotSupportedException($"cast_var({value}): Type '{toTypeSyntax}' is not supported.");
         }
 
         [ThreadStatic]
@@ -414,20 +419,18 @@ public partial class VarProcessor
             var sizeExpr = rankSpecifier?.Sizes.FirstOrDefault();
             _logger.debug(() => $"rankSpecifier: {rankSpecifier}, sizeExpr: {sizeExpr}, initializer: {expr.Initializer}");
 
-            var elType = TypeDB.ToSystemType(expr.Type.ElementType) ?? typeof(UnknownValue);
-
             // new int[3]
             if (sizeExpr is LiteralExpressionSyntax literalExpr)
             {
                 int size = Convert.ToInt32(literalExpr.Token.Value);
-                return new ArrayWrap(elType, size);
+                return new ArrayWrap(expr.Type.ElementType, size);
             }
 
             // new int[]{ 1, 2, 3 }
             if (expr.Initializer is not null)
             {
                 int size = expr.Initializer.Expressions.Count;
-                var arr = new ArrayWrap(elType, size);
+                var arr = new ArrayWrap(expr.Type.ElementType, size);
                 for (int i = 0; i < size; i++)
                 {
                     var value = EvaluateExpression(expr.Initializer.Expressions[i]);
@@ -463,47 +466,8 @@ public partial class VarProcessor
                 throw new NotSupportedException($"MemberAccessExpression is not supported for {expr}");
         }
 
-        class ElementAccessor
-        {
-            public readonly ArrayWrap Array;
-            public readonly int Index;
-
-            public ElementAccessor(ArrayWrap array, int index)
-            {
-                Array = array;
-                Index = index;
-            }
-
-            public object? GetValue() => Array[Index];
-            public object? SetValue(object? value)
-            {
-                Logger.debug(() => $"Array={Array.GetType()}, Index={Index}, Value=({value?.GetType()}) {value}", "ElementAccessor.SetValue");
-
-                var elType = Array.ValueType;
-                if (elType is not null)
-                {
-                    var intType = TypeDB.TryFind(elType);
-                    if (intType is not null)
-                        value = value switch
-                        {
-                            IntConstExpr ice => ice.Materialize(intType),
-                            _ => value
-                        };
-                }
-
-                value = value switch
-                {
-                    IntConstExpr ice => ice.Materialize(),
-                    _ => value
-                };
-
-                Array[Index] = value;
-                return GetValue();
-            }
-        }
-
         // performs checks and returns ElementAccessor if all is ok, throws otherwise
-        ElementAccessor element_access(ElementAccessExpressionSyntax expr)
+        ElementAccessorBase element_access(ElementAccessExpressionSyntax expr)
         {
             _logger.debug(() => $"element_access: {expr}");
 
@@ -514,8 +478,12 @@ public partial class VarProcessor
                 var indexExpr = expr.ArgumentList.Arguments.FirstOrDefault()?.Expression;
                 if (indexExpr is not null)
                 {
-                    int index = TypeDB.ToInt32(EvaluateExpression(indexExpr));
-                    return new ElementAccessor(arr, index);
+                    var index = EvaluateExpression(indexExpr);
+                    return index switch
+                    {
+                        UnknownValueBase unk => new UnknownElementAccessor(arr),
+                        _ => new ElementAccessor(arr, TypeDB.ToInt32(index))
+                    };
                 }
                 throw new NotSupportedException($"ElementAccessExpression requires an index: {expr}");
             }

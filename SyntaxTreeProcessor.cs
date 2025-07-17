@@ -78,23 +78,23 @@ public class SyntaxTreeProcessor
                     _ => "<unknown>"
                 });
 
-    public List<SyntaxNode> GetMethods(string methodName)
+    public List<SyntaxNode> GetMethods(string methodName, bool exact = true)
     {
         if (int.TryParse(methodName, out int lineno))
             return new List<SyntaxNode> { GetMethod(lineno) };
 
         return _tree.GetRoot().DescendantNodes()
             .Where(n =>
-                    (n is MethodDeclarationSyntax m && m.FullName() == methodName) ||
+                    (n is MethodDeclarationSyntax m && (methodName == (exact ? m.FullName() : m.Identifier.Text))) ||
                     //(n is LocalFunctionStatementSyntax l && l.Identifier.Text == methodName) ||
                     (n is ConstructorDeclarationSyntax c && c.Identifier.Text == methodName)
                   )
             .ToList();
     }
 
-    public SyntaxNode GetMethod(string methodNameOrLineNo)
+    public SyntaxNode GetMethod(string methodNameOrLineNo, bool exact = true)
     {
-        var methods = GetMethods(methodNameOrLineNo);
+        var methods = GetMethods(methodNameOrLineNo, exact: exact);
 
         switch (methods.Count())
         {

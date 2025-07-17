@@ -333,15 +333,7 @@ public partial class UnknownValueBitTracker : UnknownValueBitsBase
     }
 
     public override bool Equals(object? obj) => (obj is UnknownValueBitTracker other) && type.Equals(other.type) && _var_id == other._var_id && _bits.SequenceEqual(other._bits);
-
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(type);
-        foreach (var b in _bits)
-            hash.Add(b);
-        return hash.ToHashCode();
-    }
+    public override int GetHashCode() => base.GetHashCode(); // just to silent warning
 
     public override string ToString()
     {

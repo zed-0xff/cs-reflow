@@ -92,7 +92,7 @@ class SyntaxTreePrinter : SyntaxTreeProcessor
 
     public void PrintMethod(string methodName)
     {
-        var methodNode = GetMethod(methodName);
+        var methodNode = GetMethod(methodName, exact: false);
 
         switch (methodNode)
         {

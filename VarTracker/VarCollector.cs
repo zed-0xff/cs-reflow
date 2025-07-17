@@ -101,6 +101,7 @@ public partial class VarTracker
             }
 
             _sym2ann[symbol] = _varDB.Add(node, typeSymbol.ToString()!).Annotation;
+            base.VisitVariableDeclarator(node); // if declarator is/has a lambda, then collect lambda's vars as well
         }
     }
 }

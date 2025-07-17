@@ -361,6 +361,8 @@ public class UnknownValueBits : UnknownValueBitsBase
         }
     }
 
+    public override int GetHashCode() => base.GetHashCode(); // just to silent warning
+
     public override UnknownValueBase Merge(object other)
     {
         return other switch
@@ -369,10 +371,5 @@ public class UnknownValueBits : UnknownValueBitsBase
             UnknownValueBits otherBits => new UnknownValueBits(type, _bitspan.Merge(otherBits._bitspan)),
             _ => base.Merge(other)
         };
-    }
-
-    public override int GetHashCode()
-    {
-        throw new NotImplementedException();
     }
 }

@@ -211,4 +211,6 @@ public abstract class UnknownValueBitsBase : UnknownTypedValue
 
         return base.Merge(right);
     }
+
+    public override int GetHashCode() => HashCode.Combine(type, _bitspan, _var_id);
 }

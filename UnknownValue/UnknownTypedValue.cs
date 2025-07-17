@@ -6,6 +6,9 @@ public abstract class UnknownTypedValue : UnknownValueBase, TypeDB.IIntType
     public static readonly Type DEFAULT_TYPE = typeof(UnknownValueRange);
 
     public TypeDB.IntType type { get; }
+    public TypeDB.IntType IntType => type;
+
+    // IIntType interface implementation
     public Microsoft.CodeAnalysis.SpecialType IntTypeID => type.id;
     public bool CanBeNegative => type.CanBeNegative;
 

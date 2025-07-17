@@ -374,7 +374,19 @@ class Program
             else
             {
                 foreach (var methodNameOrLineNo in opts.methods)
-                    methods.AddRange(unflattener.GetMethods(methodNameOrLineNo));
+                {
+                    var mm = unflattener.GetMethods(methodNameOrLineNo, exact: true);
+                    if (mm.Count == 0)
+                    {
+                        mm = unflattener.GetMethods(methodNameOrLineNo, exact: false);
+                        if (mm.Count == 0)
+                        {
+                            Console.Error.WriteLine($"[!] No methods found for: {methodNameOrLineNo}");
+                            continue;
+                        }
+                    }
+                    methods.AddRange(mm);
+                }
             }
 
             if (opts.printTree)

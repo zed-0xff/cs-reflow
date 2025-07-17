@@ -309,7 +309,7 @@ public partial class UnknownValueBitTracker
             return add(otherUnk);
         }
 
-        throw new NotImplementedException($"{this} Cannot add {right}");
+        return UnknownTypedValue.Create(type);
     }
 
     public override UnknownValueBase TypedXor(object right)
