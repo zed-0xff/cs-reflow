@@ -41,7 +41,11 @@ class ControlFlowNode
     public bool keep
     {
         get => (flags & KEEP) != 0;
-        set => _set_flag(KEEP, value);
+        set {
+            if (forceInline)
+                throw new InvalidOperationException("FORCE_INLINE and KEEP are mutually exclusive");
+            _set_flag(KEEP, value);
+        }
     }
 
     public bool hasBreak
@@ -65,7 +69,11 @@ class ControlFlowNode
     public bool forceInline
     {
         get => (flags & FORCE_INLINE) != 0;
-        set => _set_flag(FORCE_INLINE, value);
+        set {
+            if (keep)
+                throw new InvalidOperationException("FORCE_INLINE and KEEP are mutually exclusive");
+            _set_flag(FORCE_INLINE, value);
+        }
     }
 
     bool _set_flag(int flag, bool value)
