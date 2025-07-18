@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 public class VarDict
 {
@@ -287,5 +288,27 @@ public class VarDict
     }
 
     public override string ToString() => ToString(false);
-    public string ToString(bool showType) => "<VarDict " + string.Join(", ", _values.Select(kvp => $"{_varDB[kvp.Key].Name}={(showType ? $"({kvp.Value?.GetType()}) " : "")}{kvp.Value}")) + ">";
+    public string ToString(bool showType)
+    {
+        StringBuilder sb = new("<VarDict ");
+        var valuesList = _values.ToList();
+        for (int i = 0; i < valuesList.Count; i++)
+        {
+            var kvp = valuesList[i];
+            sb.Append($"{_varDB[kvp.Key].Name}=");
+            var value = kvp.Value;
+            string valueStr = value?.ToString() ?? "null";
+            if (showType)
+            {
+                string typeStr = TypeDB.ShortType($"{value?.GetType()}");
+                if (typeStr != "" && !valueStr.Contains(typeStr))
+                    sb.Append($"({typeStr}) ");
+            }
+            sb.Append(valueStr);
+            if (i != valuesList.Count - 1)
+                sb.Append(", ");
+        }
+        sb.Append(">");
+        return sb.ToString();
+    }
 }

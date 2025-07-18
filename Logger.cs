@@ -26,27 +26,27 @@ public static class Logger
         return $"[{tag}]".PadRight(TAG_PAD);
     }
 
-    public static void error(string message, [CallerMemberName] string caller = "")
+    public static void error(string message, [CallerMemberName] string caller = "", string prefix = "")
     {
-        log($"[!] {fmt_tag(caller)} {message}".Red());
+        log($"[!] {prefix}{fmt_tag(caller)} {message}".Red());
     }
 
-    public static void warn(string message, [CallerMemberName] string caller = "")
+    public static void warn(string message, [CallerMemberName] string caller = "", string prefix = "")
     {
         if (message is not null && message.StartsWith("[?] "))
             message = message.Substring(4);
 
-        log($"[?] {fmt_tag(caller)} {message}".Yellow());
+        log($"[?] {prefix}{fmt_tag(caller)} {message}".Yellow());
     }
 
     // caller is not counted in message uniqueness
-    public static void warn_once(string message, [CallerMemberName] string caller = "")
+    public static void warn_once(string message, [CallerMemberName] string caller = "", string prefix = "")
     {
         if (_onceMessages.Contains(message))
             return;
 
         _onceMessages.Add(message);
-        warn(message, caller);
+        warn(message, caller, prefix: prefix);
     }
 
     public static void info(string message, [CallerMemberName] string caller = "")
@@ -57,7 +57,7 @@ public static class Logger
         log($"[.] {fmt_tag(caller)} {message}");
     }
 
-    public static void debug(string message, [CallerMemberName] string caller = "")
+    public static void debug(string message, [CallerMemberName] string caller = "", string prefix = "")
     {
         if (!HasTag(caller))
             return;
@@ -65,16 +65,16 @@ public static class Logger
         if (message is not null && message.StartsWith("[d] "))
             message = message.Substring(4); // remove prefix if already present
 
-        log($"[d] {fmt_tag(caller)} {message}");
+        log($"[d] {prefix}{fmt_tag(caller)} {message}");
     }
 
-    public static void debug(Func<string> msgFunc, [CallerMemberName] string caller = "")
+    public static void debug(Func<string> msgFunc, [CallerMemberName] string caller = "", string prefix = "")
     {
         if (!HasTag(caller))
             return;
 
         // TODO: check level
-        debug(msgFunc(), caller);
+        debug(msgFunc(), caller, prefix: prefix);
     }
 
     public static void log(string message)
@@ -122,15 +122,26 @@ public static class Logger
 public class TaggedLogger
 {
     private readonly string _tag;
+    private readonly string _prefix;
 
-    public TaggedLogger(string tag)
+    public TaggedLogger(string tag, string prefix = "")
     {
         _tag = tag;
+        _prefix = prefix;
     }
 
-    public void debug(string message, [CallerMemberName] string caller = "") => Logger.debug(message, $"{_tag}.{caller}");
-    public void debug(Func<string> msgFunc, [CallerMemberName] string caller = "") => Logger.debug(() => msgFunc(), $"{_tag}.{caller}");
-    public void warn(string message, [CallerMemberName] string caller = "") => Logger.warn(message, $"{_tag}.{caller}");
-    public void warn_once(string message, [CallerMemberName] string caller = "") => Logger.warn_once(message, $"{_tag}.{caller}");
-    public void error(string message, [CallerMemberName] string caller = "") => Logger.error(message, $"{_tag}.{caller}");
+    public void debug(string message, [CallerMemberName] string caller = "") =>
+        Logger.debug(message, $"{_tag}.{caller}", prefix: _prefix);
+
+    public void debug(Func<string> msgFunc, [CallerMemberName] string caller = "") =>
+        Logger.debug(() => msgFunc(), $"{_tag}.{caller}", prefix: _prefix);
+
+    public void warn(string message, [CallerMemberName] string caller = "") =>
+        Logger.warn(message, $"{_tag}.{caller}", prefix: _prefix);
+
+    public void warn_once(string message, [CallerMemberName] string caller = "") =>
+        Logger.warn_once(message, $"{_tag}.{caller}", prefix: _prefix);
+
+    public void error(string message, [CallerMemberName] string caller = "") =>
+        Logger.error(message, $"{_tag}.{caller}", prefix: _prefix);
 }

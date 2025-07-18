@@ -71,8 +71,10 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     HashSet<string> _visitedLabels = new();
     DefaultDict<int, FlowInfo> _flowInfos = new();
     VarDB _varDB = new();
+    HashSet<SyntaxNode> _condCache = new();
 
     // local
+    TaggedLogger _logger = null!;
     FlowDictionary _localFlowDict = new();
     VarProcessor _varProcessor = null!;
     HintsDictionary _flowHints = new();
@@ -95,20 +97,23 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     public bool isClone = false;
     public string? dumpIntermediateLogs;
 
-    static TaggedLogger _logger = new("ControlFlowUnflattener");
-
     public void Reset()
     {
-        _varProcessor = new(_varDB);
-        _flowHints = new();
-        _traceLog = new();
-        _states = new();
+        _condCache = new();
         _condStates = new();
-        _visitedLines = new();
-        _parentReturns = new();
+        _flowHints = new();
         _flowInfos = new();
+        _parentReturns = new();
+        _states = new();
         _stopWatch = Stopwatch.StartNew();
+        _varProcessor = new(_varDB);
+        _visitedLines = new();
+
+        _traceLog = new();
+        _logger = create_logger();
     }
+
+    private TaggedLogger create_logger() => new("ControlFlowUnflattener", prefix: $"{_traceLog.Id}: ");
 
     public class State
     {
@@ -225,6 +230,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         public ConditionalLoopException(string message, int lineno) : base(lineno, message) { }
     }
 
+    class CannotConvertSwitchException : FlowException
+    {
+        public CannotConvertSwitchException(SyntaxNode node, string message) : base(node, message)
+        {
+        }
+    }
+
     // end of exceptions
 
     public void KeepVars(List<string> vars)
@@ -275,6 +287,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
         _varProcessor = new(_varDB);
         _varProcessor.Verbosity = Verbosity;
+        _logger = create_logger();
     }
 
     // private empty constructor for cloning exclusively
@@ -284,6 +297,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         var clone = new ControlFlowUnflattener();
         clone.isClone = true;
+        clone._logger = create_logger();
         clone._parent = this;
         clone.PreProcess = false;
         clone.PostProcess = false;
@@ -305,9 +319,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         clone._flowDict = _flowDict;           // shared, r/w 
         clone._flowInfos = _flowInfos;         // shared, r/w
         clone._visitedLabels = _visitedLabels; // shared, r/w
+        clone._condCache = _condCache; // shared, r/w
 
         clone._localFlowDict = _localFlowDict.Clone(); // TODO: check if this clone method is correct
-
         return clone;
     }
 
@@ -341,9 +355,6 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         int loop_id = whileStmt.LineNo();
         var condition = whileStmt.Condition;
         var body = whileStmt.Statement;
-
-        if (Verbosity > 2)
-            Console.WriteLine($"[d] {_traceLog.Id} trace_while: {whileStmt.TitleWithLineNo()}");
 
         while (true)
         {
@@ -495,7 +506,12 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     SwitchStatementSyntax convert_switch(SwitchStatementSyntax switchStmt)
     {
-        _flowDict[switchStmt].keep = true;
+        _logger.debug(() => $"{switchStmt.TitleWithLineNo()}");
+        _flowDict[switchStmt].keep = true; // should be before throw
+
+        if (_visitedLines[switchStmt.LineNo()] > 0)
+            throw new CannotConvertSwitchException(switchStmt, $"Switch statement {switchStmt.TitleWithLineNo()} was already visited {_visitedLines[switchStmt.LineNo()]} times, cannot convert it.");
+
         foreach (var gotoStmt in switchStmt.DescendantNodes().OfType<GotoStatementSyntax>())
         {
             switch (gotoStmt.CaseOrDefaultKeyword.Kind())
@@ -521,6 +537,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_switch(SwitchStatementSyntax switchStmt, object? value)
     {
+        _logger.debug(() => $"[{_visitedLines[switchStmt.LineNo()]}] {switchStmt.TitleWithLineNo()} with value {value}");
         if (value is VarProcessor.Expression ex)
         {
             value = ex.Result;
@@ -532,6 +549,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
         if (value is null)
             throw new NotImplementedException($"Switch statement with null value: {switchStmt.TitleWithLineNo()}");
 
+        // XXX if the switch was already visited any number of times, we need to roll all them back
         if (value is UnknownValueBase)
         {
             // Logger.error($"vars: {_varProcessor.VariableValues().VarsFromNode(switchStmt.Expression)}");
@@ -757,8 +775,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     WhileStatementSyntax convert_while(WhileStatementSyntax whileStmt, ReturnsDictionary retLabels)
     {
-        if (Verbosity > 2)
-            Console.WriteLine($"[d] convert_while: {whileStmt.TitleWithLineNo()}");
+        _logger.debug(whileStmt.TitleWithLineNo());
 
         var block = whileStmt.Statement as BlockSyntax;
         if (block is null)
@@ -775,31 +792,32 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
     {
         if (_localFlowDict.TryGetValue(whileStmt, out ControlFlowNode? flowNode) && flowNode.forceInline)
         {
-            Logger.info($"{whileStmt.TitleWithLineNo()} => null  [local forceInline]");
+            _logger.debug($"{whileStmt.TitleWithLineNo()} => null  [local forceInline]");
             return null;
         }
 
         if (_flowDict[whileStmt].forceInline)
         {
-            Logger.info($"{whileStmt.TitleWithLineNo()} => null  [global forceInline]");
+            _logger.debug($"{whileStmt.TitleWithLineNo()} => null  [global forceInline]");
             return null;
         }
 
         bool keep = _flowDict[whileStmt].keep;
         if (keep)
         {
-            Logger.info($"{whileStmt.TitleWithLineNo()} => keep  [cached]");
+            _logger.debug($"{whileStmt.TitleWithLineNo()} => keep  [cached]");
         }
         else
         {
             var clone = Clone()
                 .WithFlowDictOverride(whileStmt, (node) => node.forceInline = true)
                 .WithParentReturns(retLabels);
+            _logger.debug($"created clone: {clone._traceLog.Id}");
 
             // all breaks/continues/returns need to be catched!
             var log = clone.TraceBlock(SingletonList<StatementSyntax>(whileStmt));
             keep = log.entries.FirstOrDefault() is TraceEntry te && te.stmt is LabeledStatementSyntax;
-            Logger.info($"{whileStmt.TitleWithLineNo()} => {(keep ? "keep" : "inline")}  --   {log.Id}: {log.entries.FirstOrDefault()?.stmt}");
+            _logger.debug($"{whileStmt.TitleWithLineNo()} => {(keep ? "keep" : "inline")}  --   {log.Id}: {log.entries.FirstOrDefault()?.stmt}");
         }
 
         if (keep)
@@ -1112,13 +1130,29 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         break;
 
                     case SwitchStatementSyntax sw:
-                        ex = EvaluateExpressionEx(sw.Expression);
-                        value = ex.Result;
-                        comment = value?.ToString() ?? "";
-                        skip = true; // skip only if value is known
+                        if (_flowDict.TryGetValue(sw, out ControlFlowNode? flowNodeSw) && flowNodeSw.keep)
+                        {
+                            stmt = convert_switch(sw);
+                            skip = false; // keep the switch, so don't skip
+                            trace = false;
+                        }
+                        else
+                        {
+                            ex = EvaluateExpressionEx(sw.Expression);
+                            value = ex.Result;
+                            comment = value?.ToString() ?? "";
+                            skip = true; // skip only if value is known
+                        }
                         break;
 
                     case WhileStatementSyntax whileStmt:
+                        // if (!_condCache.Contains(whileStmt.Condition))
+                        // {
+                        //     _condCache.Add(whileStmt.Condition);
+                        //     foreach (int var_id in _varDB.CollectVars(whileStmt.Condition).read)
+                        //         _varDB.SetLoopVar(var_id);
+                        // }
+
                         value = EvaluateHintedBoolExpression(whileStmt.Condition);
                         comment = value?.ToString() ?? "";
                         switch (value)
@@ -1330,6 +1364,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     public List<int> find_loop_vars(int lineno)
     {
+        _logger.debug($"line {lineno}");
         List<int> loopVars = find_loop_vars(_condStates[lineno][^3..]);
         if (loopVars.Count != 0)
             return loopVars;
@@ -1576,6 +1611,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                         _varDB.SetLoopVar(loopVar);
                     }
                     continue;
+                }
+                catch (CannotConvertSwitchException e)
+                {
+                    // should work 2nd time because 'keep' flag is now set
+                    if (e.node is not null && _flowDict.TryGetValue(e.node, out ControlFlowNode? flowNodeSw) && flowNodeSw.keep)
+                        continue;
+                    throw new TaggedException("ControlFlowUnflattener", $"Cannot convert switch at line {lineno}: {e.Message}");
                 }
                 catch (FlowException e)
                 {

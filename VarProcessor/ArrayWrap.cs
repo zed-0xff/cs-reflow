@@ -70,8 +70,8 @@ public class ArrayWrap
     public override string ToString()
     {
         if (Length <= 5)
-            return $"ArrayWrap<{ElementType.Name}>[{Length}] {{ {string.Join(", ", _values.Select(v => v?.ToString() ?? "null"))} }}";
+            return $"ArrayWrap<{TypeDB.ShortType(ElementType.Name)}>[{Length}] {{ {string.Join(", ", _values.Select(v => v?.ToString() ?? "null"))} }}";
 
-        return $"ArrayWrap<{ElementType.Name}>[{Length}] {{ {string.Join(", ", _values.Take(5).Select(v => v?.ToString() ?? "null"))}, … }}";
+        return $"ArrayWrap<{TypeDB.ShortType(ElementType.Name)}>[{Length}] {{ {string.Join(", ", _values.Take(5).Select(v => v?.ToString() ?? "null"))}, … }}";
     }
 }
