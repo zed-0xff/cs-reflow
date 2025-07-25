@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -72,8 +71,6 @@ class Program
 
     public static int Main(string[] args)
     {
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
-
         // --- Define arguments and options ---
         var filenamesArg = new Argument<List<string>>("filenames", description: "Input .cs files (optional).") { Arity = ArgumentArity.ZeroOrMore };
 

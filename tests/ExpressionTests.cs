@@ -1,6 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Globalization;
 using Xunit;
 
 public partial class ExpressionTests
@@ -11,7 +10,6 @@ public partial class ExpressionTests
 
     public ExpressionTests()
     {
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
         TypeDB.Bitness = 32;
         _varDict = new VarDict(_varDB);
         _processor = new VarProcessor(_varDB, varDict: _varDict);

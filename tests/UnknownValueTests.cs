@@ -1,13 +1,7 @@
-using System.Globalization;
 using Xunit;
 
 public class UnknownValueTests
 {
-    static UnknownValueTests()
-    {
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture; // do not print unicode '−' for negative numbers
-    }
-
     [Fact]
     public void Test_Add()
     {

@@ -77,19 +77,47 @@ public partial class ExpressionTests
         var V = _varDB.FindByName("a");
         var arr = _varDict[V!.id] as ArrayWrap;
         Assert.NotNull(arr);
+        Assert.Equal((char)0, arr[0]);
+        Assert.Equal((char)0, arr[1]);
+        Assert.Equal((char)0, arr[2]);
+        Assert.Equal((char)0, arr[3]);
         Assert.Equal((char)123, arr[4]);
+    }
+
+    [Fact]
+    public void Test_arr_set_with_cast_unknown_value()
+    {
+        try
+        {
+            Eval("var a = new char[10]; int i=4; ((short[])a)[i] = foo();"); // index is known, but value is not => spoil only that element
+        }
+        catch (NotSupportedException) // "InvocationExpression is not supported"
+        {
+        }
+
+        var V = _varDB.FindByName("a");
+        var arr = _varDict[V!.id] as ArrayWrap;
+        Assert.NotNull(arr);
+        Assert.Equal((char)0, arr[0]);
+        Assert.Equal((char)0, arr[1]);
+        Assert.Equal((char)0, arr[2]);
+        Assert.Equal((char)0, arr[3]);
+        Assert.Equal(UnknownValue.Create(TypeDB.Char), arr[4]);
     }
 
     [Fact]
     public void Test_arr_set_with_cast_unknown_idx()
     {
-        Eval("var a = new char[4]; int i; ((short[])a)[i] = 123;");
+        Eval("var a = new char[4]; int i; ((short[])a)[i] = 123;"); // index is unknown => spoil all array elements
 
         var V = _varDB.FindByName("a");
         var arr = _varDict[V!.id] as ArrayWrap;
         Assert.NotNull(arr);
         Assert.Equal(4, arr.Length);
         Assert.Equal(new UnknownValueSet(TypeDB.Char, new() { 0, 123 }), arr[0]);
+        Assert.Equal(new UnknownValueSet(TypeDB.Char, new() { 0, 123 }), arr[1]);
+        Assert.Equal(new UnknownValueSet(TypeDB.Char, new() { 0, 123 }), arr[2]);
+        Assert.Equal(new UnknownValueSet(TypeDB.Char, new() { 0, 123 }), arr[3]);
     }
 
     [Fact]

@@ -9,6 +9,8 @@ abstract class ElementAccessorBase
 
     abstract public object? GetValue();
     abstract public object? SetValue(object? value);
+
+    public UnknownValueBase CreateUnknownElement() => UnknownValue.Create(_array.ElementIntType);
 }
 
 class ElementAccessor : ElementAccessorBase
@@ -18,6 +20,8 @@ class ElementAccessor : ElementAccessorBase
     public ElementAccessor(ArrayWrap array, int index) : base(array)
     {
         Index = index;
+        if (index < 0 || index >= array.Length)
+            throw new IndexOutOfRangeException($"Index {index} is out of bounds for array of size {array.Length}.");
     }
 
     public override object? GetValue() => _array[Index];
@@ -46,6 +50,8 @@ class ElementAccessor : ElementAccessorBase
         _array[Index] = value;
         return GetValue();
     }
+
+    public override string ToString() => $"ElementAccessor(Index={Index}, Array={_array})";
 }
 
 // index of element is unknown
@@ -55,7 +61,7 @@ class UnknownElementAccessor : ElementAccessorBase
     {
     }
 
-    public override object? GetValue() => UnknownValue.Create(_array.ElementIntType); // TODO: return all array values merged
+    public override object? GetValue() => CreateUnknownElement(); // TODO: return all array values merged
     public override object? SetValue(object? value)
     {
         // index is not known, so spoil all elements of the array

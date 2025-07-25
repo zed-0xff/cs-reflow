@@ -40,12 +40,15 @@ public static class Logger
     }
 
     // caller is not counted in message uniqueness
-    public static void warn_once(string message, [CallerMemberName] string caller = "", string prefix = "")
+    public static void warn_once(string message, [CallerMemberName] string caller = "", string prefix = "", string key = "")
     {
-        if (_onceMessages.Contains(message))
+        if (key == "")
+            key = message;
+
+        if (_onceMessages.Contains(key))
             return;
 
-        _onceMessages.Add(message);
+        _onceMessages.Add(key);
         warn(message, caller, prefix: prefix);
     }
 
@@ -139,8 +142,8 @@ public class TaggedLogger
     public void warn(string message, [CallerMemberName] string caller = "") =>
         Logger.warn(message, $"{_tag}.{caller}", prefix: _prefix);
 
-    public void warn_once(string message, [CallerMemberName] string caller = "") =>
-        Logger.warn_once(message, $"{_tag}.{caller}", prefix: _prefix);
+    public void warn_once(string message, [CallerMemberName] string caller = "", string key = "") =>
+        Logger.warn_once(message, $"{_tag}.{caller}", prefix: _prefix, key: key);
 
     public void error(string message, [CallerMemberName] string caller = "") =>
         Logger.error(message, $"{_tag}.{caller}", prefix: _prefix);

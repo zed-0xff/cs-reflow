@@ -1,10 +1,17 @@
 using Microsoft.CodeAnalysis.CSharp;
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 public abstract class UnknownValueBase
 {
     protected IReadOnlyDictionary<string, object>? _tags { get; init; } = null;
     public int? _var_id { get; init; } = null; // public for UnknownValueBitTracker
+
+    static UnknownValueBase()
+    {
+        // use ASCII '-' instead of '−' (0x2212) for minus sign
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+    }
 
     protected IReadOnlyDictionary<string, object>? add_tag(string key, object? value)
     {

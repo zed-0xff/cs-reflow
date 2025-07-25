@@ -18,12 +18,12 @@ public partial class VarProcessor
         public int Verbosity = 0;
 
         private HashSet<int>? _varsRead;
-        private HashSet<int>? _varsWritten;
-        private HashSet<int>? _varsReferenced;
+        // private HashSet<int>? _varsWritten;
+        // private HashSet<int>? _varsReferenced;
 
         public IEnumerable<int> VarsRead => _varsRead ?? calc_accessed_vars().read;
-        public IEnumerable<int> VarsWritten => _varsWritten ?? calc_accessed_vars().written;
-        public IEnumerable<int> VarsReferenced => _varsReferenced ?? calc_accessed_vars().referenced;
+        // public IEnumerable<int> VarsWritten => _varsWritten ?? calc_accessed_vars().written;
+        // public IEnumerable<int> VarsReferenced => _varsReferenced ?? calc_accessed_vars().referenced;
 
         public object? Result { get; private set; } = UnknownValue.Create();
 
@@ -35,13 +35,21 @@ public partial class VarProcessor
             this._varDict = varDict;
         }
 
+        class VarResetException : Exception
+        {
+            public VarResetException(Exception exc) : base($"VarResetException<{exc}>", exc)
+            {
+            }
+        }
+
         (IEnumerable<int> read, IEnumerable<int> written, IEnumerable<int> referenced) calc_accessed_vars()
         {
             var (declared, read, written) = _varDict._varDB.CollectVars(node);
             _varsRead = read;
-            _varsWritten = written;
-            _varsReferenced = read.Union(written).ToHashSet();
-            return (_varsRead, _varsWritten, _varsReferenced);
+            // _varsWritten = written;
+            // _varsReferenced = read.Union(written).ToHashSet();
+            // return (_varsRead, _varsWritten, _varsReferenced);
+            return (_varsRead, Enumerable.Empty<int>(), Enumerable.Empty<int>());
         }
 
         public Expression SetVerbosity(int verbosity)
@@ -330,6 +338,7 @@ public partial class VarProcessor
 
         object? var_set(IdentifierNameSyntax idNameLeft, SyntaxKind kind, ExpressionSyntax right)
         {
+            _logger.debug(() => $"var_set: {idNameLeft} kind={kind} right={right}");
             SyntaxToken idLeft = idNameLeft.Identifier;
             // VarsWritten.Add(idLeft);
 
@@ -341,16 +350,36 @@ public partial class VarProcessor
             }
             catch (Exception ex)
             {
-                _logger.debug($"catched \"{ex.Message}\" in EvaluateExpression for {idLeft}");
+                _logger.debug($"catched \"{ex.Message}\" [idLeft={idLeft}]");
                 reset_var(idNameLeft);
-                throw;
+                throw new VarResetException(ex);
             }
         }
 
         object? arr_elem_set(ElementAccessExpressionSyntax elAccLeft, SyntaxKind kind, ExpressionSyntax right)
         {
+            _logger.debug(() => $"arr_elem_set: {elAccLeft} kind={kind} right={right}");
             var accessor = element_access(elAccLeft);
-            var result = calc_assignment_result(elAccLeft, kind, right);
+            object? result = null;
+            try
+            {
+                result = calc_assignment_result(elAccLeft, kind, right);
+            }
+            catch (Exception ex)
+            {
+                _logger.debug($"catched \"{ex.Message}\" [accessor={accessor}]");
+                var unk_el = accessor.CreateUnknownElement();
+                try
+                {
+                    accessor.SetValue(unk_el);
+                }
+                catch (Exception ex2)
+                {
+                    _logger.debug($"catched \"{ex2.Message}\" while setting unknown element [accessor={accessor}]");
+                    throw;
+                }
+                throw new VarResetException(ex);
+            }
             return accessor.SetValue(result);
         }
 
@@ -479,11 +508,19 @@ public partial class VarProcessor
                 if (indexExpr is not null)
                 {
                     var index = EvaluateExpression(indexExpr);
-                    return index switch
+                    switch (index)
                     {
-                        UnknownValueBase unk => new UnknownElementAccessor(arr),
-                        _ => new ElementAccessor(arr, TypeDB.ToInt32(index))
-                    };
+                        case UnknownValueBase unk:
+                            return new UnknownElementAccessor(arr);
+
+                        default:
+                            int iIndex = TypeDB.ToInt32(index);
+                            if (iIndex >= 0 && iIndex < arr.Length)
+                                return new ElementAccessor(arr, iIndex);
+                            _logger.warn_once($"ElementAccessExpression index {iIndex} out of bounds for array[{arr.Length}] -- #{expr.TitleWithLineNo()}",
+                                    key: $"ElementAccessExpression_OOB_{arr.ElementType}_{arr.Length}");
+                            return new UnknownElementAccessor(arr);
+                    }
                 }
                 throw new NotSupportedException($"ElementAccessExpression requires an index: {expr}");
             }
@@ -499,6 +536,11 @@ public partial class VarProcessor
                     try
                     {
                         return EvaluateAssignment(assignmentExpr.Left, assignmentExpr.Kind(), assignmentExpr.Right);
+                    }
+                    catch (VarResetException e)
+                    {
+                        _logger.debug($"\"{assignmentExpr}\" => {e.InnerException!.Message}");
+                        throw e.InnerException!;
                     }
                     catch (Exception e)
                     {
