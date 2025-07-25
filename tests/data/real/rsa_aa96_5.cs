@@ -32,7 +32,7 @@
 			{
 				int num3 = num2;
 				num |= 6;
-				if (num3 >= String.get_Length(text))          // num = 38
+				if (num3 >= String.get_Length(text))
 				{
 					break;
 				}
@@ -45,7 +45,7 @@
 			while (true)
 			{
 				num = (num & -35) | 0x191;
-				if (num5 >= String.get_Length(text2))        // num = 405
+				if (num5 >= String.get_Length(text2))
 				{
 					break;
 				}
@@ -57,7 +57,7 @@
 			while (true)
 			{
 				num = (num & -6) | 0x6A;
-				if (num6 >= String.get_Length(text3))        // num = 506
+				if (num6 >= String.get_Length(text3))
 				{
 					break;
 				}
@@ -87,7 +87,7 @@
 					int num12;
 					int num13;
 					object obj;
-					switch ((uint)num8 % 4u) // 1
+					switch ((uint)num8 % 4u)
 					{
 					case 3u:
 						break;
@@ -130,7 +130,7 @@
 						goto IL_0b95;
 						IL_0b95:
 						num14 = num13;
-						switch ((num11 = (uint)(206202068 - (~num14 * -1630396477 - -185993634) * -643586491)) % 3) // 2
+						switch ((num11 = (uint)(206202068 - (~num14 * -1630396477 - -185993634) * -643586491)) % 3)
 						{
 						case 2u:
 							break;
@@ -200,7 +200,7 @@
 										int num44;
 										int num45;
 										int num46;
-										switch ((num9 = (uint)(num16 ^ 0x79CA4C83)) % 5) // 1
+										switch ((num9 = (uint)(num16 ^ 0x79CA4C83)) % 5)
 										{
 										case 0u:
 											break;
@@ -209,7 +209,7 @@
 										case 1u:
 											goto IL_0298;
 										case 3u:
-											switch ((num11 = (uint)(206202068 - (~num14 * -1630396477 - -185993634) * -643586491)) % 66) // 56
+											switch ((num11 = (uint)(206202068 - (~num14 * -1630396477 - -185993634) * -643586491)) % 66)
 											{
 											case 61u:
 												break;
@@ -722,7 +722,7 @@
 									uint num48 = (num9 = (uint)(num47 ^ 0x79CA4C83));
 									num = (num & -290) | 0x50;
 									int num49;
-									switch (num48 % 5) // 1
+									switch (num48 % 5)
 									{
 									case 2u:
 										break;
@@ -739,7 +739,7 @@
 										goto IL_0b0a;
 										IL_0a8c:
 										num14 = num49;
-										switch ((num11 = (uint)(206202068 - (~num14 * -1630396477 - -185993634) * -643586491)) % 3) // 1
+										switch ((num11 = (uint)(206202068 - (~num14 * -1630396477 - -185993634) * -643586491)) % 3)
 										{
 										case 2u:
 											break;
