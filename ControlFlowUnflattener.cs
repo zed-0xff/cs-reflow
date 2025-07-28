@@ -537,12 +537,15 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     void trace_switch(SwitchStatementSyntax switchStmt, object? value)
     {
-        _logger.debug(() => $"[{_visitedLines[switchStmt.LineNo()]}] {switchStmt.TitleWithLineNo()} with value {value}");
         if (value is VarProcessor.Expression ex)
         {
             value = ex.Result;
+            _logger.debug(() => $"[{_visitedLines[switchStmt.LineNo()]}] {switchStmt.TitleWithLineNo()} with value {value}");
             flow_info(switchStmt).loopVars.UnionWith(ex.VarsRead);
+        } else {
+            _logger.debug(() => $"[{_visitedLines[switchStmt.LineNo()]}] {switchStmt.TitleWithLineNo()} with value {value}");
         }
+
         if (value is not GotoDefaultCaseException)
             update_flow_info(switchStmt, value);
 
@@ -1160,6 +1163,7 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                             case true:
                                 WhileStatementSyntax? newWhile = maybe_convert_while(whileStmt, retLabels);
                                 //Console.WriteLine($"[d] maybe_convert_while: {whileStmt.TitleWithLineNo()} => {newWhile?.TitleWithLineNo()}");
+                                _logger.debug(() => $"maybe_convert_while() returned {newWhile?.Title() ?? "null"}");
                                 if (newWhile is null)
                                 {
                                     skip = true;
@@ -1616,12 +1620,14 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
                 {
                     // should work 2nd time because 'keep' flag is now set
                     if (e.node is not null && _flowDict.TryGetValue(e.node, out ControlFlowNode? flowNodeSw) && flowNodeSw.keep)
+                    {
                         continue;
-                    throw new TaggedException("ControlFlowUnflattener", $"Cannot convert switch at line {lineno}: {e.Message}");
+                    }
+                    throw new TaggedException("ControlFlowUnflattener", $"Cannot convert switch at line {e.lineno}: {e.Message}");
                 }
                 catch (FlowException e)
                 {
-                    Console.Error.WriteLine($"[!] uncatched {e.GetType()} at line {lineno}: {e.Message}".Red());
+                    Console.Error.WriteLine($"[!] uncatched {e.GetType()} at line {e.lineno}: {e.Message}".Red());
                     Console.Error.WriteLine(e.StackTrace);
                     throw new TaggedException("ControlFlowUnflattener", $"Uncatched FlowException at line {lineno}: {e.Message}");
                 }
