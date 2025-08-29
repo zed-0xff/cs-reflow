@@ -542,7 +542,9 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
             value = ex.Result;
             _logger.debug(() => $"[{_visitedLines[switchStmt.LineNo()]}] {switchStmt.TitleWithLineNo()} with value {value}");
             flow_info(switchStmt).loopVars.UnionWith(ex.VarsRead);
-        } else {
+        }
+        else
+        {
             _logger.debug(() => $"[{_visitedLines[switchStmt.LineNo()]}] {switchStmt.TitleWithLineNo()} with value {value}");
         }
 
