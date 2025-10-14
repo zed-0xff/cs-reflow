@@ -1,0 +1,28 @@
+public unsafe static void MoveItemTo<T>(List<T> list, int fromIndex, int toIndex)
+{
+    if ((fromIndex < 0))
+    {
+        throw new ArgumentOutOfRangeException("fromIndex", "FromIndex is out of range.");
+    }
+    else if ((fromIndex < list.Count))
+    {
+        if ((toIndex < 0))
+        {
+            throw new ArgumentOutOfRangeException("toIndex", "ToIndex is out of range.");
+        }
+        else if ((toIndex < list.Count))
+        {
+            T item = list[fromIndex];
+            list.RemoveAt(fromIndex);
+            list.Insert(toIndex, item);
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException("toIndex", "ToIndex is out of range.");
+        }
+    }
+    else
+    {
+        throw new ArgumentOutOfRangeException("fromIndex", "FromIndex is out of range.");
+    }
+}

@@ -15,6 +15,7 @@ public class Variable
     public readonly TypeDB.IntType? IntType;
 
     public const int FLAG_LOOP = 1;
+    public const int FLAG_SWITCH = 2;
 
     public Variable(int id, string name, string typeName)
     {
@@ -34,6 +35,7 @@ public class Variable
     }
 
     public bool IsLoopVar => (Flags & FLAG_LOOP) != 0;
+    public bool IsSwitchVar => (Flags & FLAG_SWITCH) != 0;
 
     public override string ToString() => $"<Var{VarID}.{Name ?? "?"}>";
     public string ToFullString() => $"<Var{VarID} type={TypeName} name={Name ?? "?"}>";

@@ -82,6 +82,7 @@ public class VarDB
             Add(field.Name, field.Type.ToString()!);
 
     public void SetLoopVar(int id) => _vars[id].Flags |= Variable.FLAG_LOOP;
+    public void SetSwitchVar(int id) => _vars[id].Flags |= Variable.FLAG_SWITCH;
 
     // same as Roslyn's ReadInside(), but handles ++/-- differently
     public (HashSet<int> declared, HashSet<int> read, HashSet<int> written) CollectVars(SyntaxNode rootNode)

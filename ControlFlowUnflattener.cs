@@ -1929,7 +1929,13 @@ public class ControlFlowUnflattener : SyntaxTreeProcessor
 
     SyntaxNode PreProcessBlock(SyntaxNode node)
     {
-        var node_ = new PureArithmeticsEvaluator().Visit(node);
+        SyntaxNode node_;
+
+        node_ = new SwitchVarTernaryExpander(_varDB).Visit(node);
+        if (!node_!.IsEquivalentTo(node))
+            node = node.ReplaceWith(node_);
+
+        node_ = new PureArithmeticsEvaluator().Visit(node);
         if (!node_!.IsEquivalentTo(node))
             node = node.ReplaceWith(node_);
 

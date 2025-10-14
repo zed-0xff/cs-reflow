@@ -21,7 +21,15 @@ public partial class VarTracker
     public SyntaxNode? Track(SyntaxNode rootNode, IEnumerable<SyntaxTree>? trees = null)
     {
         var ctx = new SemanticContext(rootNode, trees);
-        return IndexSymbols(rootNode, ctx.Model);
+        var result = IndexSymbols(rootNode, ctx.Model);
+        FindSwitchVars(result);
+        return result;
+    }
+
+    public void FindSwitchVars(SyntaxNode? rootNode)
+    {
+        var collector = new SwitchVarCollector(this, _varDB);
+        collector.Visit(rootNode);
     }
 
     public SyntaxNode? IndexSymbols(SyntaxNode rootNode, SemanticModel semanticModel)

@@ -532,20 +532,20 @@ public partial class VarProcessor
         {
             switch (expression)
             {
-                case AssignmentExpressionSyntax assignmentExpr:
+                case AssignmentExpressionSyntax assignExpr:
                     try
                     {
-                        return EvaluateAssignment(assignmentExpr.Left, assignmentExpr.Kind(), assignmentExpr.Right);
+                        return EvaluateAssignment(assignExpr.Left, assignExpr.Kind(), assignExpr.Right);
                     }
                     catch (VarResetException e)
                     {
-                        _logger.debug($"\"{assignmentExpr}\" => {e.InnerException!.Message}");
+                        _logger.debug($"\"{assignExpr}\" => {e.InnerException!.Message}");
                         throw e.InnerException!;
                     }
                     catch (Exception e)
                     {
-                        _logger.debug($"\"{assignmentExpr}\" => {e.Message}");
-                        _varDict.ResetVars(_varDict._varDB.CollectVars(assignmentExpr).written);
+                        _logger.debug($"\"{assignExpr}\" => {e.Message}");
+                        _varDict.ResetVars(_varDict._varDB.CollectVars(assignExpr).written);
                         throw;
                     }
 

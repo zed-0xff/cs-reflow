@@ -38,6 +38,7 @@ public class PostProcessor
         block = new DeclarationAssignmentMerger().Visit(block);
         block = new IfRewriter(_varDB).Visit(block); // should be after EmptiesRemover
         block = new TernaryRewriter(_varDB).Visit(block);
+        block = new ExtraLoopRemover().Visit(block);
         return block;
     }
 

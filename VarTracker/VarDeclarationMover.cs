@@ -236,7 +236,7 @@ public partial class VarTracker
             }
 
             // Build assignment expression: varName = initializer;
-            var assignmentExpr = SyntaxFactory.ExpressionStatement(
+            var assignExpr = SyntaxFactory.ExpressionStatement(
                     SyntaxFactory.AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         SyntaxFactory
@@ -246,7 +246,7 @@ public partial class VarTracker
                     .WithAdditionalAnnotations(new SyntaxAnnotation("StmtID", _tracker.NextStmtID()))
                     );
 
-            return assignmentExpr;
+            return assignExpr;
         }
     }
 }
