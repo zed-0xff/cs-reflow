@@ -387,6 +387,24 @@ public partial class ExpressionTests
     }
 
     [Fact]
+    public void Test_exprY1()
+    {
+        check_expr("int x; ((2772 + 5 * x + 3 * x) | -4) == -4");
+    }
+
+    [Fact]
+    public void Test_exprY2()
+    {
+        check_expr("int x; ((5 * x + 2772 + 3 * x) | -4) == -4");
+    }
+
+    [Fact]
+    public void Test_exprY3()
+    {
+        check_expr("int x; ((5 * x + 3 * x + 2772) | -4) == -4");
+    }
+
+    [Fact]
     public void Test_expr_BitTracker_A()
     {
         check_expr("int num6; ((num6 ^ ((num6 * -1788084224) | (num6 - 400) | (num6 + num6))) & 1) == 0");

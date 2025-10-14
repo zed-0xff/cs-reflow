@@ -756,7 +756,6 @@ public partial class VarProcessor
 
         (ExpressionSyntax, ExpressionSyntax) try_reorder_operands(ExpressionSyntax left, ExpressionSyntax right)
         {
-            bool swapped = false;
             List<ExpressionSyntax> operands = new(){
                 left.StripParentheses(),
                 right.StripParentheses()
@@ -773,42 +772,31 @@ public partial class VarProcessor
                 }
             }
 
-            for (int i = 0; i < operands.Count - 2; i++)
-            {
-                var var_idsL = operands[i].CollectVarIDs();
-                if (var_idsL.Count == 0)
-                    continue; // skip if no variables in the left operand
+            _logger.debug(() => "operands before sort: [" + string.Join(", ", operands.Select(o => o.ToString())) + "]");
 
-                var var_idsR = operands[i + 1].CollectVarIDs();
-                if (var_idsL.Overlaps(var_idsR))
-                    continue; // skip if left and right operands share variables
+            var sorted = operands
+                .OrderBy(o => string.Join(",", o.CollectVarIDs().OrderBy(id => id)))
+                .ThenBy(o => o.ToString())
+                .Reverse()
+                .ToList();
 
-                for (int j = i + 2; j < operands.Count; j++)
-                {
-                    var_idsR = operands[j].CollectVarIDs();
-                    if (var_idsL.Overlaps(var_idsR))
-                    {
-                        (operands[i + 1], operands[j]) = (operands[j], operands[i + 1]); // swap
-                        swapped = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!swapped)
+            bool sameOrder = operands.Zip(sorted, (a, b) => SyntaxFactory.AreEquivalent(a, b)).All(eq => eq);
+            if (sameOrder)
                 return (left, right);
 
-            while (operands.Count > 2)
+            _logger.debug(() => "operands after  sort: [" + string.Join(", ", sorted.Select(o => o.ToString())) + "]");
+
+            while (sorted.Count > 2)
             {
-                operands[0] = BinaryExpression(
+                sorted[0] = BinaryExpression(
                     SyntaxKind.AddExpression,
-                    operands[0],
-                    operands[1]
+                    sorted[0],
+                    sorted[1]
                 );
-                operands.RemoveAt(1);
+                sorted.RemoveAt(1);
             }
 
-            return (operands[0], operands[1]);
+            return (sorted[0], sorted[1]);
         }
 
         // assuming op kind is 'Add'
