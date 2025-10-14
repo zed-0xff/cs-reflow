@@ -23,6 +23,8 @@ public static partial class TypeDB
                 bool => new IntInfo(ST.System_Boolean, false),
                 char => new IntInfo(ST.System_Char, false),
 
+                double => new IntInfo(ST.System_Double, true),
+
                 _ => throw new ArgumentException($"cannot create IIntType from ({obj.GetType()}) {obj}")
             };
     }

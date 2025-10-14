@@ -332,7 +332,7 @@ public class UnknownValueRange : UnknownValueRangeBase
     {
         return right switch
         {
-            UnknownValueBits b => b.IntersectsWith(this), // TODO: test
+            UnknownValueBitsBase b => b.IntersectsWith(this), // TODO: test
             UnknownValueSet l => l.Values().Any(v => Range.Contains(v)),
             UnknownValueRange r => Range.IntersectsWith(r.Range),
             UnknownValueRanges rr => rr.IntersectsWith(this),

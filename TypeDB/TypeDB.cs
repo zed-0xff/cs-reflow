@@ -19,6 +19,8 @@ public static partial class TypeDB
     public const SpecialType ST_Boolean = SpecialType.System_Boolean;
     public const SpecialType ST_IntPtr = SpecialType.System_IntPtr;
     public const SpecialType ST_UIntPtr = SpecialType.System_UIntPtr;
+    public const SpecialType ST_Double = SpecialType.System_Double;
+    public const SpecialType ST_Single = SpecialType.System_Single;
 
     public static readonly IntType Int8 = new IntType("sbyte", 8, true, ST_SByte);
     public static readonly IntType UInt8 = new IntType("byte", 8, false, ST_Byte);
@@ -40,6 +42,8 @@ public static partial class TypeDB
 
     // XXX: make sure it's not leaked into UnknownTypedValue
     private static readonly IntType GUID = new IntType("Guid", 128, false, SpecialType.None);
+    private static readonly IntType Double = new IntType("double", 64, true, ST_Double);
+    private static readonly IntType Float = new IntType("float", 32, true, ST_Single);
 
     // aliases
     public static readonly IntType Byte = UInt8;
@@ -143,7 +147,17 @@ public static partial class TypeDB
         {
             case (ST_Int32, ST_Int32): // fast check for most common case
                 return (null, null);
-            // [floats skipped]
+            // [decimals skipped]
+            // if either operand is of type double, the other operand is converted to type double.
+            case (ST_Double, _) or (_, ST_Double):
+                if (lid != ST_Double) return (TypeDB.Double, null);
+                if (rid != ST_Double) return (null, TypeDB.Double);
+                break;
+            // if either operand is of type float, the other operand is converted to type float.
+            case (ST_Single, _) or (_, ST_Single):
+                if (lid != ST_Single) return (TypeDB.Float, null);
+                if (rid != ST_Single) return (null, TypeDB.Float);
+                break;
             // if either operand is of type ulong, the OTHER OPERAND is converted to type ulong,
             // or a binding-time error occurs if the other operand is of type sbyte, short, int, or long.
             case (ST_UInt64, _) or (_, ST_UInt64):

@@ -40,8 +40,12 @@ public class ArrayWrap
 
     public ArrayWrap Cast(TypeSyntax toTypeSyntax)
     {
+        // if (num10 < ((Array)obj2).Length)
+        if (toTypeSyntax is IdentifierNameSyntax idNameSyntax && idNameSyntax.Identifier.Text == "Array")
+            return this;
+
         if (toTypeSyntax is not ArrayTypeSyntax arrayTypeSyntax)
-            throw new ArgumentException("Cannot cast to non-array type.", nameof(toTypeSyntax));
+            throw new ArgumentException($"Cannot cast to non-array type, toTypeSyntax=({toTypeSyntax.GetType()}){toTypeSyntax}");
 
         if (ElementIntType is null)
             throw new InvalidOperationException($"Cannot cast array of type {ElementType.Name} to {arrayTypeSyntax}");
